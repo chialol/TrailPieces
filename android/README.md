@@ -53,10 +53,13 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 ## Adding images
 
-Place puzzle source images in:
+1. Drop a portrait photo in **`shared/source/`** at the repo root.
+2. Run the chop script:
 
-```
-app/src/main/assets/images/
+```powershell
+tools\chop_puzzle\.venv\Scripts\python tools\chop_puzzle\chop.py
 ```
 
-We'll wire up loading in a follow-up step once you supply the files.
+(See [tools/chop_puzzle/README.md](../tools/chop_puzzle/README.md) for first-time Python setup.)
+
+3. Rebuild/run the app. Output goes to `app/src/main/assets/puzzles/default/`.

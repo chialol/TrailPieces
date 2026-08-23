@@ -1,0 +1,228 @@
+{
+  "id": "default",
+  "title": "Deathvalley",
+  "sourceFile": "deathvalley.jpg",
+  "sourceWidth": 4000,
+  "sourceHeight": 6000,
+  "puzzleWidth": 1080,
+  "puzzleHeight": 1620,
+  "cols": 2,
+  "rows": 12,
+  "tileWidth": 540,
+  "tileHeight": 135,
+  "colWidths": [
+    540,
+    540
+  ],
+  "rowHeights": [
+    135,
+    135,
+    135,
+    135,
+    135,
+    135,
+    135,
+    135,
+    135,
+    135,
+    135,
+    135
+  ],
+  "emptyIndex": 23,
+  "tileFormat": "webp",
+  "tileQuality": 85,
+  "tiles": [
+    {
+      "index": 0,
+      "row": 0,
+      "col": 0,
+      "file": "tiles/tile_0_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 1,
+      "row": 0,
+      "col": 1,
+      "file": "tiles/tile_0_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 2,
+      "row": 1,
+      "col": 0,
+      "file": "tiles/tile_1_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 3,
+      "row": 1,
+      "col": 1,
+      "file": "tiles/tile_1_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 4,
+      "row": 2,
+      "col": 0,
+      "file": "tiles/tile_2_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 5,
+      "row": 2,
+      "col": 1,
+      "file": "tiles/tile_2_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 6,
+      "row": 3,
+      "col": 0,
+      "file": "tiles/tile_3_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 7,
+      "row": 3,
+      "col": 1,
+      "file": "tiles/tile_3_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 8,
+      "row": 4,
+      "col": 0,
+      "file": "tiles/tile_4_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 9,
+      "row": 4,
+      "col": 1,
+      "file": "tiles/tile_4_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 10,
+      "row": 5,
+      "col": 0,
+      "file": "tiles/tile_5_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 11,
+      "row": 5,
+      "col": 1,
+      "file": "tiles/tile_5_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 12,
+      "row": 6,
+      "col": 0,
+      "file": "tiles/tile_6_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 13,
+      "row": 6,
+      "col": 1,
+      "file": "tiles/tile_6_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 14,
+      "row": 7,
+      "col": 0,
+      "file": "tiles/tile_7_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 15,
+      "row": 7,
+      "col": 1,
+      "file": "tiles/tile_7_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 16,
+      "row": 8,
+      "col": 0,
+      "file": "tiles/tile_8_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 17,
+      "row": 8,
+      "col": 1,
+      "file": "tiles/tile_8_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 18,
+      "row": 9,
+      "col": 0,
+      "file": "tiles/tile_9_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 19,
+      "row": 9,
+      "col": 1,
+      "file": "tiles/tile_9_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 20,
+      "row": 10,
+      "col": 0,
+      "file": "tiles/tile_10_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 21,
+      "row": 10,
+      "col": 1,
+      "file": "tiles/tile_10_1.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 22,
+      "row": 11,
+      "col": 0,
+      "file": "tiles/tile_11_0.webp",
+      "width": 540,
+      "height": 135
+    },
+    {
+      "index": 23,
+      "row": 11,
+      "col": 1,
+      "file": "tiles/tile_11_1.webp",
+      "width": 540,
+      "height": 135
+    }
+  ]
+}

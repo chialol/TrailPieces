@@ -1,67 +1,28 @@
 package com.trailpieces.app
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import com.trailpieces.app.ui.theme.TrailPiecesTheme
+import androidx.compose.ui.platform.LocalContext
+import com.trailpieces.app.puzzle.PuzzleLoader
+import com.trailpieces.app.ui.MissingPuzzleScreen
+import com.trailpieces.app.ui.PuzzleScreen
 
 @Composable
 fun TrailPiecesApp() {
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { innerPadding ->
-        HomeScreen(modifier = Modifier.padding(innerPadding))
-    }
-}
+    val context = LocalContext.current
+    val manifest = PuzzleLoader.loadDefault(context)
 
-@Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "Trail Pieces",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "Cozy nature puzzles from your photography.",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = "Scaffold ready — puzzle images coming soon.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun HomeScreenPreview() {
-    TrailPiecesTheme {
-        HomeScreen()
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        if (manifest == null) {
+            MissingPuzzleScreen(modifier = Modifier.padding(innerPadding))
+        } else {
+            PuzzleScreen(
+                manifest = manifest,
+                modifier = Modifier.padding(innerPadding),
+            )
+        }
     }
 }

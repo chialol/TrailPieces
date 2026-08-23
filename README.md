@@ -23,4 +23,6 @@ See [android/README.md](android/README.md) for detailed setup and troubleshootin
 
 ## Adding puzzle images
 
-Drop source images into `android/app/src/main/assets/images/`. The app will load them from there in a future update.
+1. Drop a portrait photo in **`shared/source/`** (e.g. `shared/source/trail.jpg`).
+2. Run the chop script — see [tools/chop_puzzle/README.md](tools/chop_puzzle/README.md).
+3. Rebuild/run the Android app. Tiles land in `android/app/src/main/assets/puzzles/default/`.

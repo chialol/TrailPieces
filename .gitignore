@@ -19,7 +19,8 @@ android/.cxx/
 .gradle/
 build/
 
-# Backend (future)
+tools/chop_puzzle/.venv/
+
 backend/node_modules/
 backend/.env
 backend/__pycache__/
