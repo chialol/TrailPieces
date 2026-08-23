@@ -30,12 +30,12 @@ Do **not** jump straight to Compose tweaks for logic bugs (locks, push, peel, tu
 - Footprint may slide into **persistent empties**.
 - Tunneling through an axial group can advance the hole by more than one cell in one push.
 
-## Finger / “twitch” regressions (check these first)
+## Finger / “twitch” / offset regressions (check these first)
 
-When the user reports twitching, jitter, or oscillation while dragging:
+When the user reports twitching, jitter, oscillation, or the lift **shifting under the finger** after a push:
 
-1. Suspect **committed anchor jumped ahead of the finger** (tunnel or insert-row) → residual goes negative → direction flips → chatters.
-2. Verify `DragEngine` clamps finger delta to committed along the push axis after each push (`clampFingerToCommitted`).
+1. Suspect **committed anchor jumped ahead of the finger** (tunnel, insert-row, or mid-cell threshold) → residual goes negative → direction flips → chatters.
+2. **Never** snap `fingerDeltaPx` up to committed — that permanently offsets the lift under the finger. Use `awaitCatchUpAlong` to suppress reverse pushes until the finger catches up.
 3. Prefer **nearest** tunnel landing, not farthest (`PushService.resolveNewHoles`).
 4. Keep **direction lock** within a single `moveFinger` / frame; do not flip axes mid-call.
 5. Lifted tiles follow **total finger delta** from drag start (do not subtract per-cell after each push).

@@ -2,10 +2,10 @@
 
 ## Where we are (2026-08-23)
 
-- Puzzle logic lives in `android/puzzle-engine` with ~78 JVM unit tests.
-- Push-through, rigid groups, insert-row (Up when blocked), collapse empty rows, and finger-clamp after tunnel jumps are implemented.
+- Puzzle logic lives in `android/puzzle-engine` with JVM unit tests.
+- Push-through, rigid groups, insert-row (Up when blocked), collapse empty rows are implemented.
 - App module is Compose UI + thin `PuzzleGame` facade.
-- Latest user-facing concern: **drag twitching** when shifting connected components — mitigated by clamping finger to committed after multi-cell pushes; verify on device after rebuild.
+- **Finger tracking:** lifted tiles use true cumulative `fingerDeltaPx` (never snapped to committed). After a push that leaves committed ahead of the finger, reverse pushes are suppressed until catch-up (`awaitCatchUpAlong`) — fixes permanent offset under the finger that `clampFingerToCommitted` caused.
 
 ## If continuing work
 
@@ -18,4 +18,4 @@
 
 - Rigid peel vs shift vs insert-row — covered by push-through tests.
 - Play-again / shuffle — `ShuffleService` + `enforceRigidLocks = false`.
-- Twitch — `DragEngine.clampFingerToCommitted` + nearest tunnel landing.
+- Finger under lift / no reverse while behind — `DragEngine.awaitCatchUpAlong` (not clamping `fingerDeltaPx`).

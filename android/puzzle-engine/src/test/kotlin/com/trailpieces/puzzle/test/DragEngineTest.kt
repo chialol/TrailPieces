@@ -65,6 +65,36 @@ class DragEngineTest {
     }
 
     @Test
+    fun fingerDeltaStaysUnderFingerAfterSingleCellPush() {
+        // Push commits at 0.5 cell while finger is still mid-cell. Clamping
+        // fingerDelta up to committed jumps the lift ahead of the finger.
+        val e = engine(
+            PuzzleFixtures.boardFromRowMajor(manifest, listOf(2, 1, 0, 3, 4, 5)),
+        )
+        assertTrue(e.startDrag(GridPos(0, 0)))
+        e.moveFinger(Vec2(0f, 51f), cell, cell)
+        assertEquals(GridPos(1, 0), e.drag!!.committedAnchor)
+        assertEquals(
+            Vec2(0f, 51f),
+            e.fingerDeltaPx,
+            "Lifted tiles are drawn at start + fingerDelta; must match true finger travel",
+        )
+    }
+
+    @Test
+    fun fingerDeltaStaysUnderFingerWhenPushingConnectedGroup() {
+        // Locked left column (A,C,E) dragging Right into unlocked B.
+        val e = engine(PuzzleFixtures.lockedLeftColumnBoard(manifest))
+        assertTrue(e.startDrag(LetterSlots.A))
+        e.moveFinger(Vec2(60f, 0f), cell, cell)
+        assertEquals(GridPos(0, 1), e.drag!!.committedAnchor)
+        assertEquals(Vec2(60f, 0f), e.fingerDeltaPx)
+        // Further travel continues from true finger, not from a clamped jump.
+        e.moveFinger(Vec2(20f, 0f), cell, cell)
+        assertEquals(Vec2(80f, 0f), e.fingerDeltaPx)
+    }
+
+    @Test
     fun largeFingerMovePushesMultipleCells() {
         val e = engine(
             // 5 above unlocked 3 above unlocked 4 — two Down pushes
@@ -156,7 +186,8 @@ class DragEngineTest {
     @Test
     fun tunnelJumpDoesNotReverseOnSameFingerTravel() {
         // E below locked (A,C); small Up travel tunnels past the pair (2 cells).
-        // Finger residual must not flip to Down and undo the tunnel.
+        // Finger residual must not flip to Down and undo the tunnel — but
+        // fingerDelta must stay at true travel so the lift stays under the finger.
         val board = LetterSlots.board("052134")
         val e = engine(board)
         assertTrue(e.startDrag(LetterSlots.E))
@@ -169,13 +200,18 @@ class DragEngineTest {
             drag.committedAnchor,
             "Tunnel should land E at A in one push",
         )
-        // Same frame's residual was clamped; another tiny Up shouldn't go Down
+        assertEquals(
+            Vec2(0f, -60f),
+            e.fingerDeltaPx,
+            "Do not snap fingerDelta to committed after a tunnel jump",
+        )
+        // Finger still behind committed; reverse must not undo the tunnel.
         e.moveFinger(Vec2(0f, -5f), cell, cell)
         assertEquals(LetterSlots.A, e.drag!!.committedAnchor)
-        // Finger should not be behind committed (no negative Up residual)
-        assertTrue(
-            e.fingerDeltaPx.y <= -2f * cell + 0.1f,
-            "fingerDelta should be clamped to ~2 cells up after tunnel, was ${e.fingerDeltaPx}",
-        )
+        assertEquals(Vec2(0f, -65f), e.fingerDeltaPx)
+        // Even a large Down while still behind committed must not reverse.
+        e.moveFinger(Vec2(0f, 100f), cell, cell) // total -65+100=+35; committed still -200
+        assertEquals(LetterSlots.A, e.drag!!.committedAnchor)
+        assertEquals(Vec2(0f, 35f), e.fingerDeltaPx)
     }
 }

@@ -28,6 +28,14 @@ class DragEngine(
 
     private var boardBeforeDrag: PuzzleBoard? = null
 
+    /**
+     * After a push that leaves committed ahead of the finger (tunnel / insert-row
+     * / mid-cell threshold), refuse the opposite direction until the finger
+     * catches up. Never mutate [fingerDeltaPx] for this — lifted tiles must stay
+     * under the true finger.
+     */
+    private var awaitCatchUpAlong: AxisDirection? = null
+
     fun reshuffle() {
         cancelDragSafely()
         board = runSafely { ShuffleService.shuffled(manifest) } ?: board
@@ -47,6 +55,7 @@ class DragEngine(
             }
             drag = session
             fingerDeltaPx = Vec2.Zero
+            awaitCatchUpAlong = null
             true
         } ?: false
     }
@@ -69,6 +78,7 @@ class DragEngine(
             board = active.settle(manifest)
             drag = null
             fingerDeltaPx = Vec2.Zero
+            awaitCatchUpAlong = null
             boardBeforeDrag = null
             board
         } ?: run {
@@ -85,6 +95,7 @@ class DragEngine(
         runSafely {
             drag = null
             fingerDeltaPx = Vec2.Zero
+            awaitCatchUpAlong = null
             boardBeforeDrag?.let { board = it }
             boardBeforeDrag = null
         }
@@ -103,9 +114,14 @@ class DragEngine(
             val committedPx = anchorCommittedPx(active, cellWidthPx, cellHeightPx)
             val residual = sanitizeOffset(fingerDeltaPx - committedPx)
 
+            clearCatchUpIfCaught(residual)
+
             val direction = lockedDirection
                 ?: AxisDirection.dominant(deltaRowPx = residual.y, deltaColPx = residual.x)
                 ?: break
+
+            if (isReverseWhileBehind(direction, residual)) break
+
             lockedDirection = direction
 
             val cellSize = if (direction.dRow != 0) cellHeightPx else cellWidthPx
@@ -116,19 +132,27 @@ class DragEngine(
 
             val pushed = active.tryPush(direction) ?: break
             drag = pushed
-            // Tunnel / insert-row can jump committed ahead of the finger. Clamp so
-            // residual doesn't go negative and reverse direction (visual twitch).
-            clampFingerToCommitted(direction, cellWidthPx, cellHeightPx)
+            // Tunnel / insert-row / threshold push can leave committed ahead of
+            // the finger. Block reverse until catch-up; keep fingerDelta truthful.
+            markCatchUpIfBehind(direction, cellWidthPx, cellHeightPx)
             pushCount++
         }
     }
 
-    /**
-     * After a push, if the finger lags behind the committed anchor along
-     * [direction], snap that axis of [fingerDeltaPx] up to committed. Keeps
-     * perpendicular residual intact.
-     */
-    private fun clampFingerToCommitted(
+    private fun clearCatchUpIfCaught(residual: Vec2) {
+        val awaiting = awaitCatchUpAlong ?: return
+        if (residualAlong(residual, awaiting) >= 0f) {
+            awaitCatchUpAlong = null
+        }
+    }
+
+    private fun isReverseWhileBehind(direction: AxisDirection, residual: Vec2): Boolean {
+        val awaiting = awaitCatchUpAlong ?: return false
+        if (direction != AxisDirection.opposite(awaiting)) return false
+        return residualAlong(residual, awaiting) < 0f
+    }
+
+    private fun markCatchUpIfBehind(
         direction: AxisDirection,
         cellWidthPx: Float,
         cellHeightPx: Float,
@@ -136,13 +160,8 @@ class DragEngine(
         val active = drag ?: return
         val committedPx = anchorCommittedPx(active, cellWidthPx, cellHeightPx)
         val residual = fingerDeltaPx - committedPx
-        if (residualAlong(residual, direction) >= 0f) return
-
-        fingerDeltaPx = when (direction) {
-            AxisDirection.Down, AxisDirection.Up ->
-                Vec2(fingerDeltaPx.x, committedPx.y)
-            AxisDirection.Left, AxisDirection.Right ->
-                Vec2(committedPx.x, fingerDeltaPx.y)
+        if (residualAlong(residual, direction) < 0f) {
+            awaitCatchUpAlong = direction
         }
     }
 
