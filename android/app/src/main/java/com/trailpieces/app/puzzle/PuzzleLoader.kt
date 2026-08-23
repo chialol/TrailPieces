@@ -24,9 +24,11 @@ object PuzzleLoader {
                 val tile = tilesJson.getJSONObject(i)
                 add(
                     PuzzleTile(
-                        index = tile.getInt("index"),
-                        row = tile.getInt("row"),
-                        col = tile.getInt("col"),
+                        id = tile.getInt("index"),
+                        home = GridPos(
+                            row = tile.getInt("row"),
+                            col = tile.getInt("col"),
+                        ),
                         assetPath = tile.getString("file"),
                     ),
                 )
@@ -37,12 +39,14 @@ object PuzzleLoader {
             title = root.getString("title"),
             cols = root.getInt("cols"),
             rows = root.getInt("rows"),
-            tileWidth = root.getInt("tileWidth"),
-            tileHeight = root.getInt("tileHeight"),
             puzzleWidth = root.getInt("puzzleWidth"),
             puzzleHeight = root.getInt("puzzleHeight"),
-            emptyIndex = root.getInt("emptyIndex"),
             tiles = tiles,
-        )
+            previewFile = root.optString("previewFile").takeIf { it.isNotEmpty() },
+        ).also { manifest ->
+            require(manifest.cols > 0 && manifest.rows > 0) { "Invalid grid size" }
+            require(manifest.tiles.isNotEmpty()) { "Puzzle has no tiles" }
+            require(manifest.tiles.size <= manifest.slotCount) { "Too many tiles for grid" }
+        }
     }
 }

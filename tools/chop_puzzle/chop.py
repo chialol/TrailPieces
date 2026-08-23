@@ -103,6 +103,9 @@ def chop(
         puzzle_height = sum(row_heights)
         ext = tile_extension(fmt)
 
+        preview_name = f"preview.{ext}"
+        save_tile(rgb, output_dir / preview_name, fmt, quality)
+
         tiles: list[dict] = []
         index = 0
         y = 0
@@ -144,6 +147,7 @@ def chop(
         "colWidths": col_widths,
         "rowHeights": row_heights,
         "emptyIndex": empty_index,
+        "previewFile": preview_name,
         "tileFormat": fmt,
         "tileQuality": quality if fmt != "png" else None,
         "tiles": tiles,
@@ -162,6 +166,8 @@ def chop(
         print()
     print(f"  Grid: {cols}x{rows} ({len(tiles)} tiles, empty slot index {empty_index})")
     print(f"  Tile size: ~{col_widths[0]}x{row_heights[0]}px, format {fmt}")
+    preview_bytes = (output_dir / preview_name).stat().st_size
+    print(f"  Preview: {preview_name} ({preview_bytes / 1024:.1f} KB)")
     print(f"  Total tile assets: {total_bytes / 1024 / 1024:.2f} MB")
     print("Rebuild the Android app to pick up the new assets.")
 
