@@ -1,0 +1,48 @@
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/.kotlin/
+android/*.iml
+android/app/*.iml
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Gradle
+.gradle/
+build/
+
+# Backend (future)
+backend/node_modules/
+backend/.env
+backend/__pycache__/
+backend/.venv/
+backend/dist/
+backend/.pytest_cache/
+
+# iOS (future)
+ios/DerivedData/
+ios/*.xcuserstate
+ios/.swiftpm/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.log
+
+# Secrets
+.env
+.env.*
+*.keystore
+!debug.keystore
