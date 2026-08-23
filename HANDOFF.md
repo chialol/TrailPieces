@@ -5,7 +5,7 @@
 - Puzzle logic lives in `android/puzzle-engine` with JVM unit tests.
 - Push-through, rigid groups, insert-row (Up when blocked), collapse empty rows are implemented.
 - App module is Compose UI + thin `PuzzleGame` facade.
-- **Finger tracking:** lifted tiles use true cumulative `fingerDeltaPx` (never snapped to committed). After a push that leaves committed ahead of the finger, reverse pushes are suppressed until catch-up (`awaitCatchUpAlong`) — fixes permanent offset under the finger that `clampFingerToCommitted` caused.
+- **Finger / tunnel commit:** `DragEngine` peeks `tryPush` and only commits when residual `> (jumpCells - 0.5) × cell` (so a 2-cell tunnel through `(A,C)` waits ~1.5 cells, not 0.5). `fingerDeltaPx` stays true finger travel. Mid-drag reverse uses the same look-ahead (no catch-up lock).
 
 ## If continuing work
 
@@ -18,4 +18,4 @@
 
 - Rigid peel vs shift vs insert-row — covered by push-through tests.
 - Play-again / shuffle — `ShuffleService` + `enforceRigidLocks = false`.
-- Finger under lift / no reverse while behind — `DragEngine.awaitCatchUpAlong` (not clamping `fingerDeltaPx`).
+- Late tunnel + reverse — `verticalPair_EDoesNotShiftPairUntilFingerNearLandingAbove`, `verticalPair_canReverseTunnelShiftWithoutLiftingFinger`.

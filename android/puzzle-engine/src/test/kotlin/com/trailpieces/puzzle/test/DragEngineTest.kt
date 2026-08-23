@@ -184,34 +184,33 @@ class DragEngineTest {
     }
 
     @Test
-    fun tunnelJumpDoesNotReverseOnSameFingerTravel() {
-        // E below locked (A,C); small Up travel tunnels past the pair (2 cells).
-        // Finger residual must not flip to Down and undo the tunnel — but
-        // fingerDelta must stay at true travel so the lift stays under the finger.
+    fun multiCellTunnelWaitsForFingerNearLanding() {
+        // E below locked (A,C): Up tunnels 2 cells to A. Must not commit at the
+        // single-cell 0.5 threshold — only when residual > 1.5 cells.
         val board = LetterSlots.board("052134")
         val e = engine(board)
         assertTrue(e.startDrag(LetterSlots.E))
-        e.moveFinger(Vec2(0f, -60f), cell, cell) // just past one-cell threshold
+        e.moveFinger(Vec2(0f, -60f), cell, cell)
+        assertEquals(LetterSlots.E, e.drag!!.committedAnchor)
+        assertEquals(Vec2(0f, -60f), e.fingerDeltaPx)
 
-        val drag = e.drag
-        assertNotNull(drag)
-        assertEquals(
-            LetterSlots.A,
-            drag.committedAnchor,
-            "Tunnel should land E at A in one push",
-        )
-        assertEquals(
-            Vec2(0f, -60f),
-            e.fingerDeltaPx,
-            "Do not snap fingerDelta to committed after a tunnel jump",
-        )
-        // Finger still behind committed; reverse must not undo the tunnel.
-        e.moveFinger(Vec2(0f, -5f), cell, cell)
+        e.moveFinger(Vec2(0f, -100f), cell, cell) // total -160 > 1.5 cells
         assertEquals(LetterSlots.A, e.drag!!.committedAnchor)
-        assertEquals(Vec2(0f, -65f), e.fingerDeltaPx)
-        // Even a large Down while still behind committed must not reverse.
-        e.moveFinger(Vec2(0f, 100f), cell, cell) // total -65+100=+35; committed still -200
+        assertEquals(Vec2(0f, -160f), e.fingerDeltaPx)
+    }
+
+    @Test
+    fun multiCellTunnelCanReverseWithoutCatchUpClamp() {
+        val board = LetterSlots.board("052134")
+        val e = engine(board)
+        assertTrue(e.startDrag(LetterSlots.E))
+        e.moveFinger(Vec2(0f, -160f), cell, cell)
         assertEquals(LetterSlots.A, e.drag!!.committedAnchor)
-        assertEquals(Vec2(0f, 35f), e.fingerDeltaPx)
+
+        // Drag back toward E; look-ahead Down needs > 1.5 cells of residual
+        // from committed A (finger y > -50).
+        e.moveFinger(Vec2(0f, 120f), cell, cell) // total -40
+        assertEquals(LetterSlots.E, e.drag!!.committedAnchor)
+        assertEquals(Vec2(0f, -40f), e.fingerDeltaPx)
     }
 }

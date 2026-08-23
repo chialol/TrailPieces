@@ -99,6 +99,67 @@ class PushThroughConnectedComponentTest {
     }
 
     /**
+     * Tunnel through (A,C) lands E at A (2 cells up). Commit only when the finger
+     * is within 0.5 cell of that landing — i.e. residual > 1.5 cells — not when
+     * first crossing into C.
+     */
+    @Test
+    fun verticalPair_EDoesNotShiftPairUntilFingerNearLandingAbove() {
+        val board = LetterSlots.board("052134")
+        val engine = DragEngine(manifest, board)
+        assertTrue(engine.startDrag(LetterSlots.E))
+
+        // Just past a single-cell threshold — must NOT shift (A,C) yet.
+        engine.moveFinger(Vec2(0f, -60f), cell, cell)
+        assertEquals(LetterSlots.E, engine.drag!!.committedAnchor)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.A, 0)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.C, 2)
+        assertEquals(Vec2(0f, -60f), engine.fingerDeltaPx)
+
+        // Still short of (2 - 0.5) cells toward A.
+        engine.moveFinger(Vec2(0f, -90f), cell, cell) // total -150
+        assertEquals(LetterSlots.E, engine.drag!!.committedAnchor)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.A, 0)
+
+        // Past 1.5 cells → commit tunnel; (A,C) shifts down, E parks at A.
+        engine.moveFinger(Vec2(0f, -1f), cell, cell) // total -151
+        assertEquals(LetterSlots.A, engine.drag!!.committedAnchor)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.C, 0)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.E, 2)
+        BoardAssert.assertEmpty(engine.drag!!.grid, LetterSlots.A)
+        assertEquals(Vec2(0f, -151f), engine.fingerDeltaPx)
+    }
+
+    /**
+     * After the tunnel commits, dragging back down without lifting must undo
+     * the shift (same look-ahead: reverse jump is also 2 cells → need > 1.5).
+     */
+    @Test
+    fun verticalPair_canReverseTunnelShiftWithoutLiftingFinger() {
+        val board = LetterSlots.board("052134")
+        val engine = DragEngine(manifest, board)
+        assertTrue(engine.startDrag(LetterSlots.E))
+
+        engine.moveFinger(Vec2(0f, -160f), cell, cell)
+        assertEquals(LetterSlots.A, engine.drag!!.committedAnchor)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.C, 0)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.E, 2)
+
+        // Finger at -160, committed at -200. Down residual = 40 — not enough for
+        // a 2-cell reverse (needs > 150). Pair stays shifted.
+        engine.moveFinger(Vec2(0f, 40f), cell, cell) // total -120
+        assertEquals(LetterSlots.A, engine.drag!!.committedAnchor)
+
+        // Down residual from committed: -10 - (-200) = 190 > 150 → undo tunnel.
+        engine.moveFinger(Vec2(0f, 110f), cell, cell) // total -10
+        assertEquals(LetterSlots.E, engine.drag!!.committedAnchor)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.A, 0)
+        BoardAssert.assertTileAt(engine.drag!!.grid, LetterSlots.C, 2)
+        BoardAssert.assertEmpty(engine.drag!!.grid, LetterSlots.E)
+        assertEquals(Vec2(0f, -10f), engine.fingerDeltaPx)
+    }
+
+    /**
      * Same geometry via repeated [DragSession.tryPush]: after tunneling, E's
      * committed anchor is A and the resting pair sits on C+E.
      */
