@@ -50,6 +50,7 @@ import com.trailpieces.app.puzzle.PuzzleGame
 import com.trailpieces.app.puzzle.PuzzleLoader
 import com.trailpieces.puzzle.model.PuzzleManifest
 import com.trailpieces.puzzle.model.PuzzleTile
+import com.trailpieces.puzzle.service.PuzzleBoard
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -63,10 +64,13 @@ private val OffsetVectorConverter = TwoWayConverter<Offset, AnimationVector2D>(
 @Composable
 fun PuzzleScreen(
     manifest: PuzzleManifest,
+    initialBoard: PuzzleBoard? = null,
     modifier: Modifier = Modifier,
 ) {
     var shuffleSeed by remember(manifest) { mutableIntStateOf(0) }
-    val game = remember(manifest, shuffleSeed) { PuzzleGame(manifest) }
+    val game = remember(manifest, shuffleSeed, initialBoard) {
+        if (initialBoard != null) PuzzleGame(manifest, initialBoard) else PuzzleGame(manifest)
+    }
     var drawEpoch by remember { mutableIntStateOf(0) }
     val snapAnim = remember { Animatable(Offset.Zero, OffsetVectorConverter) }
     val scope = rememberCoroutineScope()
@@ -139,6 +143,7 @@ fun PuzzleScreen(
                     PuzzleGestureLayer(
                         game = game,
                         manifest = manifest,
+                        playfieldRows = playfieldRows,
                         cellWidthPx = cellWidthPx,
                         cellHeightPx = cellHeightPx,
                         snapAnim = snapAnim,
@@ -245,6 +250,7 @@ private fun PuzzleTileLayer(
 private fun PuzzleGestureLayer(
     game: PuzzleGame,
     manifest: PuzzleManifest,
+    playfieldRows: Int,
     cellWidthPx: Float,
     cellHeightPx: Float,
     snapAnim: Animatable<Offset, AnimationVector2D>,
@@ -255,7 +261,7 @@ private fun PuzzleGestureLayer(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(10f)
-            .pointerInput(manifest.cols, manifest.rows, cellWidthPx, cellHeightPx) {
+            .pointerInput(manifest.cols, playfieldRows, cellWidthPx, cellHeightPx) {
                 awaitEachGesture {
                     var dragActive = false
                     try {
@@ -268,8 +274,11 @@ private fun PuzzleGestureLayer(
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val col = (down.position.x / cellWidthPx).toInt()
                             .coerceIn(0, manifest.cols - 1)
+                        // Use playfield height — not manifest.rows — or taps on
+                        // inserted/bottom rows clamp to the last solved row and
+                        // look like "bottom tiles aren't draggable".
                         val row = (down.position.y / cellHeightPx).toInt()
-                            .coerceIn(0, manifest.rows - 1)
+                            .coerceIn(0, playfieldRows - 1)
                         Log.d(TAG, "pointer down at ($row,$col) px=${down.position}")
 
                         if (!game.startDrag(GridPos(row, col))) return@awaitEachGesture
@@ -365,9 +374,7 @@ private fun TileImage(
             .build(),
         contentDescription = "Tile (r${tile.home.row}, c${tile.home.col})",
         contentScale = ContentScale.FillBounds,
-        modifier = modifier
-            .clip(RoundedCornerShape(1.dp))
-            .graphicsLayer { /* no touch handling */ },
+        modifier = modifier,
     )
 }
 

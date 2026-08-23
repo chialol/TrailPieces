@@ -484,6 +484,111 @@ class PushThroughConnectedComponentTest {
         )
     }
 
+    // =========================================================================
+    // Case 5 — rigid group lands on a persistent empty (make-way into empty)
+    // =========================================================================
+
+    /**
+     * Playfield (2×4), letters for discussion:
+     * ```
+     * ∅₁  B=5
+     * C=2  D=3     ← {C,D,E} locked L (homes of tiles 2,3,4)
+     * E=4  ∅₂
+     * G=0  ∅
+     * ```
+     *
+     * Drag G up into E. The L must shift down as a rigid body: E→G's hole,
+     * C→E, **D→∅₂**. ∅₂ is empty, so that landing pushes nothing — the shift
+     * must succeed (not block / not insert-row).
+     *
+     * After the push, G's hole tunnels to the nearest empty along Up (former C).
+     */
+    @Test
+    fun rigidL_GPushesUp_shiftsGroupIntoEmpty2() {
+        val board = PuzzleFixtures.playfield(
+            manifest,
+            rows = 4,
+            placements = mapOf(
+                GridPos(0, 1) to 5, // B
+                GridPos(1, 0) to 2, // C
+                GridPos(1, 1) to 3, // D
+                GridPos(2, 0) to 4, // E
+                // (2,1) empty2
+                GridPos(3, 0) to 0, // G
+            ),
+        )
+        assertEquals(setOf(2, 3, 4), board.componentContaining(2), "(C,D,E) locked")
+        assertEquals(1, board.componentContaining(0).size, "G lone")
+        assertEquals(1, board.componentContaining(5).size, "B lone")
+
+        val session = board.beginDrag(GridPos(3, 0), grouped = true)!!
+        assertEquals(setOf(0), session.liftedTileIds)
+
+        val pushed = session.tryPush(AxisDirection.Up)
+        assertNotNull(
+            pushed,
+            "D lands on empty2 — rigid shift into empty must succeed",
+        )
+
+        // L translated down one; D occupies former empty2
+        BoardAssert.assertTileAt(pushed.grid, GridPos(2, 0), 2) // C
+        BoardAssert.assertTileAt(pushed.grid, GridPos(2, 1), 3) // D in empty2
+        BoardAssert.assertTileAt(pushed.grid, GridPos(3, 0), 4) // E
+        BoardAssert.assertTileAt(pushed.grid, GridPos(0, 1), 5) // B untouched
+        BoardAssert.assertEmpty(pushed.grid, GridPos(1, 0)) // former C
+        BoardAssert.assertEmpty(pushed.grid, GridPos(1, 1)) // former D
+
+        // G parks at nearest empty along Up (former C), not stuck under the L
+        assertEquals(GridPos(1, 0), pushed.committedAnchor)
+        BoardAssert.assertEmpty(pushed.grid, GridPos(1, 0))
+
+        val settled = pushed.settle()
+        BoardAssert.assertTileAt(settled.grid, GridPos(1, 0), 0) // G
+        BoardAssert.assertTileAt(settled.grid, GridPos(2, 1), 3) // D stayed in empty2
+        // G may join the L by geometry after settle — require the original L stays intact.
+        assertTrue(
+            settled.componentContaining(2).containsAll(setOf(2, 3, 4)),
+            "L members must remain in one lock group",
+        )
+        BoardAssert.assertSameRelativeShape(
+            board.grid,
+            settled.grid,
+            setOf(2, 3, 4),
+        )
+    }
+
+    /**
+     * Same geometry through [DragEngine]: look-ahead jump is 2 cells (G at row3
+     * → commit at row1), so finger must pass 1.5 cells up before the shift.
+     */
+    @Test
+    fun rigidL_GDragUp_commitsShiftOnceFingerNearLanding() {
+        val board = PuzzleFixtures.playfield(
+            manifest,
+            rows = 4,
+            placements = mapOf(
+                GridPos(0, 1) to 5,
+                GridPos(1, 0) to 2,
+                GridPos(1, 1) to 3,
+                GridPos(2, 0) to 4,
+                GridPos(3, 0) to 0,
+            ),
+        )
+        val engine = DragEngine(manifest, board)
+        assertTrue(engine.startDrag(GridPos(3, 0)))
+
+        engine.moveFinger(Vec2(0f, -60f), cell, cell)
+        assertEquals(GridPos(3, 0), engine.drag!!.committedAnchor, "Too early for 2-cell jump")
+
+        engine.moveFinger(Vec2(0f, -100f), cell, cell) // total -160 > 1.5 cells
+        assertEquals(GridPos(1, 0), engine.drag!!.committedAnchor)
+        BoardAssert.assertTileAt(engine.drag!!.grid, GridPos(2, 1), 3)
+
+        val settled = engine.endDrag()
+        BoardAssert.assertTileAt(settled.grid, GridPos(1, 0), 0)
+        BoardAssert.assertTileAt(settled.grid, GridPos(2, 1), 3)
+    }
+
     // -------------------------------------------------------------------------
 
     private fun pushUntilBlocked(start: DragSession, direction: AxisDirection): DragSession {

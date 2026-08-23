@@ -30,11 +30,14 @@ data class PuzzleBoard(
         origin: GridPos,
         grouped: Boolean = true,
         enforceRigidLocks: Boolean = true,
+        /** Test / tooling: lift an explicit id set instead of [componentContaining]. */
+        liftOverride: Set<Int>? = null,
     ): DragSession? {
         if (!grid.inBounds(origin)) return null
         val tileId = grid.tileAt(origin) ?: return null
-        val lifted = if (grouped) componentContaining(tileId) else setOf(tileId)
+        val lifted = liftOverride ?: if (grouped) componentContaining(tileId) else setOf(tileId)
         if (lifted.isEmpty()) return null
+        if (tileId !in lifted) return null
 
         val slots = lifted.mapNotNull { grid.slotOfOrNull(it) }
         if (slots.size != lifted.size) return null
