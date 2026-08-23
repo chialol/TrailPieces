@@ -1,0 +1,67 @@
+---
+description: Trail Pieces puzzle engine — architecture, TDD workflow, and known interaction pitfalls
+alwaysApply: true
+---
+
+# Trail Pieces — agent workflow
+
+## Architecture (do not collapse)
+
+- **`:puzzle-engine`** — pure JVM Kotlin: models + services (`PushService`, `DragSession`, `DragEngine`, `LockGroupService`, `ShuffleService`). All game rules live here.
+- **`:app`** — Compose UI + `PuzzleGame` facade only. No push/lock/shuffle logic in the UI.
+- Playfield (`SlotGrid.rows`) can grow taller than `PuzzleManifest.rows` (insert row). Manifest height is the solved puzzle size.
+
+## Default process for gameplay bugs
+
+1. **Reproduce in a unit test** under `puzzle-engine/src/test` (prefer letter slots A–F on the mini 2×3 board via `LetterSlots` / `PuzzleFixtures`).
+2. Watch it fail.
+3. Fix engine code; keep UI changes minimal.
+4. Run `cd android && ./gradlew.bat :puzzle-engine:test` before claiming fixed.
+5. Only then rebuild the app for device feel (gestures/animation).
+
+Do **not** jump straight to Compose tweaks for logic bugs (locks, push, peel, tunnel, insert/collapse rows).
+
+## Interaction model (current intent)
+
+- Dragging lifts a **lock group** (correct relative neighbors).
+- Push is axis-aligned. Resting lock groups are **rigid** (no peel).
+- Prefer in-place rigid shift + make-way; if Up is blocked by a group that cannot make way, **insert an empty row above** and park there (no new columns).
+- Fully empty rows **collapse** on settle.
+- Footprint may slide into **persistent empties**.
+- Tunneling through an axial group can advance the hole by more than one cell in one push.
+
+## Finger / “twitch” regressions (check these first)
+
+When the user reports twitching, jitter, or oscillation while dragging:
+
+1. Suspect **committed anchor jumped ahead of the finger** (tunnel or insert-row) → residual goes negative → direction flips → chatters.
+2. Verify `DragEngine` clamps finger delta to committed along the push axis after each push (`clampFingerToCommitted`).
+3. Prefer **nearest** tunnel landing, not farthest (`PushService.resolveNewHoles`).
+4. Keep **direction lock** within a single `moveFinger` / frame; do not flip axes mid-call.
+5. Lifted tiles follow **total finger delta** from drag start (do not subtract per-cell after each push).
+6. UI must draw **`restingGrid.rows`**, not only `manifest.rows`, or grown boards clip and look like jumps.
+
+## Lock / fixture pitfalls
+
+- Locks = adjacent tiles whose **slot offset equals home offset** (not “touching” alone).
+- Swapped neighbors often **do not** lock (signed offset mismatch).
+- After a move, unexpected tiles may join a lock group by geometry — assert “still connected” carefully, not always exact set equality.
+- Shuffle must use `enforceRigidLocks = false` / isolated locks or scramble cannot peel.
+
+## Letter grid (tests & discussion)
+
+```
+A B
+C D
+E F
+```
+
+Use this vocabulary with the user and in tests (`LetterSlots`).
+
+## Commands
+
+```bat
+cd android
+.\gradlew.bat :puzzle-engine:test
+.\gradlew.bat :app:assembleDebug
+```

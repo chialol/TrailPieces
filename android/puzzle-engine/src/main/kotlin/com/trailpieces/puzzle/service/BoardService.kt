@@ -26,7 +26,11 @@ data class PuzzleBoard(
     fun componentContaining(tileId: Int): Set<Int> =
         locks.members(tileId, manifest.tiles.map { it.id })
 
-    fun beginDrag(origin: GridPos, grouped: Boolean = true): DragSession? {
+    fun beginDrag(
+        origin: GridPos,
+        grouped: Boolean = true,
+        enforceRigidLocks: Boolean = true,
+    ): DragSession? {
         if (!grid.inBounds(origin)) return null
         val tileId = grid.tileAt(origin) ?: return null
         val lifted = if (grouped) componentContaining(tileId) else setOf(tileId)
@@ -53,6 +57,8 @@ data class PuzzleBoard(
             shapeOffsets = shapeOffsets,
             startAnchor = anchor,
             committedAnchor = anchor,
+            manifest = manifest,
+            enforceRigidLocks = enforceRigidLocks,
         )
     }
 

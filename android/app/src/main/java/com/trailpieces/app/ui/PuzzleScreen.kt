@@ -112,10 +112,12 @@ fun PuzzleScreen(
                 .weight(1f),
             contentAlignment = Alignment.Center,
         ) {
+            val playfieldRows = maxOf(game.board.rows, game.drag?.grid?.rows ?: 0, manifest.rows)
             val boardWidth = maxWidth
-            val boardHeight = boardWidth * manifest.puzzleHeight / manifest.puzzleWidth
+            val boardHeight = boardWidth * manifest.puzzleHeight / manifest.puzzleWidth *
+                playfieldRows / manifest.rows
             val cellWidth = boardWidth / manifest.cols
-            val cellHeight = boardHeight / manifest.rows
+            val cellHeight = boardHeight / playfieldRows
             val cellWidthPx = with(density) { cellWidth.toPx() }
             val cellHeightPx = with(density) { cellHeight.toPx() }
 
@@ -187,10 +189,12 @@ private fun PuzzleTileLayer(
     val drag = game.drag
     val restingGrid = drag?.grid ?: game.board.grid
     val visualOffset = game.visualOffsetPx() + snapAnim.value
+    val rows = restingGrid.rows
+    val cols = restingGrid.cols
 
     Box(modifier = Modifier.fillMaxSize()) {
-        for (row in 0 until manifest.rows) {
-            for (col in 0 until manifest.cols) {
+        for (row in 0 until rows) {
+            for (col in 0 until cols) {
                 val pos = GridPos(row, col)
                 val tileId = restingGrid.tileAt(pos) ?: continue
                 if (drag?.liftedTileIds?.contains(tileId) == true) continue

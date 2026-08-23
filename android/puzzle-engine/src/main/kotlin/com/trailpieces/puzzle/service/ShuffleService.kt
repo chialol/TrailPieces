@@ -26,7 +26,11 @@ object ShuffleService {
         val filled = allFilledSlots(board)
         if (filled.isEmpty()) return null
 
-        var drag = board.beginDrag(filled.random(), grouped = !singleTile) ?: return null
+        var drag = board.beginDrag(
+            filled.random(),
+            grouped = !singleTile,
+            enforceRigidLocks = false,
+        ) ?: return null
         repeat((1..4).random()) {
             val next = AxisDirection.entries.shuffled().firstNotNullOfOrNull { dir ->
                 drag.tryPush(dir)

@@ -116,7 +116,33 @@ class DragEngine(
 
             val pushed = active.tryPush(direction) ?: break
             drag = pushed
+            // Tunnel / insert-row can jump committed ahead of the finger. Clamp so
+            // residual doesn't go negative and reverse direction (visual twitch).
+            clampFingerToCommitted(direction, cellWidthPx, cellHeightPx)
             pushCount++
+        }
+    }
+
+    /**
+     * After a push, if the finger lags behind the committed anchor along
+     * [direction], snap that axis of [fingerDeltaPx] up to committed. Keeps
+     * perpendicular residual intact.
+     */
+    private fun clampFingerToCommitted(
+        direction: AxisDirection,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ) {
+        val active = drag ?: return
+        val committedPx = anchorCommittedPx(active, cellWidthPx, cellHeightPx)
+        val residual = fingerDeltaPx - committedPx
+        if (residualAlong(residual, direction) >= 0f) return
+
+        fingerDeltaPx = when (direction) {
+            AxisDirection.Down, AxisDirection.Up ->
+                Vec2(fingerDeltaPx.x, committedPx.y)
+            AxisDirection.Left, AxisDirection.Right ->
+                Vec2(committedPx.x, fingerDeltaPx.y)
         }
     }
 
