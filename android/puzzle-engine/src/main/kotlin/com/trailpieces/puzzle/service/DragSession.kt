@@ -1,27 +1,31 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.service
+
+import com.trailpieces.puzzle.model.AxisDirection
+import com.trailpieces.puzzle.model.EMPTY
+import com.trailpieces.puzzle.model.GridPos
+import com.trailpieces.puzzle.model.PuzzleManifest
+import com.trailpieces.puzzle.model.SlotGrid
+import com.trailpieces.puzzle.model.step
 
 /**
  * In-progress drag: lifted tiles follow the finger; [committedAnchor] tracks
  * which slots they will occupy after each axis push.
  */
-data class ComponentDrag(
-    /** Grid with lifted cells empty. */
+data class DragSession(
     val grid: SlotGrid,
     val liftedTileIds: Set<Int>,
-    /** Each lifted tile's offset from [committedAnchor]. */
     val shapeOffsets: Map<Int, GridPos>,
     val startAnchor: GridPos,
     val committedAnchor: GridPos,
 ) {
-    /** Slots the component will occupy when dropped. */
     val targetSlots: Set<GridPos>
         get() = shapeOffsets.values.map { offset ->
             committedAnchor.offset(offset.row, offset.col)
         }.toSet()
 
-    fun tryPush(direction: AxisDirection): ComponentDrag? {
+    fun tryPush(direction: AxisDirection): DragSession? {
         val holes = grid.emptySlots()
-        val nextGrid = PushEngine.tryPush(
+        val nextGrid = PushService.tryPush(
             grid = grid,
             holes = holes,
             liftedTileIds = liftedTileIds,
@@ -45,6 +49,9 @@ data class ComponentDrag(
                 cells[slot.index(grid.cols)] = tileId
             }
         }
-        return PuzzleBoard(settled, LockGroups.compute(settled, manifest), manifest)
+        return PuzzleBoard(settled, LockGroupService.compute(settled, manifest), manifest)
     }
 }
+
+/** @see DragSession — kept for callers migrating from the old name. */
+typealias ComponentDrag = DragSession

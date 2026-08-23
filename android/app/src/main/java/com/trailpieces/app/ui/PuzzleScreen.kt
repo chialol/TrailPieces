@@ -45,11 +45,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.trailpieces.app.puzzle.GridPos
+import com.trailpieces.puzzle.model.GridPos
 import com.trailpieces.app.puzzle.PuzzleGame
 import com.trailpieces.app.puzzle.PuzzleLoader
-import com.trailpieces.app.puzzle.PuzzleManifest
-import com.trailpieces.app.puzzle.PuzzleTile
+import com.trailpieces.puzzle.model.PuzzleManifest
+import com.trailpieces.puzzle.model.PuzzleTile
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 

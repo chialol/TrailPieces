@@ -1,18 +1,14 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.service
+
+import com.trailpieces.puzzle.model.AxisDirection
+import com.trailpieces.puzzle.model.EMPTY
+import com.trailpieces.puzzle.model.GridPos
+import com.trailpieces.puzzle.model.SlotGrid
 
 /**
  * Axis-aligned push for arbitrary lifted footprints (not just rectangles).
- *
- * Holes are grouped into contiguous runs along each line parallel to [direction]
- * (columns when moving vertically, rows when moving horizontally). Each run of
- * length L needs exactly one tile just past its leading edge; that tile slides
- * into the trailing hole and the hole-block shifts by one.
- *
- * Why the old per-hole check failed: for a vertical pair moving down, holes at
- * (0,0) and (1,0) — the "source" of (0,0) is (1,0), which is also empty — so
- * push was rejected. Perpendicular moves worked because each line had a single hole.
  */
-object PushEngine {
+object PushService {
 
     fun tryPush(
         grid: SlotGrid,
@@ -22,7 +18,7 @@ object PushEngine {
     ): SlotGrid? {
         if (holes.isEmpty()) return null
 
-        val moves = mutableListOf<Pair<GridPos, GridPos>>() // source → trailing hole
+        val moves = mutableListOf<Pair<GridPos, GridPos>>()
 
         for (segment in contiguousSegments(holes, direction)) {
             val source = segment.source(direction)
@@ -41,11 +37,6 @@ object PushEngine {
         }
     }
 
-    /**
-     * Contiguous hole runs along lines parallel to [direction].
-     * Vertical move → group by column, runs of rows.
-     * Horizontal move → group by row, runs of cols.
-     */
     private fun contiguousSegments(
         holes: Set<GridPos>,
         direction: AxisDirection,
@@ -77,13 +68,9 @@ object PushEngine {
         }
     }
 
-    /** One contiguous hole run on a single row or column. */
     private data class HoleSegment(
-        /** Column index (vertical move) or row index (horizontal move). */
         val line: Int,
-        /** Inclusive min coord along the push axis. */
         val start: Int,
-        /** Inclusive max coord along the push axis. */
         val end: Int,
     ) {
         fun source(direction: AxisDirection): GridPos = when (direction) {

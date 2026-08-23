@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "TrailPieces"
-include(":app")
+include(":app", ":puzzle-engine")

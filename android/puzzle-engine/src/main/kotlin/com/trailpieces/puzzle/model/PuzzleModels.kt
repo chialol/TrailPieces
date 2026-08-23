@@ -1,4 +1,4 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.model
 
 /** A single puzzle piece. [home] is its correct slot in the solved image. */
 data class PuzzleTile(

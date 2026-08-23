@@ -1,4 +1,4 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.model
 
 /**
  * Grid position: [row][col], origin top-left.
@@ -41,3 +41,6 @@ enum class AxisDirection(val dRow: Int, val dCol: Int) {
         }
     }
 }
+
+fun GridPos.step(direction: AxisDirection): GridPos =
+    offset(direction.dRow, direction.dCol)

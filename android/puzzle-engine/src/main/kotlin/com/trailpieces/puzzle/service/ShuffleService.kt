@@ -1,13 +1,13 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.service
 
-import androidx.compose.ui.geometry.Offset
-import kotlin.math.abs
+import com.trailpieces.puzzle.model.AxisDirection
+import com.trailpieces.puzzle.model.GridPos
 
 /** Shuffles a solved board via single-tile axis pushes (no lock groups). */
-object PuzzleShuffle {
+object ShuffleService {
 
-    fun shuffled(manifest: PuzzleManifest, moves: Int = 150): PuzzleBoard {
-        var board = PuzzleBoard.solved(manifest).copy(locks = LockGroups.isolated(manifest))
+    fun shuffled(manifest: com.trailpieces.puzzle.model.PuzzleManifest, moves: Int = 150): PuzzleBoard {
+        var board = PuzzleBoard.solved(manifest).copy(locks = LockGroupService.isolated(manifest))
 
         repeat(moves) {
             board = randomPush(board, singleTile = true) ?: board
@@ -19,7 +19,7 @@ object PuzzleShuffle {
             attempts++
         }
 
-        return board.copy(locks = LockGroups.compute(board.grid, manifest))
+        return board.copy(locks = LockGroupService.compute(board.grid, manifest))
     }
 
     private fun randomPush(board: PuzzleBoard, singleTile: Boolean): PuzzleBoard? {
@@ -59,3 +59,6 @@ object PuzzleShuffle {
         (0 until board.manifest.slotCount).map { GridPos.fromIndex(it, board.cols) }
             .filter { board.tileAt(it) != null }
 }
+
+/** @see ShuffleService */
+typealias PuzzleShuffle = ShuffleService

@@ -1,4 +1,4 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.model
 
 const val EMPTY = -1
 
@@ -76,6 +76,3 @@ class SlotGrid(
         }
     }
 }
-
-fun GridPos.step(direction: AxisDirection): GridPos =
-    offset(direction.dRow, direction.dCol)

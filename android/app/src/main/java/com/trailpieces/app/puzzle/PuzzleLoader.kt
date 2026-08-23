@@ -1,6 +1,9 @@
 package com.trailpieces.app.puzzle
 
 import android.content.Context
+import com.trailpieces.puzzle.model.GridPos
+import com.trailpieces.puzzle.model.PuzzleManifest
+import com.trailpieces.puzzle.model.PuzzleTile
 import org.json.JSONObject
 
 object PuzzleLoader {

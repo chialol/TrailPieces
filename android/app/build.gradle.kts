@@ -52,6 +52,8 @@ android {
 }
 
 dependencies {
+    implementation(project(":puzzle-engine"))
+
     val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
 
     implementation("androidx.core:core-ktx:1.15.0")

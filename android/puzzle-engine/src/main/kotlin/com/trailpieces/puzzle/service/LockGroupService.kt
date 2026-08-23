@@ -1,24 +1,23 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.service
 
-import android.util.Log
-
-private const val TAG = "LockGroups"
+import com.trailpieces.puzzle.model.AxisDirection
+import com.trailpieces.puzzle.model.GridPos
+import com.trailpieces.puzzle.model.PuzzleManifest
+import com.trailpieces.puzzle.model.SlotGrid
+import com.trailpieces.puzzle.model.step
 
 /**
  * Union-find over tile ids. Two adjacent tiles lock when their slot offset
  * equals their home offset — they form a rigid component for dragging.
  */
-class LockGroups(private val parent: IntArray) {
+class LockGroupService(private val parent: IntArray) {
 
     fun find(x: Int): Int {
         if (x !in parent.indices) return x
         var root = x
         var hops = 0
         while (parent[root] != root) {
-            if (++hops > parent.size) {
-                Log.w(TAG, "find($x) exceeded hop limit — union-find may be corrupt")
-                return root
-            }
+            if (++hops > parent.size) return root
             val next = parent[root]
             if (next !in parent.indices) return root
             parent[root] = parent[next]
@@ -42,9 +41,9 @@ class LockGroups(private val parent: IntArray) {
     }
 
     companion object {
-        fun compute(grid: SlotGrid, manifest: PuzzleManifest): LockGroups {
+        fun compute(grid: SlotGrid, manifest: PuzzleManifest): LockGroupService {
             val size = manifest.tiles.maxOf { it.id } + 1
-            val groups = LockGroups(IntArray(size) { it })
+            val groups = LockGroupService(IntArray(size) { it })
 
             for (row in 0 until grid.rows) {
                 for (col in 0 until grid.cols) {
@@ -76,7 +75,10 @@ class LockGroups(private val parent: IntArray) {
                 slotA.col - slotB.col == homeA.col - homeB.col
         }
 
-        fun isolated(manifest: PuzzleManifest): LockGroups =
-            LockGroups(IntArray(manifest.tiles.maxOf { it.id } + 1) { it })
+        fun isolated(manifest: PuzzleManifest): LockGroupService =
+            LockGroupService(IntArray(manifest.tiles.maxOf { it.id } + 1) { it })
     }
 }
+
+/** Alias for readability in board/drag code. */
+typealias LockGroups = LockGroupService

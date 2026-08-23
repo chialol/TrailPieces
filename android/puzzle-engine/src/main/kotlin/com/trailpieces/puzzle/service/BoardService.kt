@@ -1,11 +1,16 @@
-package com.trailpieces.app.puzzle
+package com.trailpieces.puzzle.service
+
+import com.trailpieces.puzzle.model.EMPTY
+import com.trailpieces.puzzle.model.GridPos
+import com.trailpieces.puzzle.model.PuzzleManifest
+import com.trailpieces.puzzle.model.SlotGrid
 
 /**
  * Resting board: tile occupancy + lock groups.
  */
 data class PuzzleBoard(
     val grid: SlotGrid,
-    val locks: LockGroups,
+    val locks: LockGroupService,
     val manifest: PuzzleManifest,
 ) {
     val cols: Int get() = grid.cols
@@ -21,11 +26,7 @@ data class PuzzleBoard(
     fun componentContaining(tileId: Int): Set<Int> =
         locks.members(tileId, manifest.tiles.map { it.id })
 
-    /**
-     * Lift a component off the board for dragging.
-     * @param grouped false = single tile only (used while shuffling).
-     */
-    fun beginDrag(origin: GridPos, grouped: Boolean = true): ComponentDrag? {
+    fun beginDrag(origin: GridPos, grouped: Boolean = true): DragSession? {
         if (!grid.inBounds(origin)) return null
         val tileId = grid.tileAt(origin) ?: return null
         val lifted = if (grouped) componentContaining(tileId) else setOf(tileId)
@@ -46,7 +47,7 @@ data class PuzzleBoard(
             slots.forEach { cells[it.index(cols)] = EMPTY }
         }
 
-        return ComponentDrag(
+        return DragSession(
             grid = gridWithHoles,
             liftedTileIds = lifted,
             shapeOffsets = shapeOffsets,
@@ -58,7 +59,7 @@ data class PuzzleBoard(
     companion object {
         fun solved(manifest: PuzzleManifest): PuzzleBoard {
             val grid = SlotGrid.solved(manifest)
-            return PuzzleBoard(grid, LockGroups.compute(grid, manifest), manifest)
+            return PuzzleBoard(grid, LockGroupService.compute(grid, manifest), manifest)
         }
     }
 }
