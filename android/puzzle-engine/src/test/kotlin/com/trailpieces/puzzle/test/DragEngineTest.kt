@@ -59,9 +59,56 @@ class DragEngineTest {
             PuzzleFixtures.boardFromRowMajor(manifest, listOf(2, 1, 0, 3, 4, 5)),
         )
         assertTrue(e.startDrag(GridPos(0, 0)))
-        e.moveFinger(Vec2(0f, 51f), cell, cell)
+        val move = e.moveFinger(Vec2(0f, 51f), cell, cell)
         assertEquals(GridPos(1, 0), e.drag!!.committedAnchor)
         BoardAssert.assertTileAt(e.drag!!.grid, GridPos(0, 0), 0)
+        assertTrue(move.hadRestingImpact)
+        assertEquals(1, move.restingImpacts)
+    }
+
+    @Test
+    fun emptyHoleSlideDoesNotReportRestingImpact() {
+        // A above a persistent empty; Down slides the footprint with no resting bump.
+        val board = PuzzleFixtures.boardWithPlacements(
+            manifest,
+            mapOf(
+                GridPos(0, 0) to 0,
+                GridPos(0, 1) to 1,
+                GridPos(1, 1) to 3,
+                GridPos(2, 0) to 4,
+                GridPos(2, 1) to 5,
+                // tile 2 off-board; (1,0) stays empty
+            ),
+        )
+        val e = engine(board)
+        assertTrue(e.startDrag(GridPos(0, 0)))
+        val before = e.drag!!.grid.copyCells()
+        val move = e.moveFinger(Vec2(0f, 60f), cell, cell)
+        assertEquals(GridPos(1, 0), e.drag!!.committedAnchor)
+        assertTrue(before.contentEquals(e.drag!!.grid.copyCells()))
+        assertFalse(move.hadRestingImpact)
+    }
+
+    @Test
+    fun multiCellPushInOneMoveReportsOneRestingImpactPerCommit() {
+        val e = engine(
+            // 5 above unlocked 3 above unlocked 4 — two Down pushes
+            PuzzleFixtures.boardFromRowMajor(manifest, listOf(5, 1, 3, 2, 4, 0)),
+        )
+        assertTrue(e.startDrag(GridPos(0, 0)))
+        val move = e.moveFinger(Vec2(0f, 160f), cell, cell)
+        assertEquals(GridPos(2, 0), e.drag!!.committedAnchor)
+        assertEquals(2, move.restingImpacts)
+    }
+
+    @Test
+    fun belowThresholdReportsNoRestingImpact() {
+        val e = engine(
+            PuzzleFixtures.boardFromRowMajor(manifest, listOf(2, 1, 0, 3, 4, 5)),
+        )
+        assertTrue(e.startDrag(GridPos(0, 0)))
+        val move = e.moveFinger(Vec2(0f, 50f), cell, cell)
+        assertFalse(move.hadRestingImpact)
     }
 
     @Test

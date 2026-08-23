@@ -1,6 +1,8 @@
 package com.trailpieces.app.ui
 
 import android.util.Log
+import android.view.HapticFeedbackConstants
+import android.view.View
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector2D
 import androidx.compose.animation.core.TwoWayConverter
@@ -38,6 +40,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -147,6 +150,7 @@ fun PuzzleScreen(
                         cellWidthPx = cellWidthPx,
                         cellHeightPx = cellHeightPx,
                         snapAnim = snapAnim,
+                        hapticView = LocalView.current,
                         onDraw = ::bumpDraw,
                         scope = scope,
                     )
@@ -254,6 +258,7 @@ private fun PuzzleGestureLayer(
     cellWidthPx: Float,
     cellHeightPx: Float,
     snapAnim: Animatable<Offset, AnimationVector2D>,
+    hapticView: View,
     onDraw: () -> Unit,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
@@ -296,7 +301,16 @@ private fun PuzzleGestureLayer(
 
                             val delta = change.positionChange()
                             if (delta != Offset.Zero) {
-                                game.moveFinger(delta, cellWidthPx, cellHeightPx)
+                                // One light tick per pointer event that bumps resting
+                                // tiles — slow cell-by-cell gets a tick per cell; a
+                                // fast flick that commits several cells in one event
+                                // still gets a single tick (no machine-gun buzz).
+                                val move = game.moveFinger(delta, cellWidthPx, cellHeightPx)
+                                if (move.hadRestingImpact) {
+                                    hapticView.performHapticFeedback(
+                                        HapticFeedbackConstants.CLOCK_TICK,
+                                    )
+                                }
                                 onDraw()
                             }
                             change.consume()

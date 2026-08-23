@@ -9,6 +9,21 @@ import kotlin.math.abs
 private const val PUSH_THRESHOLD = 0.5f
 
 /**
+ * Outcome of one [DragEngine.moveFinger] call — for UI feedback (haptics).
+ *
+ * [restingImpacts] counts committed pushes that changed resting-tile occupancy
+ * (make-way, tunnel, insert-row). Empty-hole slides do not count: the lift
+ * moved, but nothing on the board was bumped.
+ */
+data class MoveFingerResult(val restingImpacts: Int) {
+    val hadRestingImpact: Boolean get() = restingImpacts > 0
+
+    companion object {
+        val None = MoveFingerResult(0)
+    }
+}
+
+/**
  * Pure puzzle game state: board, drag session, finger tracking, push advancement.
  * No Android or Compose dependencies — safe for JVM unit tests.
  */
@@ -52,15 +67,17 @@ class DragEngine(
         } ?: false
     }
 
-    fun moveFinger(deltaPx: Vec2, cellWidthPx: Float, cellHeightPx: Float) {
-        if (drag == null) return
-        if (!isValidCellSize(cellWidthPx) || !isValidCellSize(cellHeightPx)) return
-        if (!isValidOffset(deltaPx)) return
-
-        runSafely {
-            fingerDeltaPx = sanitizeOffset(fingerDeltaPx + deltaPx)
-            advancePushes(cellWidthPx, cellHeightPx)
+    fun moveFinger(deltaPx: Vec2, cellWidthPx: Float, cellHeightPx: Float): MoveFingerResult {
+        if (drag == null) return MoveFingerResult.None
+        if (!isValidCellSize(cellWidthPx) || !isValidCellSize(cellHeightPx)) {
+            return MoveFingerResult.None
         }
+        if (!isValidOffset(deltaPx)) return MoveFingerResult.None
+
+        return runSafely {
+            fingerDeltaPx = sanitizeOffset(fingerDeltaPx + deltaPx)
+            MoveFingerResult(advancePushes(cellWidthPx, cellHeightPx))
+        } ?: MoveFingerResult.None
     }
 
     fun endDrag(): PuzzleBoard {
@@ -94,13 +111,15 @@ class DragEngine(
     fun lockedGroupSize(tileId: Int): Int =
         runSafely { board.componentContaining(tileId).size } ?: 1
 
-    private fun advancePushes(cellWidthPx: Float, cellHeightPx: Float) {
+    /** @return number of commits that changed resting-tile occupancy this call. */
+    private fun advancePushes(cellWidthPx: Float, cellHeightPx: Float): Int {
         var lockedDirection: AxisDirection? = null
         var pushCount = 0
+        var restingImpacts = 0
         val maxPushesPerFrame = (manifest.rows + manifest.cols).coerceAtLeast(2)
 
         while (pushCount < maxPushesPerFrame) {
-            val active = drag ?: return
+            val active = drag ?: return restingImpacts
             val committedPx = anchorCommittedPx(active, cellWidthPx, cellHeightPx)
             val residual = sanitizeOffset(fingerDeltaPx - committedPx)
 
@@ -121,9 +140,22 @@ class DragEngine(
             val needed = (jump - PUSH_THRESHOLD) * cellSize
             if (signed <= needed) break
 
+            if (restingOccupancyChanged(active, candidate)) restingImpacts++
             drag = candidate
             pushCount++
         }
+        return restingImpacts
+    }
+
+    /**
+     * True when resting tiles moved or the playfield grew (insert-row).
+     * Empty-hole slides keep the same occupancy and do not count.
+     */
+    private fun restingOccupancyChanged(before: DragSession, after: DragSession): Boolean {
+        val a = before.grid
+        val b = after.grid
+        if (a.rows != b.rows || a.cols != b.cols) return true
+        return !a.copyCells().contentEquals(b.copyCells())
     }
 
     /**

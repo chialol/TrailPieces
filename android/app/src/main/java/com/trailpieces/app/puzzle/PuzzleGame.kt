@@ -6,6 +6,7 @@ import com.trailpieces.puzzle.model.PuzzleManifest
 import com.trailpieces.puzzle.model.Vec2
 import com.trailpieces.puzzle.service.DragEngine
 import com.trailpieces.puzzle.service.DragSession
+import com.trailpieces.puzzle.service.MoveFingerResult
 import com.trailpieces.puzzle.service.PuzzleBoard
 import com.trailpieces.puzzle.service.ShuffleService
 
@@ -27,7 +28,7 @@ class PuzzleGame(
 
     fun startDrag(origin: GridPos): Boolean = engine.startDrag(origin)
 
-    fun moveFinger(deltaPx: Offset, cellWidthPx: Float, cellHeightPx: Float) =
+    fun moveFinger(deltaPx: Offset, cellWidthPx: Float, cellHeightPx: Float): MoveFingerResult =
         engine.moveFinger(Vec2(deltaPx.x, deltaPx.y), cellWidthPx, cellHeightPx)
 
     fun endDrag(): PuzzleBoard = engine.endDrag()
