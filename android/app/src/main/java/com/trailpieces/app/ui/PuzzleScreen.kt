@@ -179,6 +179,23 @@ fun PuzzleScreen(
                 Text("Play again")
             }
         }
+
+        Button(
+            onClick = {
+                val playfieldRows = maxOf(game.board.rows, game.drag?.grid?.rows ?: 0, manifest.rows)
+                val dump = game.debugDump(
+                    mapOf(
+                        "playfieldRows" to playfieldRows,
+                        "drawEpoch" to drawEpoch,
+                        "isSolved" to game.isSolved,
+                    ),
+                )
+                Log.i(TAG, "\n$dump")
+            },
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
+            Text("Debug dump")
+        }
     }
 }
 

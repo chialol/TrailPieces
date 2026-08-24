@@ -6,49 +6,65 @@ import com.trailpieces.puzzle.model.PuzzleTile
 import com.trailpieces.puzzle.model.Vec2
 import com.trailpieces.puzzle.service.DragEngine
 import com.trailpieces.puzzle.service.PuzzleBoard
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * Priority: when a lifted tile/group lands on a **correct** (home) slot that
- * completes locks with resting neighbors, make way aggressively — push everything
- * below the cutline down (insert rows as needed), rather than blocking the land.
+ * Prefer landing that completes locks. When H lands on its home under A,
+ * displace occupants by pushing the strip below the cutline down and
+ * **inserting one empty row** (do not collapse that separator away if it
+ * is required to keep the correct top intact — see settle policy when
+ * implementing).
  *
+ * Start (with F):
  * ```
  * A B
  * C D
- * E F   (or E .)
+ * E F
  * G H
  * ```
- * Locks: {A,B,D}, {C,E}. H's home is under A → landing H at (1,0) should yield:
+ * After H → under A:
  * ```
  * A B
  * H D
- * … (possible empty separator row(s)) …
- * C E …  (and G, F) pushed below the cutline
+ * . .
+ * C E
+ * G F
+ * ```
+ *
+ * Start (empty beside E):
+ * ```
+ * A B
+ * C D
+ * E .
+ * G H
+ * . F
+ * ```
+ * After:
+ * ```
+ * A B
+ * H D
+ * . .
+ * C E
+ * G .
+ * . F
  * ```
  */
 class CorrectPlacementMakeWayTest {
 
     private val cell = 100f
 
-    /**
-     * A,B,D at homes → ABD lock.
-     * C,E stacked with home delta (1,0) → CE lock (C is *on* H's home slot).
-     * H home (1,0) under A. F,G loose.
-     */
     private val tiles = listOf(
         PuzzleTile(0, GridPos(0, 0), "a"),
         PuzzleTile(1, GridPos(0, 1), "b"),
-        PuzzleTile(2, GridPos(2, 0), "c"), // CE homes; C currently sits on H's home slot
+        PuzzleTile(2, GridPos(2, 0), "c"),
         PuzzleTile(3, GridPos(1, 1), "d"),
         PuzzleTile(4, GridPos(3, 0), "e"),
-        PuzzleTile(5, GridPos(0, 1), "f"),
-        PuzzleTile(6, GridPos(1, 1), "g"),
-        PuzzleTile(7, GridPos(1, 0), "h"), // home under A
+        PuzzleTile(5, GridPos(4, 1), "f"), // not under D — avoid D–F lock at start
+        PuzzleTile(6, GridPos(3, 1), "g"),
+        PuzzleTile(7, GridPos(1, 0), "h"),
     )
 
     private val manifest = PuzzleManifest(
@@ -72,7 +88,6 @@ class CorrectPlacementMakeWayTest {
         ),
     )
 
-    /** Same layout but (2,1) empty; F parked on an extra bottom row. */
     private fun boardWithEmptyBesideE(): PuzzleBoard = PuzzleFixtures.playfield(
         manifest,
         rows = 5,
@@ -91,70 +106,65 @@ class CorrectPlacementMakeWayTest {
         assertEquals(setOf(7), board.componentContaining(7), "H alone")
     }
 
-    private fun assertTopCorrect(board: PuzzleBoard) {
-        BoardAssert.assertTileAt(board.grid, GridPos(0, 0), 0) // A
-        BoardAssert.assertTileAt(board.grid, GridPos(0, 1), 1) // B
-        BoardAssert.assertTileAt(board.grid, GridPos(1, 0), 7) // H under A
-        BoardAssert.assertTileAt(board.grid, GridPos(1, 1), 3) // D
-    }
-
-    private fun assertPushedBelowCutline(board: PuzzleBoard, vararg tileIds: Int) {
-        for (id in tileIds) {
-            val slot = board.grid.slotOfOrNull(id)
-            assertNotNull(slot, "tile $id missing")
-            assertTrue(slot.row >= 2, "tile $id should be below cutline, was $slot")
-        }
-    }
-
     private fun dragHOntoHomeUnderA(board: PuzzleBoard): PuzzleBoard {
         val engine = DragEngine(board.manifest, board)
         assertTrue(engine.startDrag(GridPos(3, 1)), "lift H")
-        // Any path that ends with H on home (1,0); left then up is enough travel.
         engine.moveFinger(Vec2(-250f, 0f), cell, cell)
         engine.moveFinger(Vec2(0f, -350f), cell, cell)
         return engine.endDrag()
     }
 
-    @Ignore("Correct-placement cutline make-way not implemented yet")
     @Test
-    fun hOntoHomeUnderA_withF_pushesBelowCutline_insertsOrSeparates() {
+    fun hOntoHomeUnderA_withF_pushesCegDown_insertsEmptyRow() {
         val start = boardWithF()
         assertLocks(start)
+        assertEquals(4, start.rows)
 
         val settled = dragHOntoHomeUnderA(start)
-        assertTopCorrect(settled)
-        assertPushedBelowCutline(settled, 2, 4, 5, 6) // C, E, F, G
-        assertTrue(
-            settled.grid.rows > start.grid.rows ||
-                (0 until settled.grid.rows).any { r ->
-                    (0 until settled.grid.cols).all { c ->
-                        settled.grid.tileAt(GridPos(r, c)) == null
-                    }
-                },
-            "Expected insert-row growth and/or an empty separator below the correct top",
-        )
+
+        // A B / H D / empty / C E / G F  — one extra row vs start.
+        assertEquals(5, settled.grid.rows, "Need one extra row after pushing C,E,G down")
+        BoardAssert.assertTileAt(settled.grid, GridPos(0, 0), 0)
+        BoardAssert.assertTileAt(settled.grid, GridPos(0, 1), 1)
+        BoardAssert.assertTileAt(settled.grid, GridPos(1, 0), 7)
+        BoardAssert.assertTileAt(settled.grid, GridPos(1, 1), 3)
+        BoardAssert.assertEmpty(settled.grid, GridPos(2, 0))
+        BoardAssert.assertEmpty(settled.grid, GridPos(2, 1))
+        BoardAssert.assertTileAt(settled.grid, GridPos(3, 0), 2) // C
+        BoardAssert.assertTileAt(settled.grid, GridPos(3, 1), 4) // E
+        BoardAssert.assertTileAt(settled.grid, GridPos(4, 0), 6) // G
+        BoardAssert.assertTileAt(settled.grid, GridPos(4, 1), 5) // F
+        assertTrue(settled.componentContaining(0).contains(7), "H locks under A")
     }
 
-    @Ignore("Correct-placement cutline make-way not implemented yet")
     @Test
-    fun hOntoHomeUnderA_emptyBesideE_pushesCegDown() {
+    fun hOntoHomeUnderA_emptyBesideE_pushesCegAndHoleDown_lastRowEmptyF() {
         val start = boardWithEmptyBesideE()
         assertLocks(start)
         BoardAssert.assertEmpty(start.grid, GridPos(2, 1))
+        assertEquals(5, start.rows)
 
         val settled = dragHOntoHomeUnderA(start)
-        assertTopCorrect(settled)
-        assertPushedBelowCutline(settled, 2, 4, 6) // C, E, G
+
+        // A B / H D / empty / C E / G . / . F
+        assertEquals(6, settled.grid.rows, "Need one extra row")
+        BoardAssert.assertTileAt(settled.grid, GridPos(0, 0), 0)
+        BoardAssert.assertTileAt(settled.grid, GridPos(0, 1), 1)
+        BoardAssert.assertTileAt(settled.grid, GridPos(1, 0), 7)
+        BoardAssert.assertTileAt(settled.grid, GridPos(1, 1), 3)
+        BoardAssert.assertEmpty(settled.grid, GridPos(2, 0))
+        BoardAssert.assertEmpty(settled.grid, GridPos(2, 1))
+        BoardAssert.assertTileAt(settled.grid, GridPos(3, 0), 2) // C
+        BoardAssert.assertTileAt(settled.grid, GridPos(3, 1), 4) // E
+        BoardAssert.assertTileAt(settled.grid, GridPos(4, 0), 6) // G
+        BoardAssert.assertEmpty(settled.grid, GridPos(4, 1))
+        BoardAssert.assertEmpty(settled.grid, GridPos(5, 0))
+        BoardAssert.assertTileAt(settled.grid, GridPos(5, 1), 5) // F — last row *, F
+        assertTrue(settled.componentContaining(0).contains(7), "H locks under A")
     }
 
-    /**
-     * Regression guard for the reported bug: bottom / overflow playfield tiles
-     * must stay draggable. (UI hit-testing must use playfield rows, not only
-     * manifest.rows — see PuzzleScreen gesture layer.)
-     */
     @Test
     fun afterCorrectLand_tilesOnGrownRowsRemainDraggable() {
-        // Grown board with tiles below manifest height — engine must allow drag.
         val grown = PuzzleFixtures.playfield(
             manifest,
             rows = 6,

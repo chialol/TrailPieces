@@ -51,24 +51,43 @@ object PushService {
             return PushResult(grid, stepped)
         }
 
-        val moves = planMovesWithMakeWay(grid, holes, liftedTileIds, locks, allTileIds, direction)
-            ?: return null
-        if (moves.isEmpty()) return null
-        if (!validateMoves(grid, moves, liftedTileIds)) return null
-
-        val cleared = clearFootprintLanding(
+        PlacementService.trySameSizeSwap(
             grid = grid,
             holes = holes,
-            direction = direction,
-            primaryMoves = moves,
+            stepped = stepped,
             liftedTileIds = liftedTileIds,
             locks = locks,
             allTileIds = allTileIds,
-        ) ?: return null
+        )?.let { return it }
 
-        val next = applyMoves(grid, cleared)
-        val newHoles = resolveNewHoles(holes, direction, next) ?: return null
-        return PushResult(next, newHoles)
+        val moves = planMovesWithMakeWay(grid, holes, liftedTileIds, locks, allTileIds, direction)
+        if (moves != null && moves.isNotEmpty() && validateMoves(grid, moves, liftedTileIds)) {
+            val cleared = clearFootprintLanding(
+                grid = grid,
+                holes = holes,
+                direction = direction,
+                primaryMoves = moves,
+                liftedTileIds = liftedTileIds,
+                locks = locks,
+                allTileIds = allTileIds,
+            )
+            if (cleared != null) {
+                val next = applyMoves(grid, cleared)
+                val newHoles = resolveNewHoles(holes, direction, next)
+                if (newHoles != null) return PushResult(next, newHoles)
+            }
+        }
+
+        // Larger rigid mass blocked make-way/tunnel: still allow nearest same-size
+        // CC further along the axis (e.g. singleton past a locked wall).
+        return PlacementService.tryNearestSameSizeSwapAlongAxis(
+            grid = grid,
+            holes = holes,
+            liftedTileIds = liftedTileIds,
+            locks = locks,
+            allTileIds = allTileIds,
+            direction = direction,
+        )
     }
 
     /**

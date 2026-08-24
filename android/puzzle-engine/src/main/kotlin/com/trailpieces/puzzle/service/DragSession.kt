@@ -100,21 +100,17 @@ data class DragSession(
     }
 
     fun settle(manifest: PuzzleManifest = this.manifest): PuzzleBoard {
-        for ((tileId, offset) in shapeOffsets) {
-            val slot = committedAnchor.offset(offset.row, offset.col)
-            require(grid.inBounds(slot)) { "Tile $tileId would settle out of bounds at $slot" }
-            require(grid.tileAt(slot) == null) {
-                "Tile $tileId cannot settle onto occupied slot $slot"
-            }
+        // Preferential home / lock-completing land is applied by DragEngine.endDrag
+        // via PlacementService.settlePreferred. Session-level settle keeps the
+        // committed footprint (tests that push then settle without finger).
+        return settlePlain().let { board ->
+            if (manifest === this.manifest) board
+            else PuzzleBoard(
+                board.grid,
+                LockGroupService.compute(board.grid, manifest),
+                manifest,
+            )
         }
-        val settled = grid.withCells { cells ->
-            shapeOffsets.forEach { (tileId, offset) ->
-                val slot = committedAnchor.offset(offset.row, offset.col)
-                cells[slot.index(grid.cols)] = tileId
-            }
-        }
-        val collapsed = settled.collapseEmptyRows()
-        return PuzzleBoard(collapsed, LockGroupService.compute(collapsed, manifest), manifest)
     }
 }
 

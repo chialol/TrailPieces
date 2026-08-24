@@ -43,6 +43,8 @@ class DragEngine(
     val isSolved: Boolean get() = board.isSolved
 
     private var boardBeforeDrag: PuzzleBoard? = null
+    private var lastCellWidthPx: Float = 0f
+    private var lastCellHeightPx: Float = 0f
 
     fun reshuffle() {
         cancelDragSafely()
@@ -75,6 +77,8 @@ class DragEngine(
         if (!isValidOffset(deltaPx)) return MoveFingerResult.None
 
         return runSafely {
+            lastCellWidthPx = cellWidthPx
+            lastCellHeightPx = cellHeightPx
             fingerDeltaPx = sanitizeOffset(fingerDeltaPx + deltaPx)
             MoveFingerResult(advancePushes(cellWidthPx, cellHeightPx))
         } ?: MoveFingerResult.None
@@ -84,7 +88,13 @@ class DragEngine(
         if (drag == null) return board
         return runSafely {
             val active = drag ?: return@runSafely board
-            board = active.settle(manifest)
+            board = PlacementService.settlePreferred(
+                session = active,
+                fingerDeltaPx = fingerDeltaPx,
+                cellWidthPx = lastCellWidthPx,
+                cellHeightPx = lastCellHeightPx,
+                originalBoard = boardBeforeDrag,
+            )
             drag = null
             fingerDeltaPx = Vec2.Zero
             boardBeforeDrag = null

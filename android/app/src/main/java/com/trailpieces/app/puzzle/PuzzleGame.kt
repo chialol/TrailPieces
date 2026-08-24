@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import com.trailpieces.puzzle.model.GridPos
 import com.trailpieces.puzzle.model.PuzzleManifest
 import com.trailpieces.puzzle.model.Vec2
+import com.trailpieces.puzzle.service.BoardDebug
 import com.trailpieces.puzzle.service.DragEngine
 import com.trailpieces.puzzle.service.DragSession
 import com.trailpieces.puzzle.service.MoveFingerResult
@@ -43,4 +44,8 @@ class PuzzleGame(
     }
 
     fun lockedGroupSize(tileId: Int): Int = engine.lockedGroupSize(tileId)
+
+    /** Logcat-friendly dump of board + locks (+ active drag if any). */
+    fun debugDump(extra: Map<String, Any?> = emptyMap()): String =
+        BoardDebug.dump(board, drag, extra)
 }

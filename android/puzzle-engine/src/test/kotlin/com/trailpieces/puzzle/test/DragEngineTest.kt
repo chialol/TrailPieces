@@ -68,20 +68,22 @@ class DragEngineTest {
 
     @Test
     fun emptyHoleSlideDoesNotReportRestingImpact() {
-        // A above a persistent empty; Down slides the footprint with no resting bump.
+        // A alone above a persistent empty (B not home-adjacent so A does not
+        // lock into a larger group). Down slides the footprint with no resting bump.
         val board = PuzzleFixtures.boardWithPlacements(
             manifest,
             mapOf(
                 GridPos(0, 0) to 0,
-                GridPos(0, 1) to 1,
+                GridPos(0, 1) to 5, // F — does not lock with A
                 GridPos(1, 1) to 3,
                 GridPos(2, 0) to 4,
-                GridPos(2, 1) to 5,
+                GridPos(2, 1) to 1,
                 // tile 2 off-board; (1,0) stays empty
             ),
         )
         val e = engine(board)
         assertTrue(e.startDrag(GridPos(0, 0)))
+        assertEquals(setOf(0), e.drag!!.liftedTileIds)
         val before = e.drag!!.grid.copyCells()
         val move = e.moveFinger(Vec2(0f, 60f), cell, cell)
         assertEquals(GridPos(1, 0), e.drag!!.committedAnchor)

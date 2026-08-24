@@ -1,21 +1,23 @@
 # Trail Pieces — handoff
 
-## Where we are (2026-08-23)
+## Where we are (2026-08-23 late)
 
-- Puzzle logic lives in `android/puzzle-engine` with JVM unit tests.
-- Push-through, rigid groups, insert-row (Up when blocked), collapse empty rows are implemented.
-- App module is Compose UI + thin `PuzzleGame` facade.
-- **Finger / tunnel commit:** `DragEngine` peeks `tryPush` and only commits when residual `> (jumpCells - 0.5) × cell` (so a 2-cell tunnel through `(A,C)` waits ~1.5 cells, not 0.5). `fingerDeltaPx` stays true finger travel. Mid-drag reverse uses the same look-ahead (no catch-up lock).
+- Placement policy is in `:puzzle-engine` (`PlacementService` + settle/collapse).
+- `:puzzle-engine:test` is green (swap, empty-fit, lock-completing cutline, prior rigid/tunnel/insert-row).
+- **Same-size past rigid mass**: when adjacent make-way/tunnel fails, `PushService` falls through to `PlacementService.tryNearestSameSizeSwapAlongAxis` (nearest congruent CC along the push axis). Finger look-ahead still gates multi-cell jumps. Dump case: singleton E down through a locked wall onto loose A.
+- **Off-axis same-size swap**: mid-drag uses `tryFingerAimSameSizeSwap` when the finger projects diagonally (both row and col change from drag start), before axis push — so E→C beats on-axis E→A. On release, `fingerSameSizePlace` runs first (from pre-drag board) so a wrong mid-drag commit cannot block the aimed swap.
 
-## If continuing work
+## Placement model (implemented)
 
-1. New chat in this repo (fresh context).
-2. Point at `.cursor/rules/trail-pieces-puzzle.mdc` (always-on).
-3. For behavior changes: write/adjust tests in `PushThroughConnectedComponentTest` / `DragEngineTest` first.
-4. Run `:puzzle-engine:test` before device builds.
+1. **Empty-fit** — `PushService` early path (unchanged).
+2. **Same-size CC swap** — adjacent congruent CCs exchange in `PushService` via `PlacementService.trySameSizeSwap`; if blocked by a larger rigid mass, nearest same-size further along the axis; non-adjacent home swaps at settle.
+3. **Lock-completing / home land** — on `DragEngine.endDrag`, if the finger path aims at a blocked home, place from the **pre-drag** board: same-size swap or **cutline** (keep above + landing-row keepers, insert separator, column-major pack below).
+4. **Settle collapse** — `collapseEmptyRowsPreservingLocks`: drop fully empty rows unless collapsing would newly vertically lock two tiles (keeps cutline separators).
 
-## Do not re-litigate without tests
+## Commands
 
-- Rigid peel vs shift vs insert-row — covered by push-through tests.
-- Play-again / shuffle — `ShuffleService` + `enforceRigidLocks = false`.
-- Late tunnel + reverse — `verticalPair_EDoesNotShiftPairUntilFingerNearLandingAbove`, `verticalPair_canReverseTunnelShiftWithoutLiftingFinger`.
+```bat
+cd android
+.\gradlew.bat :puzzle-engine:test
+.\gradlew.bat :app:assembleDebug
+```
