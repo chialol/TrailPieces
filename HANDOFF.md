@@ -5,7 +5,8 @@
 - Placement policy is in `:puzzle-engine` (`PlacementService` + settle/collapse).
 - `:puzzle-engine:test` is green (swap, empty-fit, lock-completing cutline, prior rigid/tunnel/insert-row).
 - **Same-size past rigid mass**: when adjacent make-way/tunnel fails, `PushService` falls through to `PlacementService.tryNearestSameSizeSwapAlongAxis` (nearest congruent CC along the push axis). Finger look-ahead still gates multi-cell jumps. Dump case: singleton E down through a locked wall onto loose A.
-- **Off-axis same-size swap**: mid-drag uses `tryFingerAimSameSizeSwap` when the finger projects diagonally (both row and col change from drag start), before axis push — so E→C beats on-axis E→A. On release, `fingerSameSizePlace` runs first (from pre-drag board) so a wrong mid-drag commit cannot block the aimed swap.
+- **Off-axis same-size swap**: mid-drag uses `tryFingerAimSameSizeSwap` when the finger projects diagonally (both row and col change from drag start), before axis push — so E→C beats on-axis E→A. On release, scored finger-aim vs home/cutline (no early return).
+- **Home cutline (U dump)**: home landing uses cutline (not same-size swap) when `shouldCutlineHomeInsteadOfSwap` — landing-row neighbor must repack (e.g. L beside U). `sameSizeSwapCompletesHomes` keeps C↔H-style swaps when both tiles reach home. Cutline keepers only lock-connect upward (`isCutlineLandingRowKeeper`).
 
 ## Placement model (implemented)
 

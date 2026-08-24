@@ -4,6 +4,7 @@ import com.trailpieces.puzzle.model.AxisDirection
 import com.trailpieces.puzzle.model.GridPos
 import com.trailpieces.puzzle.model.PuzzleManifest
 import com.trailpieces.puzzle.model.SlotGrid
+import com.trailpieces.puzzle.model.Vec2
 
 /**
  * In-progress drag: lifted tiles follow the finger; [committedAnchor] tracks
@@ -44,7 +45,7 @@ data class DragSession(
             allTileIds = allIds,
         )
         if (pushed != null) {
-            return withPushResult(pushed)
+            return applyPushResult(pushed)
         }
 
         // Grow only when pushing Up into an in-bounds blocker that could not make way.
@@ -81,7 +82,35 @@ data class DragSession(
         return parked.copy(committedAnchor = newAnchor)
     }
 
-    private fun withPushResult(result: PushResult): DragSession? {
+    fun tryFingerAimSameSizeSwap(
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): DragSession? {
+        val result = PlacementService.tryFingerAimSameSizeSwap(
+            session = this,
+            fingerDeltaPx = fingerDeltaPx,
+            cellWidthPx = cellWidthPx,
+            cellHeightPx = cellHeightPx,
+        ) ?: return null
+        return applyPushResult(result)
+    }
+
+    fun tryHomeCutlinePush(
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): DragSession? {
+        val result = PlacementService.tryHomeCutlinePush(
+            session = this,
+            fingerDeltaPx = fingerDeltaPx,
+            cellWidthPx = cellWidthPx,
+            cellHeightPx = cellHeightPx,
+        ) ?: return null
+        return applyPushResult(result)
+    }
+
+    private fun applyPushResult(result: PushResult): DragSession? {
         val newAnchor = anchorForHoles(result.newHoles) ?: return null
         return copy(grid = result.grid, committedAnchor = newAnchor)
     }

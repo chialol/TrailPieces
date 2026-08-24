@@ -130,6 +130,36 @@ class DragEngine(
 
         while (pushCount < maxPushesPerFrame) {
             val active = drag ?: return restingImpacts
+
+            if (PlacementService.isCommittedAtHome(active)) break
+
+            // Home cutline before same-size swaps that would steal the path (e.g. W→home past B).
+            val homeCutline = active.tryHomeCutlinePush(fingerDeltaPx, cellWidthPx, cellHeightPx)
+            if (homeCutline != null) {
+                if (restingOccupancyChanged(active, homeCutline)) restingImpacts++
+                drag = homeCutline
+                pushCount++
+                break
+            }
+
+            // Finger-aim same-size swap (off-axis only) before axis push.
+            val aimSwap = active.tryFingerAimSameSizeSwap(fingerDeltaPx, cellWidthPx, cellHeightPx)
+            if (aimSwap != null &&
+                hasOffAxisFingerAim(active, fingerDeltaPx, cellWidthPx, cellHeightPx) &&
+                PlacementService.fingerCoversAnchor(
+                    active,
+                    aimSwap.committedAnchor,
+                    fingerDeltaPx,
+                    cellWidthPx,
+                    cellHeightPx,
+                )
+            ) {
+                if (restingOccupancyChanged(active, aimSwap)) restingImpacts++
+                drag = aimSwap
+                pushCount++
+                continue
+            }
+
             val committedPx = anchorCommittedPx(active, cellWidthPx, cellHeightPx)
             val residual = sanitizeOffset(fingerDeltaPx - committedPx)
 
@@ -197,6 +227,30 @@ class DragEngine(
             AxisDirection.Right -> residual.x
             AxisDirection.Left -> -residual.x
         }
+
+    /** Mid-drag finger-aim swap when the projected landing is diagonal from the drag start. */
+    private fun hasOffAxisFingerAim(
+        active: DragSession,
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): Boolean {
+        if (!isValidCellSize(cellWidthPx) || !isValidCellSize(cellHeightPx)) return false
+        val target = fingerTargetAnchor(active, fingerDeltaPx, cellWidthPx, cellHeightPx) ?: return false
+        return target.col != active.startAnchor.col && target.row != active.startAnchor.row
+    }
+
+    private fun fingerTargetAnchor(
+        session: DragSession,
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): GridPos? = PlacementService.fingerTargetAnchorForSwap(
+        session,
+        fingerDeltaPx,
+        cellWidthPx,
+        cellHeightPx,
+    )
 
     private inline fun <T> runSafely(block: () -> T): T? =
         try {

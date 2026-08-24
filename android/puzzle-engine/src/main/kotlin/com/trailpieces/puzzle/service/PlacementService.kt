@@ -116,6 +116,7 @@ object PlacementService {
             .map { anchor.offset(it.row, it.col) }
             .toSet()
         if (landing.any { !session.grid.inBounds(it) }) return null
+        if (isHomeLanding(session, landing)) return null
         if (!isSameSizeLanding(session, landing)) return null
 
         val locks = if (session.enforceRigidLocks) {
@@ -133,6 +134,69 @@ object PlacementService {
             allTileIds = allIds,
         ) ?: return null
         return PushResult(swapped, landing)
+    }
+
+    /**
+     * Home cutline mid-drag when the finger path aims at home and cutline is needed
+     * (not a same-size swap that completes both homes).
+     */
+    fun tryHomeCutlinePush(
+        session: DragSession,
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): PushResult? {
+        val home = homeAnchor(session) ?: return null
+        if (home == session.startAnchor) return null
+        if (!targetAlongFingerPath(session, home, fingerDeltaPx, cellWidthPx, cellHeightPx)) {
+            return null
+        }
+        if (!fingerProgressCoversHome(session, home, fingerDeltaPx, cellWidthPx, cellHeightPx)) {
+            return null
+        }
+        val landing = session.shapeOffsets.values
+            .map { home.offset(it.row, it.col) }
+            .toSet()
+        if (landing.any { !session.grid.inBounds(it) }) return null
+        if (!isHomeLanding(session, landing)) return null
+        if (sameSizeSwapCompletesHomes(session, landing)) return null
+        val blocked = landing.any { pos ->
+            session.grid.inBounds(pos) &&
+                session.grid.tileAt(pos) != null &&
+                pos !in session.targetSlots
+        }
+        if (!blocked) return null
+        val grown = tryCutlineMakeWay(session, landing) ?: return null
+        return PushResult(grown, landing)
+    }
+
+    /** Per-axis finger travel toward [home] (handles diagonal overshoot toward other cells). */
+    internal fun fingerProgressCoversHome(
+        session: DragSession,
+        home: GridPos,
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): Boolean {
+        if (cellWidthPx <= 0f || cellHeightPx <= 0f) return false
+        if (!fingerDeltaPx.x.isFinite() || !fingerDeltaPx.y.isFinite()) return false
+        val dRow = home.row - session.startAnchor.row
+        val dCol = home.col - session.startAnchor.col
+        if (dRow == 0 && dCol == 0) return false
+        val fingerRowCells = fingerDeltaPx.y / cellHeightPx
+        val fingerColCells = fingerDeltaPx.x / cellWidthPx
+        if (dRow > 0 && fingerRowCells <= dRow - PUSH_THRESHOLD) return false
+        if (dRow < 0 && -fingerRowCells <= -dRow - PUSH_THRESHOLD) return false
+        if (dCol > 0 && fingerColCells <= dCol - PUSH_THRESHOLD) return false
+        if (dCol < 0 && -fingerColCells <= -dCol - PUSH_THRESHOLD) return false
+        return true
+    }
+
+    /** True when the lift moved onto its manifest home anchor (not merely lifted from home). */
+    internal fun isCommittedAtHome(session: DragSession): Boolean {
+        val home = homeAnchor(session) ?: return false
+        return session.committedAnchor == home &&
+            session.committedAnchor != session.startAnchor
     }
 
     /** True when [fingerDeltaPx] has traveled far enough to commit landing at [targetAnchor]. */
@@ -177,10 +241,9 @@ object PlacementService {
             )
         } ?: session
 
-        // Principle 1 on release: finger-aim same-size swap beats committed mid-drag noise.
-        fingerSameSizePlace(fresh, session, fingerDeltaPx, cellWidthPx, cellHeightPx)?.let { return it }
+        // Principle 1 + home cutline: scored below (no early return — avoids wrong swap target).
 
-        val committed = tryPlaceAt(session, session.committedAnchor) ?: session.settlePlain()
+        val committed = tryPlaceAt(fresh, session.committedAnchor) ?: session.settlePlain()
         var best = committed
         var bestScore = scoreBoard(committed, session)
 
@@ -218,39 +281,36 @@ object PlacementService {
             }
 
             val placed = tryPlaceAt(fresh, anchor) ?: return
-            val score = scoreBoard(placed, session) + if (sameSizeTarget) 50 else 0
+            val cutlineHome = isHomeLanding(fresh, landing) &&
+                shouldCutlineHomeInsteadOfSwap(fresh, landing)
+            val score = scoreBoard(placed, session) +
+                when {
+                    sameSizeTarget -> 50
+                    cutlineHome -> 60
+                    else -> 0
+                }
             if (score > bestScore) {
                 bestScore = score
                 best = placed
             }
         }
 
+        // Finger projection + home: same-size swap onto the aimed tile; home cutline when needed.
+        consider(
+            fingerAnchor(fresh, fingerDeltaPx, cellWidthPx, cellHeightPx),
+            requireAlongPath = false,
+            fingerAimOnly = true,
+        )
+        consider(
+            fingerTargetAnchor(fresh, fingerDeltaPx, cellWidthPx, cellHeightPx),
+            requireAlongPath = false,
+            fingerAimOnly = true,
+        )
+
         // Home: lock-completing / home swap / cutline.
         consider(homeAnchor(session), requireAlongPath = true, fingerAimOnly = false)
 
         return best
-    }
-
-    private fun fingerSameSizePlace(
-        fresh: DragSession,
-        session: DragSession,
-        fingerDeltaPx: Vec2,
-        cellWidthPx: Float,
-        cellHeightPx: Float,
-    ): PuzzleBoard? {
-        for (anchor in listOf(
-            fingerTargetAnchor(fresh, fingerDeltaPx, cellWidthPx, cellHeightPx),
-            fingerAnchor(fresh, fingerDeltaPx, cellWidthPx, cellHeightPx),
-        )) {
-            if (anchor == null || anchor == session.startAnchor) continue
-            if (!fingerCoversAnchor(session, anchor, fingerDeltaPx, cellWidthPx, cellHeightPx)) continue
-            val landing = fresh.shapeOffsets.values
-                .map { anchor.offset(it.row, it.col) }
-                .toSet()
-            if (!isSameSizeLanding(fresh, landing)) continue
-            return tryPlaceAt(fresh, anchor)
-        }
-        return null
     }
 
     /** True when landing cells are exactly one resting CC congruent to the lift. */
@@ -355,6 +415,34 @@ object PlacementService {
             return finalizePlace(session.grid, session, landing)
         }
 
+        if (inGridLanding &&
+            isSameSizeLanding(session, landing) &&
+            sameSizeSwapCompletesHomes(session, landing)
+        ) {
+            val swapped = trySwapOnto(
+                grid = session.grid,
+                holes = session.targetSlots,
+                landing = landing,
+                liftedTileIds = session.liftedTileIds,
+                locks = locks,
+                allTileIds = allIds,
+            )
+            if (swapped != null) return finalizePlace(swapped, session, landing)
+        }
+
+        if (inGridLanding && lockCompletingJoinsKeptAbove(session, landing)) {
+            val grown = tryCutlineMakeWay(session, landing) ?: return null
+            return finalizePlace(grown, session, landing)
+        }
+
+        if (inGridLanding &&
+            isHomeLanding(session, landing) &&
+            shouldCutlineHomeInsteadOfSwap(session, landing)
+        ) {
+            val grown = tryCutlineMakeWay(session, landing) ?: return null
+            return finalizePlace(grown, session, landing)
+        }
+
         if (inGridLanding) {
             val swapped = trySwapOnto(
                 grid = session.grid,
@@ -367,11 +455,103 @@ object PlacementService {
             if (swapped != null) return finalizePlace(swapped, session, landing)
         }
 
-        if (wouldCompleteLocks(session, landing) || isHomeLanding(session, landing)) {
+        if (inGridLanding && isHomeLanding(session, landing)) {
             val grown = tryCutlineMakeWay(session, landing) ?: return null
             return finalizePlace(grown, session, landing)
         }
+
         return null
+    }
+
+    /**
+     * Lock-completing land that joins a tile above the landing row in the same
+     * column (e.g. H under A). Skips same-row-only lock joins that a swap can satisfy.
+     */
+    private fun lockCompletingJoinsKeptAbove(
+        session: DragSession,
+        landing: Set<GridPos>,
+    ): Boolean {
+        if (!wouldCompleteLocks(session, landing)) return false
+        val landRow = landing.minOf { it.row }
+        val anchor = landingAnchor(session.shapeOffsets, landing)
+        var work = session.grid
+        val needRows = landing.maxOf { it.row } + 1
+        while (work.rows < needRows) work = work.insertRow(work.rows)
+
+        val tall = SlotGrid.empty(work.cols, maxOf(work.rows, needRows)).withCells { cells ->
+            for (r in 0 until work.rows) {
+                for (c in 0 until work.cols) {
+                    val pos = GridPos(r, c)
+                    val id = work.tileAt(pos)
+                    if (id != null && id !in session.liftedTileIds && pos !in landing) {
+                        cells[r * work.cols + c] = id
+                    }
+                }
+            }
+            for ((tileId, offset) in session.shapeOffsets) {
+                val pos = anchor.offset(offset.row, offset.col)
+                cells[pos.index(work.cols)] = tileId
+            }
+        }
+        val after = LockGroupService.compute(tall, session.manifest)
+        val allIds = session.manifest.tiles.map { it.id }
+        for (id in session.liftedTileIds) {
+            val members = after.members(id, allIds)
+            for (memberId in members) {
+                if (memberId in session.liftedTileIds) continue
+                val slot = tall.slotOfOrNull(memberId) ?: continue
+                if (slot.row >= landRow) continue
+                if (landing.any { it.col == slot.col && it.row > slot.row }) return true
+            }
+        }
+        return false
+    }
+
+    /** True when swapping with the landing occupant sends every tile to its home. */
+    private fun sameSizeSwapCompletesHomes(
+        session: DragSession,
+        landing: Set<GridPos>,
+    ): Boolean {
+        if (!isSameSizeLanding(session, landing)) return false
+        val holes = session.targetSlots
+        val contactIds = landing.mapNotNull { pos ->
+            session.grid.tileAt(pos)?.takeIf { it !in session.liftedTileIds }
+        }
+        if (contactIds.size != session.liftedTileIds.size) return false
+        val shift = translation(
+            contactIds.map { session.grid.slotOf(it) }.toSet(),
+            holes,
+        ) ?: return false
+        for (id in session.liftedTileIds) {
+            if (session.manifest.tileOrNull(id)?.home !in landing) return false
+        }
+        for (id in contactIds) {
+            val from = session.grid.slotOf(id)
+            val to = from.offset(shift.first, shift.second)
+            if (session.manifest.tileOrNull(id)?.home != to) return false
+        }
+        return true
+    }
+
+    /** Home cutline when a same-size swap would leave landing-row neighbors that must repack. */
+    private fun shouldCutlineHomeInsteadOfSwap(
+        session: DragSession,
+        landing: Set<GridPos>,
+    ): Boolean {
+        if (!isHomeLanding(session, landing)) return false
+        val landRow = landing.minOf { it.row }
+        val cutAfter = landing.maxOf { it.row }
+        for (r in landRow..cutAfter) {
+            for (c in 0 until session.grid.cols) {
+                val pos = GridPos(r, c)
+                if (pos in landing) continue
+                if (session.grid.tileAt(pos) == null) continue
+                if (!isCutlineLandingRowKeeper(session, landing, landRow, pos, session.grid)) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private fun trySwapOnto(
@@ -436,7 +616,12 @@ object PlacementService {
                 val pos = GridPos(r, c)
                 val id = work.tileAt(pos) ?: continue
                 if (id in session.liftedTileIds) continue
-                val keep = r < landRow || (r in landRow..cutAfter && pos !in landing)
+                val keep = when {
+                    r < landRow -> true
+                    r in landRow..cutAfter && pos !in landing ->
+                        isCutlineLandingRowKeeper(session, landing, landRow, pos, work)
+                    else -> false
+                }
                 if (keep) keptTiles[pos] = id
             }
         }
@@ -478,6 +663,32 @@ object PlacementService {
         }
         if (landing.any { !next.inBounds(it) || next.tileAt(it) != null }) return null
         return next
+    }
+
+    /**
+     * Landing-row neighbor stays only when it lock-connects to the kept rows above
+     * (e.g. D beside H under A). Otherwise it repacks below the separator.
+     */
+    private fun isCutlineLandingRowKeeper(
+        session: DragSession,
+        landing: Set<GridPos>,
+        landRow: Int,
+        pos: GridPos,
+        grid: SlotGrid,
+    ): Boolean {
+        val id = grid.tileAt(pos) ?: return false
+        val locks = if (session.enforceRigidLocks) {
+            LockGroupService.compute(grid, session.manifest)
+        } else {
+            LockGroupService.isolated(session.manifest)
+        }
+        val allIds = session.manifest.tiles.map { it.id }
+        val group = locks.members(id, allIds)
+        return group.any { memberId ->
+            if (memberId == id) return@any false
+            val slot = grid.slotOfOrNull(memberId) ?: return@any false
+            slot.row < landRow
+        }
     }
 
     private fun finalizePlace(
