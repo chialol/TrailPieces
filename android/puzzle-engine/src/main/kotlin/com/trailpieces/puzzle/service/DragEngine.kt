@@ -131,18 +131,35 @@ class DragEngine(
         while (pushCount < maxPushesPerFrame) {
             val active = drag ?: return restingImpacts
 
-            if (PlacementService.isCommittedAtHome(active)) break
-
-            // Home cutline before same-size swaps that would steal the path (e.g. W→home past B).
-            val homeCutline = active.tryHomeCutlinePush(fingerDeltaPx, cellWidthPx, cellHeightPx)
-            if (homeCutline != null) {
-                if (restingOccupancyChanged(active, homeCutline)) restingImpacts++
-                drag = homeCutline
+            val homeSwap = active.tryCompletingHomeSameSizeSwap(
+                fingerDeltaPx,
+                cellWidthPx,
+                cellHeightPx,
+            )
+            if (homeSwap != null) {
+                if (restingOccupancyChanged(active, homeSwap)) restingImpacts++
+                drag = homeSwap
                 pushCount++
-                break
+                continue
             }
 
-            // Finger-aim same-size swap (off-axis only) before axis push.
+            // Finger-aim empty (singleton) or same-size swap before axis push.
+            val aimEmpty = active.tryFingerAimEmptyLand(fingerDeltaPx, cellWidthPx, cellHeightPx)
+            if (aimEmpty != null &&
+                PlacementService.fingerCoversAnchor(
+                    active,
+                    aimEmpty.committedAnchor,
+                    fingerDeltaPx,
+                    cellWidthPx,
+                    cellHeightPx,
+                )
+            ) {
+                if (restingOccupancyChanged(active, aimEmpty)) restingImpacts++
+                drag = aimEmpty
+                pushCount++
+                continue
+            }
+
             val aimSwap = active.tryFingerAimSameSizeSwap(fingerDeltaPx, cellWidthPx, cellHeightPx)
             if (aimSwap != null &&
                 hasOffAxisFingerAim(active, fingerDeltaPx, cellWidthPx, cellHeightPx) &&
@@ -172,6 +189,21 @@ class DragEngine(
             if (!isValidCellSize(cellSize)) break
 
             val signed = residualAlong(residual, direction)
+            // Singleton empty-jump (look-ahead) before make-way so a far hole
+            // can win once the finger covers it.
+            val emptyJump = active.tryNearestEmptyAlongAxis(direction)
+            if (emptyJump != null) {
+                val jump = cellsJumped(active.committedAnchor, emptyJump.committedAnchor, direction)
+                    .coerceAtLeast(1)
+                val needed = (jump - PUSH_THRESHOLD) * cellSize
+                if (signed > needed) {
+                    if (restingOccupancyChanged(active, emptyJump)) restingImpacts++
+                    drag = emptyJump
+                    pushCount++
+                    continue
+                }
+            }
+
             // Peek first: multi-cell tunnels / insert-row need the finger near the
             // far landing (jump - 0.5 cells), not merely 0.5 into the next cell.
             val candidate = active.tryPush(direction) ?: break

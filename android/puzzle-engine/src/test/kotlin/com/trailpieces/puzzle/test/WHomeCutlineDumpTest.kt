@@ -8,6 +8,7 @@ import com.trailpieces.puzzle.service.DragEngine
 import com.trailpieces.puzzle.service.PuzzleBoard
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -121,19 +122,15 @@ class WHomeCutlineDumpTest {
     }
 
     @Test
-    fun wTowardA_midDragCommitsHomeBeforeRelease() {
+    fun wTowardA_midDragUsesAxisPushNotHomeCutline() {
         val engine = DragEngine(manifest, dumpBoard())
         assertTrue(engine.startDrag(GridPos(11, 1)))
         engine.moveFinger(Vec2(-110f, -220f), cell, cell)
+        assertNotNull(engine.drag)
         assertEquals(
-            GridPos(11, 0),
-            engine.drag!!.committedAnchor,
-            "W should commit at home mid-drag when finger covers cutline jump",
+            12,
+            engine.drag!!.grid.rows,
+            "Home cutline must not insert-row mid-drag; settle handles home cutline",
         )
-        assertTrue(
-            engine.drag!!.grid.rows >= 13,
-            "Cutline insert-row should apply mid-drag, got ${engine.drag!!.grid.rows}",
-        )
-        BoardAssert.assertEmpty(engine.drag!!.grid, GridPos(11, 0))
     }
 }

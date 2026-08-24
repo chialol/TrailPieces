@@ -87,6 +87,11 @@ object PushService {
             locks = locks,
             allTileIds = allTileIds,
             direction = direction,
+        ) ?: PlacementService.tryNearestEmptyAlongAxis(
+            grid = grid,
+            holes = holes,
+            liftedTileIds = liftedTileIds,
+            direction = direction,
         )
     }
 

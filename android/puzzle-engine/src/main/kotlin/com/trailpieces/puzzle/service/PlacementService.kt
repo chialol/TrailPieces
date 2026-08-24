@@ -7,6 +7,7 @@ import com.trailpieces.puzzle.model.PuzzleManifest
 import com.trailpieces.puzzle.model.SlotGrid
 import com.trailpieces.puzzle.model.Vec2
 import com.trailpieces.puzzle.model.step
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -14,7 +15,11 @@ import kotlin.math.roundToInt
  *
  * 1. **Same-size swap** — congruent CCs exchange places.
  * 2. **Empty-fit** — holes slide into empties ([PushService] early path).
- * 3. **Lock-completing land** — cutline insert + column-major repack when a
+ *    A **singleton** can also jump onto the nearest empty along the push axis
+ *    or finger-aim onto an empty cell (the hole moves; other tiles stay).
+ * 3. **In-place pack** — displaced occupants gravitate into vacated holes /
+ *    persistent empties (same make-way as an axis push).
+ * 4. **Lock-completing land** — cutline insert + column-major repack when a
  *    landing completes locks and in-place make-way cannot clear it.
  *
  * Preferential settle picks home / finger / committed so correct placements
@@ -101,6 +106,51 @@ object PlacementService {
     }
 
     /**
+     * Singleton empty-fit along [direction]: jump the hole to the nearest empty
+     * cell (other tiles stay put). Analog of nearest same-size swap.
+     */
+    fun tryNearestEmptyAlongAxis(
+        grid: SlotGrid,
+        holes: Set<GridPos>,
+        liftedTileIds: Set<Int>,
+        direction: AxisDirection,
+    ): PushResult? {
+        if (liftedTileIds.size != 1 || holes.size != 1) return null
+        var landing = holes.map { it.step(direction) }.toSet()
+        repeat(grid.rows + grid.cols) {
+            if (landing.any { !grid.inBounds(it) }) return null
+            if (landing.all { grid.tileAt(it) == null || it in holes }) {
+                return PushResult(grid, landing)
+            }
+            landing = landing.map { it.step(direction) }.toSet()
+        }
+        return null
+    }
+
+    /**
+     * Singleton lands on the finger-projected cell when that cell is empty.
+     */
+    fun tryFingerAimEmptyLand(
+        session: DragSession,
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): PushResult? {
+        if (session.liftedTileIds.size != 1) return null
+        val anchor = fingerTargetAnchor(session, fingerDeltaPx, cellWidthPx, cellHeightPx) ?: return null
+        if (anchor == session.startAnchor) return null
+        val landing = session.shapeOffsets.values
+            .map { anchor.offset(it.row, it.col) }
+            .toSet()
+        if (landing.size != 1) return null
+        if (landing.any { !session.grid.inBounds(it) }) return null
+        if (landing.any { pos ->
+            session.grid.tileAt(pos) != null && pos !in session.targetSlots
+        }) return null
+        return PushResult(session.grid, landing)
+    }
+
+    /**
      * Same-size swap onto the finger-projected landing cell (any direction).
      * Used mid-drag before axis push so off-axis aim beats on-axis nearest swap.
      */
@@ -116,8 +166,15 @@ object PlacementService {
             .map { anchor.offset(it.row, it.col) }
             .toSet()
         if (landing.any { !session.grid.inBounds(it) }) return null
-        if (isHomeLanding(session, landing)) return null
         if (!isSameSizeLanding(session, landing)) return null
+        // Home landing still swaps when it completes both CCs (C↔J, BDF↔KMO).
+        // Skip only when cutline is required and swap would not finish homes.
+        if (isHomeLanding(session, landing) &&
+            shouldCutlineHomeInsteadOfSwap(session, landing) &&
+            !sameSizeSwapCompletesHomes(session, landing)
+        ) {
+            return null
+        }
 
         val locks = if (session.enforceRigidLocks) {
             LockGroupService.compute(session.grid, session.manifest)
@@ -137,10 +194,10 @@ object PlacementService {
     }
 
     /**
-     * Home cutline mid-drag when the finger path aims at home and cutline is needed
-     * (not a same-size swap that completes both homes).
+     * Same-size swap onto the lift's home when that landing is occupied by a
+     * congruent CC and exchanging finishes both groups' homes.
      */
-    fun tryHomeCutlinePush(
+    fun tryCompletingHomeSameSizeSwap(
         session: DragSession,
         fingerDeltaPx: Vec2,
         cellWidthPx: Float,
@@ -148,30 +205,32 @@ object PlacementService {
     ): PushResult? {
         val home = homeAnchor(session) ?: return null
         if (home == session.startAnchor) return null
-        if (!targetAlongFingerPath(session, home, fingerDeltaPx, cellWidthPx, cellHeightPx)) {
-            return null
-        }
-        if (!fingerProgressCoversHome(session, home, fingerDeltaPx, cellWidthPx, cellHeightPx)) {
+        if (!fingerCoversHomeDominant(session, home, fingerDeltaPx, cellWidthPx, cellHeightPx)) {
             return null
         }
         val landing = session.shapeOffsets.values
             .map { home.offset(it.row, it.col) }
             .toSet()
         if (landing.any { !session.grid.inBounds(it) }) return null
-        if (!isHomeLanding(session, landing)) return null
-        if (sameSizeSwapCompletesHomes(session, landing)) return null
-        val blocked = landing.any { pos ->
-            session.grid.inBounds(pos) &&
-                session.grid.tileAt(pos) != null &&
-                pos !in session.targetSlots
+        if (!sameSizeSwapCompletesHomes(session, landing)) return null
+        val locks = if (session.enforceRigidLocks) {
+            LockGroupService.compute(session.grid, session.manifest)
+        } else {
+            LockGroupService.isolated(session.manifest)
         }
-        if (!blocked) return null
-        val grown = tryCutlineMakeWay(session, landing) ?: return null
-        return PushResult(grown, landing)
+        val swapped = trySwapOnto(
+            grid = session.grid,
+            holes = session.targetSlots,
+            landing = landing,
+            liftedTileIds = session.liftedTileIds,
+            locks = locks,
+            allTileIds = session.manifest.tiles.map { it.id },
+        ) ?: return null
+        return PushResult(swapped, landing)
     }
 
-    /** Per-axis finger travel toward [home] (handles diagonal overshoot toward other cells). */
-    internal fun fingerProgressCoversHome(
+    /** Dominant-axis look-ahead: finger must cover (distance - 0.5) cells toward home. */
+    internal fun fingerCoversHomeDominant(
         session: DragSession,
         home: GridPos,
         fingerDeltaPx: Vec2,
@@ -183,20 +242,43 @@ object PlacementService {
         val dRow = home.row - session.startAnchor.row
         val dCol = home.col - session.startAnchor.col
         if (dRow == 0 && dCol == 0) return false
-        val fingerRowCells = fingerDeltaPx.y / cellHeightPx
-        val fingerColCells = fingerDeltaPx.x / cellWidthPx
-        if (dRow > 0 && fingerRowCells <= dRow - PUSH_THRESHOLD) return false
-        if (dRow < 0 && -fingerRowCells <= -dRow - PUSH_THRESHOLD) return false
-        if (dCol > 0 && fingerColCells <= dCol - PUSH_THRESHOLD) return false
-        if (dCol < 0 && -fingerColCells <= -dCol - PUSH_THRESHOLD) return false
-        return true
+        val fingerRow = fingerDeltaPx.y / cellHeightPx
+        val fingerCol = fingerDeltaPx.x / cellWidthPx
+        return if (abs(dRow) >= abs(dCol)) {
+            if (dRow == 0) return false
+            val signed = if (dRow > 0) fingerRow else -fingerRow
+            signed > abs(dRow) - PUSH_THRESHOLD
+        } else {
+            if (dCol == 0) return false
+            val signed = if (dCol > 0) fingerCol else -fingerCol
+            signed > abs(dCol) - PUSH_THRESHOLD
+        }
     }
 
-    /** True when the lift moved onto its manifest home anchor (not merely lifted from home). */
-    internal fun isCommittedAtHome(session: DragSession): Boolean {
-        val home = homeAnchor(session) ?: return false
-        return session.committedAnchor == home &&
-            session.committedAnchor != session.startAnchor
+    /** Nudge on the dominant axis toward [home] — enough to claim completing swap on settle. */
+    internal fun fingerTowardHome(
+        session: DragSession,
+        home: GridPos,
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): Boolean {
+        if (cellWidthPx <= 0f || cellHeightPx <= 0f) return false
+        if (!fingerDeltaPx.x.isFinite() || !fingerDeltaPx.y.isFinite()) return false
+        val dRow = home.row - session.startAnchor.row
+        val dCol = home.col - session.startAnchor.col
+        if (dRow == 0 && dCol == 0) return false
+        val fingerRow = fingerDeltaPx.y / cellHeightPx
+        val fingerCol = fingerDeltaPx.x / cellWidthPx
+        return if (abs(dRow) >= abs(dCol)) {
+            if (dRow == 0) return false
+            val signed = if (dRow > 0) fingerRow else -fingerRow
+            signed > PUSH_THRESHOLD
+        } else {
+            if (dCol == 0) return false
+            val signed = if (dCol > 0) fingerCol else -fingerCol
+            signed > PUSH_THRESHOLD
+        }
     }
 
     /** True when [fingerDeltaPx] has traveled far enough to commit landing at [targetAnchor]. */
@@ -258,7 +340,13 @@ object PlacementService {
             if (requireAlongPath &&
                 !targetAlongFingerPath(session, anchor, fingerDeltaPx, cellWidthPx, cellHeightPx)
             ) {
-                return
+                val landingPeek = fresh.shapeOffsets.values
+                    .map { anchor.offset(it.row, it.col) }
+                    .toSet()
+                val completingHome = isHomeLanding(fresh, landingPeek) &&
+                    sameSizeSwapCompletesHomes(fresh, landingPeek) &&
+                    fingerTowardHome(session, anchor, fingerDeltaPx, cellWidthPx, cellHeightPx)
+                if (!completingHome) return
             }
 
             val landing = fresh.shapeOffsets.values
@@ -269,13 +357,21 @@ object PlacementService {
                     fresh.grid.tileAt(pos) != null &&
                     pos !in fresh.targetSlots
             }
-            // Only intervene when the intended cell is occupied (swap / cutline).
-            if (!landingBlocked) return
+            val emptyFit = session.liftedTileIds.size == 1 &&
+                landing.all { pos ->
+                    fresh.grid.inBounds(pos) &&
+                        (fresh.grid.tileAt(pos) == null || pos in fresh.targetSlots)
+                }
+            // Occupied land → swap/cutline. Empty land only via finger-aim
+            // (do not snap a singleton to a far empty home on release).
+            if (!landingBlocked) {
+                if (!(fingerAimOnly && emptyFit)) return
+            }
 
             val sameSizeTarget = isSameSizeLanding(fresh, landing)
             val lockComplete = wouldCompleteLocks(fresh, landing) || isHomeLanding(fresh, landing)
             if (fingerAimOnly) {
-                if (!sameSizeTarget) return
+                if (!sameSizeTarget && !emptyFit) return
             } else if (!sameSizeTarget && !lockComplete) {
                 return
             }
@@ -285,8 +381,10 @@ object PlacementService {
                 shouldCutlineHomeInsteadOfSwap(fresh, landing)
             val score = scoreBoard(placed, session) +
                 when {
-                    sameSizeTarget -> 50
+                    sameSizeTarget && sameSizeSwapCompletesHomes(fresh, landing) -> 80
                     cutlineHome -> 60
+                    sameSizeTarget -> 50
+                    emptyFit -> 40
                     else -> 0
                 }
             if (score > bestScore) {
@@ -428,6 +526,14 @@ object PlacementService {
                 allTileIds = allIds,
             )
             if (swapped != null) return finalizePlace(swapped, session, landing)
+        }
+
+        // Occupants of the landing pack into vacated footprint / empties.
+        // Cutline insert-row is only when this packing cannot clear the land.
+        if (inGridLanding) {
+            tryPackMakeWay(session, landing, locks, allIds)?.let { packed ->
+                return finalizePlace(packed, session, landing)
+            }
         }
 
         if (inGridLanding && lockCompletingJoinsKeptAbove(session, landing)) {
@@ -590,6 +696,50 @@ object PlacementService {
                 cells[to.index(grid.cols)] = id
             }
         }
+    }
+
+    /**
+     * Axis-translate the lifted footprint onto [landing] by PushService make-way:
+     * displaced tiles gravitate into vacated holes and persistent empties.
+     * Does not grow the playfield — callers may cutline if this returns null.
+     */
+    private fun tryPackMakeWay(
+        session: DragSession,
+        landing: Set<GridPos>,
+        locks: LockGroupService,
+        allIds: Iterable<Int>,
+    ): SlotGrid? {
+        val shift = translation(session.targetSlots, landing) ?: return null
+        val direction = when {
+            shift.first > 0 && shift.second == 0 -> AxisDirection.Down
+            shift.first < 0 && shift.second == 0 -> AxisDirection.Up
+            shift.first == 0 && shift.second > 0 -> AxisDirection.Right
+            shift.first == 0 && shift.second < 0 -> AxisDirection.Left
+            else -> return null
+        }
+        val stepsNeeded = abs(shift.first) + abs(shift.second)
+        if (stepsNeeded <= 0) return null
+
+        var grid = session.grid
+        var holes = session.targetSlots
+        repeat(stepsNeeded) {
+            if (holes == landing) return grid
+            val pushed = PushService.tryPush(
+                grid = grid,
+                holes = holes,
+                liftedTileIds = session.liftedTileIds,
+                direction = direction,
+                locks = locks,
+                allTileIds = allIds,
+            ) ?: return null
+            if (pushed.grid.rows != session.grid.rows || pushed.grid.cols != session.grid.cols) {
+                return null
+            }
+            if (pushed.newHoles == holes) return null
+            grid = pushed.grid
+            holes = pushed.newHoles
+        }
+        return if (holes == landing) grid else null
     }
 
     /**

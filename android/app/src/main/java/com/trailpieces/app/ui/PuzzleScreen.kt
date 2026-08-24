@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +60,15 @@ import kotlin.math.roundToInt
 
 private const val TAG = "PuzzleScreen"
 
+/** Snapshotted at pointer-down so playfield growth mid-drag does not reset gesture input. */
+private data class GestureLayoutSnapshot(
+    val playfieldRows: Int,
+    val cellWidth: Dp,
+    val cellHeight: Dp,
+    val cellWidthPx: Float,
+    val cellHeightPx: Float,
+)
+
 private val OffsetVectorConverter = TwoWayConverter<Offset, AnimationVector2D>(
     convertToVector = { AnimationVector2D(it.x, it.y) },
     convertFromVector = { Offset(it.v1, it.v2) },
@@ -75,6 +85,7 @@ fun PuzzleScreen(
         if (initialBoard != null) PuzzleGame(manifest, initialBoard) else PuzzleGame(manifest)
     }
     var drawEpoch by remember { mutableIntStateOf(0) }
+    var gestureLayout by remember { mutableStateOf<GestureLayoutSnapshot?>(null) }
     val snapAnim = remember { Animatable(Offset.Zero, OffsetVectorConverter) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -119,14 +130,18 @@ fun PuzzleScreen(
                 .weight(1f),
             contentAlignment = Alignment.Center,
         ) {
-            val playfieldRows = maxOf(game.board.rows, game.drag?.grid?.rows ?: 0, manifest.rows)
+            val livePlayfieldRows = maxOf(game.board.rows, game.drag?.grid?.rows ?: 0, manifest.rows)
             val boardWidth = maxWidth
-            val boardHeight = boardWidth * manifest.puzzleHeight / manifest.puzzleWidth *
-                playfieldRows / manifest.rows
-            val cellWidth = boardWidth / manifest.cols
-            val cellHeight = boardHeight / playfieldRows
-            val cellWidthPx = with(density) { cellWidth.toPx() }
-            val cellHeightPx = with(density) { cellHeight.toPx() }
+            // Freeze cell size at pointer-down so insert-row cannot change px metrics
+            // (and reset pointerInput). Still size the board from live row count so
+            // a grown playfield is not clipped.
+            val cellWidth = gestureLayout?.cellWidth ?: (boardWidth / manifest.cols)
+            val cellHeight = gestureLayout?.cellHeight ?: (
+                boardWidth * manifest.puzzleHeight / manifest.puzzleWidth / manifest.rows
+                )
+            val boardHeight = cellHeight * livePlayfieldRows
+            val cellWidthPx = gestureLayout?.cellWidthPx ?: with(density) { cellWidth.toPx() }
+            val cellHeightPx = gestureLayout?.cellHeightPx ?: with(density) { cellHeight.toPx() }
 
             Box(
                 modifier = Modifier
@@ -146,12 +161,16 @@ fun PuzzleScreen(
                     PuzzleGestureLayer(
                         game = game,
                         manifest = manifest,
-                        playfieldRows = playfieldRows,
+                        playfieldRows = livePlayfieldRows,
+                        cellWidth = cellWidth,
+                        cellHeight = cellHeight,
                         cellWidthPx = cellWidthPx,
                         cellHeightPx = cellHeightPx,
                         snapAnim = snapAnim,
                         hapticView = LocalView.current,
                         onDraw = ::bumpDraw,
+                        onGestureStart = { gestureLayout = it },
+                        onGestureEnd = { gestureLayout = null },
                         scope = scope,
                     )
                 } else {
@@ -272,45 +291,60 @@ private fun PuzzleGestureLayer(
     game: PuzzleGame,
     manifest: PuzzleManifest,
     playfieldRows: Int,
+    cellWidth: Dp,
+    cellHeight: Dp,
     cellWidthPx: Float,
     cellHeightPx: Float,
     snapAnim: Animatable<Offset, AnimationVector2D>,
     hapticView: View,
     onDraw: () -> Unit,
+    onGestureStart: (GestureLayoutSnapshot) -> Unit,
+    onGestureEnd: () -> Unit,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
+    val playfieldRowsRef = rememberUpdatedState(playfieldRows)
+    val cellWidthRef = rememberUpdatedState(cellWidth)
+    val cellHeightRef = rememberUpdatedState(cellHeight)
+    val cellWidthPxRef = rememberUpdatedState(cellWidthPx)
+    val cellHeightPxRef = rememberUpdatedState(cellHeightPx)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(10f)
-            .pointerInput(manifest.cols, playfieldRows, cellWidthPx, cellHeightPx) {
+            // Stable key — playfieldRows/cellHeightPx change on insert-row and used to
+            // reset pointer input mid-gesture (PointerInputResetException → cancel drag).
+            .pointerInput(manifest.id) {
                 awaitEachGesture {
                     var dragActive = false
+                    val layout = GestureLayoutSnapshot(
+                        playfieldRows = playfieldRowsRef.value,
+                        cellWidth = cellWidthRef.value,
+                        cellHeight = cellHeightRef.value,
+                        cellWidthPx = cellWidthPxRef.value,
+                        cellHeightPx = cellHeightPxRef.value,
+                    )
                     try {
-                        if (!cellWidthPx.isFinite() || cellWidthPx <= 0f ||
-                            !cellHeightPx.isFinite() || cellHeightPx <= 0f
+                        if (!layout.cellWidthPx.isFinite() || layout.cellWidthPx <= 0f ||
+                            !layout.cellHeightPx.isFinite() || layout.cellHeightPx <= 0f
                         ) {
                             return@awaitEachGesture
                         }
 
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        val col = (down.position.x / cellWidthPx).toInt()
+                        val col = (down.position.x / layout.cellWidthPx).toInt()
                             .coerceIn(0, manifest.cols - 1)
-                        // Use playfield height — not manifest.rows — or taps on
-                        // inserted/bottom rows clamp to the last solved row and
-                        // look like "bottom tiles aren't draggable".
-                        val row = (down.position.y / cellHeightPx).toInt()
-                            .coerceIn(0, playfieldRows - 1)
+                        val row = (down.position.y / layout.cellHeightPx).toInt()
+                            .coerceIn(0, layout.playfieldRows - 1)
                         Log.d(TAG, "pointer down at ($row,$col) px=${down.position}")
 
                         if (!game.startDrag(GridPos(row, col))) return@awaitEachGesture
                         dragActive = true
+                        onGestureStart(layout)
                         onDraw()
                         scope.launch { snapAnim.snapTo(Offset.Zero) }
 
                         val pointerId = down.id
-                        // Loop until this pointer lifts — do not cap event count.
-                        // A low cap ends the drag mid-gesture (looks like a random snap).
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == pointerId } ?: break
@@ -318,11 +352,11 @@ private fun PuzzleGestureLayer(
 
                             val delta = change.positionChange()
                             if (delta != Offset.Zero) {
-                                // One light tick per pointer event that bumps resting
-                                // tiles — slow cell-by-cell gets a tick per cell; a
-                                // fast flick that commits several cells in one event
-                                // still gets a single tick (no machine-gun buzz).
-                                val move = game.moveFinger(delta, cellWidthPx, cellHeightPx)
+                                val move = game.moveFinger(
+                                    delta,
+                                    layout.cellWidthPx,
+                                    layout.cellHeightPx,
+                                )
                                 if (move.hadRestingImpact) {
                                     hapticView.performHapticFeedback(
                                         HapticFeedbackConstants.CLOCK_TICK,
@@ -338,12 +372,14 @@ private fun PuzzleGestureLayer(
                         game.clearFingerDelta()
                         game.endDrag()
                         dragActive = false
+                        onGestureEnd()
                         onDraw()
                     } catch (e: Exception) {
                         Log.e(TAG, "gesture failed — cancelling drag", e)
                     } finally {
                         if (dragActive) {
                             game.cancelDragSafely()
+                            onGestureEnd()
                             scope.launch { snapAnim.snapTo(Offset.Zero) }
                             onDraw()
                         }

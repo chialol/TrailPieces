@@ -96,16 +96,40 @@ data class DragSession(
         return applyPushResult(result)
     }
 
-    fun tryHomeCutlinePush(
+    fun tryFingerAimEmptyLand(
         fingerDeltaPx: Vec2,
         cellWidthPx: Float,
         cellHeightPx: Float,
     ): DragSession? {
-        val result = PlacementService.tryHomeCutlinePush(
+        val result = PlacementService.tryFingerAimEmptyLand(
             session = this,
             fingerDeltaPx = fingerDeltaPx,
             cellWidthPx = cellWidthPx,
             cellHeightPx = cellHeightPx,
+        ) ?: return null
+        return applyPushResult(result)
+    }
+
+    fun tryCompletingHomeSameSizeSwap(
+        fingerDeltaPx: Vec2,
+        cellWidthPx: Float,
+        cellHeightPx: Float,
+    ): DragSession? {
+        val result = PlacementService.tryCompletingHomeSameSizeSwap(
+            session = this,
+            fingerDeltaPx = fingerDeltaPx,
+            cellWidthPx = cellWidthPx,
+            cellHeightPx = cellHeightPx,
+        ) ?: return null
+        return applyPushResult(result)
+    }
+
+    fun tryNearestEmptyAlongAxis(direction: AxisDirection): DragSession? {
+        val result = PlacementService.tryNearestEmptyAlongAxis(
+            grid = grid,
+            holes = targetSlots,
+            liftedTileIds = liftedTileIds,
+            direction = direction,
         ) ?: return null
         return applyPushResult(result)
     }
