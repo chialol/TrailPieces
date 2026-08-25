@@ -3,6 +3,7 @@ package com.trailpieces.puzzle.test
 import com.trailpieces.puzzle.model.AxisDirection
 import com.trailpieces.puzzle.model.GridPos
 import com.trailpieces.puzzle.model.SlotGrid
+import com.trailpieces.puzzle.service.FrozenLockGraph
 import com.trailpieces.puzzle.service.LockGroupService
 import com.trailpieces.puzzle.service.PushService
 import kotlin.test.Test
@@ -26,8 +27,7 @@ class PushServiceTest {
         holes = holes,
         liftedTileIds = lifted,
         direction = direction,
-        locks = LockGroupService.isolated(manifest),
-        allTileIds = allIds,
+        locks = FrozenLockGraph.isolated(manifest),
     )
 
     private fun pushRigid(
@@ -40,8 +40,7 @@ class PushServiceTest {
         holes = holes,
         liftedTileIds = lifted,
         direction = direction,
-        locks = LockGroupService.compute(grid, manifest),
-        allTileIds = allIds,
+        locks = FrozenLockGraph.freeze(grid, manifest),
     )
 
     @Test

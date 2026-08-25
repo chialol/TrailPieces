@@ -369,8 +369,10 @@ private fun PuzzleGestureLayer(
 
                         Log.d(TAG, "pointer up finger=${game.visualOffsetPx()}")
                         scope.launch { snapAnim.snapTo(Offset.Zero) }
-                        game.clearFingerDelta()
+                        // Settle needs the real finger delta for home/swap scoring.
+                        // Clear after endDrag so the lift snap does not reuse it.
                         game.endDrag()
+                        game.clearFingerDelta()
                         dragActive = false
                         onGestureEnd()
                         onDraw()

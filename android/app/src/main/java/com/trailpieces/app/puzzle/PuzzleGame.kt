@@ -45,7 +45,9 @@ class PuzzleGame(
 
     fun lockedGroupSize(tileId: Int): Int = engine.lockedGroupSize(tileId)
 
-    /** Logcat-friendly dump of board + locks (+ active drag if any). */
+    fun clearDragTrace() = engine.clearDragTrace()
+
+    /** Logcat-friendly dump of board + locks + drag trace (+ active drag if any). */
     fun debugDump(extra: Map<String, Any?> = emptyMap()): String =
-        BoardDebug.dump(board, drag, extra)
+        BoardDebug.dump(board, drag, extra, trace = engine.dragTrace)
 }

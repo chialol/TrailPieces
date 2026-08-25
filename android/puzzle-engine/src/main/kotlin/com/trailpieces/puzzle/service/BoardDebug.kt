@@ -13,6 +13,7 @@ object BoardDebug {
         board: PuzzleBoard,
         drag: DragSession? = null,
         extra: Map<String, Any?> = emptyMap(),
+        trace: DragTrace? = null,
     ): String = buildString {
         val man = board.manifest
         val letterById = homeOrderLetters(man)
@@ -85,7 +86,29 @@ object BoardDebug {
             appendLine()
             appendLine("active drag: none")
         }
+
+        if (trace != null && !trace.isEmpty()) {
+            appendLine()
+            appendLine("drag trace (oldest → newest):")
+            append(trace.format())
+        }
+
         append("=== end debug ===")
+    }
+
+    /** Compact home-letter grid for [DragTrace] snapshots. */
+    fun gridBrief(
+        grid: com.trailpieces.puzzle.model.SlotGrid,
+        manifest: PuzzleManifest,
+        holes: Set<GridPos> = emptySet(),
+    ): String {
+        val letterById = homeOrderLetters(manifest)
+        return formatGrid(grid.cols, grid.rows) { pos ->
+            when {
+                pos in holes -> "_"
+                else -> grid.tileAt(pos)?.let { letterById[it] ?: "?$it" } ?: "."
+            }
+        }.trimEnd()
     }
 
     /** A, B, C… by solved home row-major order. */

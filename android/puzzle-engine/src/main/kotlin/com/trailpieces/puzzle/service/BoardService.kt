@@ -54,6 +54,15 @@ data class PuzzleBoard(
             slots.forEach { cells[it.index(cols)] = EMPTY }
         }
 
+        // Freeze lock partitions at pointer-down (pre-lift geometry). Mid-drag
+        // make-way may park resting tiles into lock geometry; those contacts
+        // stay loose until settle recomputes on finger-up. Committed groups
+        // remain rigid for the whole drag via this snapshot.
+        val dragLocks = if (enforceRigidLocks) {
+            FrozenLockGraph.freeze(grid, manifest)
+        } else {
+            FrozenLockGraph.isolated(manifest)
+        }
         return DragSession(
             grid = gridWithHoles,
             liftedTileIds = lifted,
@@ -62,6 +71,7 @@ data class PuzzleBoard(
             committedAnchor = anchor,
             manifest = manifest,
             enforceRigidLocks = enforceRigidLocks,
+            frozenLocks = dragLocks,
         )
     }
 

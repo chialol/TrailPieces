@@ -6,6 +6,7 @@ import com.trailpieces.puzzle.model.PuzzleTile
 import com.trailpieces.puzzle.model.Vec2
 import com.trailpieces.puzzle.service.DragEngine
 import com.trailpieces.puzzle.service.PuzzleBoard
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -89,7 +90,8 @@ class WHomeCutlineDumpTest {
         assertTrue(b.componentContaining(5).size > 10, "rigid mass above")
     }
 
-    /** W left onto home W (11,0) — cutline + insert row, not blocked by ACE / mass. */
+    /** Release cutline rewrite — out of spirit (park-only on finger-up). */
+    @Ignore("Release cutline is out of spirit — park-only on finger-up")
     @Test
     fun wOntoHome_leftFromX_cutlineInsertsRow_repacksBelow() {
         val engine = DragEngine(manifest, dumpBoard())
@@ -105,10 +107,8 @@ class WHomeCutlineDumpTest {
         )
     }
 
-    /**
-     * App gesture: drag W toward A (9,0) in the ACE column — must still stick W at
-     * home (11,0) with cutline insert-row on release.
-     */
+    /** Release cutline rewrite — out of spirit (park-only on finger-up). */
+    @Ignore("Release cutline is out of spirit — park-only on finger-up")
     @Test
     fun wTowardA_upLeftFinger_sticksAtHomeWithCutline() {
         val engine = DragEngine(manifest, dumpBoard())

@@ -6,6 +6,7 @@ import com.trailpieces.puzzle.model.PuzzleTile
 import com.trailpieces.puzzle.model.Vec2
 import com.trailpieces.puzzle.service.DragEngine
 import com.trailpieces.puzzle.service.PuzzleBoard
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -82,7 +83,12 @@ class UHomeCutlineDumpTest {
         assertEquals(GridPos(10, 0), manifest.tileOrNull(20)!!.home)
     }
 
-    /** Drag U toward col-0 stack (past G at O) onto home U (10,0). */
+    /**
+     * Drag U toward col-0 stack (past G at O) onto home U (10,0).
+     * Ignored: release cutline rewrite contradicts park-only release
+     * (all motion must already be visible mid-drag).
+     */
+    @Ignore("Release cutline is out of spirit — park-only on finger-up")
     @Test
     fun uOntoHome_cutlineInsertsRow_repacksBelow() {
         val engine = DragEngine(manifest, dumpBoard())

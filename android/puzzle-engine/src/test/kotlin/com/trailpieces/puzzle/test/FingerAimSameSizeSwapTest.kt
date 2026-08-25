@@ -5,13 +5,15 @@ import com.trailpieces.puzzle.model.PuzzleManifest
 import com.trailpieces.puzzle.model.PuzzleTile
 import com.trailpieces.puzzle.model.Vec2
 import com.trailpieces.puzzle.service.DragEngine
+import com.trailpieces.puzzle.service.LockGroupService
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Same-size loose tiles need not be each other's homes: if the finger aims at
- * the other tile, settle must swap even when mid-drag axis order is blocked.
+ * Same-size loose tiles: swap must be visible mid-drag when the finger path
+ * reaches the partner in one continuous diagonal (down-then-left). Release
+ * sticks the layout; partners stay loose until settle recomputes locks.
  *
  * ```
  * A B
@@ -64,16 +66,17 @@ class FingerAimSameSizeSwapTest {
     }
 
     @Test
-    fun xOntoK_leftThenDown_swaps() {
+    fun xOntoK_leftThenDown_swapsMidDrag() {
         val engine = DragEngine(manifest, board())
         assertTrue(engine.startDrag(GridPos(1, 1))) // X
         engine.moveFinger(Vec2(-150f, 0f), cell, cell)
         engine.moveFinger(Vec2(0f, 250f), cell, cell)
         engine.moveFinger(Vec2(-100f, 0f), cell, cell)
-        val settled = engine.endDrag()
 
-        BoardAssert.assertTileAt(settled.grid, GridPos(3, 0), 5) // X where K was
-        BoardAssert.assertTileAt(settled.grid, GridPos(1, 1), 6) // K where X was
+        val mid = engine.drag!!
+        assertMidDragSwapVisible(mid)
+        val settled = engine.endDrag()
+        assertSwapLayout(settled)
     }
 
     @Test
@@ -82,9 +85,27 @@ class FingerAimSameSizeSwapTest {
         assertTrue(engine.startDrag(GridPos(1, 1))) // X
         engine.moveFinger(Vec2(0f, 250f), cell, cell)
         engine.moveFinger(Vec2(-250f, 0f), cell, cell)
-        val settled = engine.endDrag()
 
-        BoardAssert.assertTileAt(settled.grid, GridPos(3, 0), 5)
-        BoardAssert.assertTileAt(settled.grid, GridPos(1, 1), 6)
+        val mid = engine.drag!!
+        assertMidDragSwapVisible(mid)
+        val settled = engine.endDrag()
+        assertSwapLayout(settled)
+    }
+
+    /** Swap must be visible while the finger is still down; partners stay loose. */
+    private fun assertMidDragSwapVisible(mid: com.trailpieces.puzzle.service.DragSession) {
+        assertTrue(
+            mid.committedAnchor != mid.startAnchor,
+            "swap must commit mid-drag before release",
+        )
+        BoardAssert.assertEmpty(mid.grid, GridPos(3, 0))
+        BoardAssert.assertTileAt(mid.grid, GridPos(1, 1), 6)
+        val live = LockGroupService.compute(mid.grid, manifest)
+        assertEquals(setOf(6), live.members(6, manifest.tiles.map { it.id }), "K stays loose mid-drag")
+    }
+
+    private fun assertSwapLayout(board: com.trailpieces.puzzle.service.PuzzleBoard) {
+        BoardAssert.assertTileAt(board.grid, GridPos(3, 0), 5) // X where K was
+        BoardAssert.assertTileAt(board.grid, GridPos(1, 1), 6) // K where X was
     }
 }

@@ -3,6 +3,7 @@ package com.trailpieces.puzzle.test
 import com.trailpieces.puzzle.model.AxisDirection
 import com.trailpieces.puzzle.model.GridPos
 import com.trailpieces.puzzle.service.DragSession
+import com.trailpieces.puzzle.service.FrozenLockGraph
 import com.trailpieces.puzzle.service.LockGroupService
 import com.trailpieces.puzzle.service.PuzzleBoard
 import com.trailpieces.puzzle.service.PushService
@@ -66,8 +67,7 @@ class CascadePackRigidGroupTest {
             holes = holes,
             liftedTileIds = lifted,
             direction = AxisDirection.Down,
-            locks = locks,
-            allTileIds = manifest.tiles.map { it.id },
+            locks = FrozenLockGraph.freeze(grid, manifest),
         )
         assertNotNull(pushed, "Pack push should succeed")
 

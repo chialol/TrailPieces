@@ -70,9 +70,7 @@ class SlotGrid(
      * is preserved. No-op if nothing to remove.
      */
     fun collapseEmptyRows(): SlotGrid {
-        val kept = (0 until rows).filter { row ->
-            (0 until cols).any { col -> cells[row * cols + col] != EMPTY }
-        }
+        val kept = keptRowIndices()
         if (kept.size == rows) return this
         if (kept.isEmpty()) return empty(cols, 1)
         val next = IntArray(cols * kept.size) { EMPTY }
@@ -83,6 +81,26 @@ class SlotGrid(
         }
         return SlotGrid(cols, kept.size, next)
     }
+
+    /** Old row index → new row index; `-1` if that row was fully empty and removed. */
+    fun rowCollapseMap(): IntArray {
+        val kept = keptRowIndices()
+        val map = IntArray(rows) { -1 }
+        kept.forEachIndexed { newRow, oldRow -> map[oldRow] = newRow }
+        return map
+    }
+
+    fun remapRow(pos: GridPos, rowMap: IntArray): GridPos? {
+        if (pos.row !in rowMap.indices) return null
+        val newRow = rowMap[pos.row]
+        if (newRow < 0) return null
+        return GridPos(newRow, pos.col)
+    }
+
+    private fun keptRowIndices(): List<Int> =
+        (0 until rows).filter { row ->
+            (0 until cols).any { col -> cells[row * cols + col] != EMPTY }
+        }
 
     /** Slots with no tile — the holes left while a component is lifted. */
     fun emptySlots(): Set<GridPos> = buildSet {

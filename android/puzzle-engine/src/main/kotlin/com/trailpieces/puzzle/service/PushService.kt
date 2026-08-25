@@ -32,8 +32,7 @@ object PushService {
         holes: Set<GridPos>,
         liftedTileIds: Set<Int>,
         direction: AxisDirection,
-        locks: LockGroupService,
-        allTileIds: Iterable<Int>,
+        locks: FrozenLockGraph,
     ): PushResult? {
         if (holes.isEmpty()) return null
 
@@ -51,16 +50,15 @@ object PushService {
             return PushResult(grid, stepped)
         }
 
-        PlacementService.trySameSizeSwap(
+        AxisMotion.trySameSizeSwap(
             grid = grid,
             holes = holes,
             stepped = stepped,
             liftedTileIds = liftedTileIds,
             locks = locks,
-            allTileIds = allTileIds,
         )?.let { return it }
 
-        val moves = planMovesWithMakeWay(grid, holes, liftedTileIds, locks, allTileIds, direction)
+        val moves = planMovesWithMakeWay(grid, holes, liftedTileIds, locks, direction)
         if (moves != null && moves.isNotEmpty() && validateMoves(grid, moves, liftedTileIds)) {
             val cleared = clearFootprintLanding(
                 grid = grid,
@@ -69,7 +67,6 @@ object PushService {
                 primaryMoves = moves,
                 liftedTileIds = liftedTileIds,
                 locks = locks,
-                allTileIds = allTileIds,
             )
             if (cleared != null) {
                 val next = applyMoves(grid, cleared)
@@ -80,14 +77,13 @@ object PushService {
 
         // Larger rigid mass blocked make-way/tunnel: still allow nearest same-size
         // CC further along the axis (e.g. singleton past a locked wall).
-        return PlacementService.tryNearestSameSizeSwapAlongAxis(
+        return AxisMotion.tryNearestSameSizeSwapAlongAxis(
             grid = grid,
             holes = holes,
             liftedTileIds = liftedTileIds,
             locks = locks,
-            allTileIds = allTileIds,
             direction = direction,
-        ) ?: PlacementService.tryNearestEmptyAlongAxis(
+        ) ?: AxisMotion.tryNearestEmptyAlongAxis(
             grid = grid,
             holes = holes,
             liftedTileIds = liftedTileIds,
@@ -106,8 +102,7 @@ object PushService {
         direction: AxisDirection,
         primaryMoves: List<TileMove>,
         liftedTileIds: Set<Int>,
-        locks: LockGroupService,
-        allTileIds: Iterable<Int>,
+        locks: FrozenLockGraph,
     ): List<TileMove>? {
         val afterPrimary = applyMoves(grid, primaryMoves)
         if (resolveNewHoles(holes, direction, afterPrimary) != null) {
@@ -138,7 +133,7 @@ object PushService {
 
         for (blockerId in blockerIds) {
             if (blockerId in handled) continue
-            val group = locks.members(blockerId, allTileIds)
+            val group = locks.members(blockerId)
                 .filter { it !in liftedTileIds && grid.slotOfOrNull(it) != null }
                 .toSet()
             if (group.isEmpty()) return null
@@ -286,8 +281,7 @@ object PushService {
         grid: SlotGrid,
         holes: Set<GridPos>,
         liftedTileIds: Set<Int>,
-        locks: LockGroupService,
-        allTileIds: Iterable<Int>,
+        locks: FrozenLockGraph,
         direction: AxisDirection,
     ): List<TileMove>? {
         val planned = mutableListOf<TileMove>()
@@ -302,7 +296,7 @@ object PushService {
             if (tileId in liftedTileIds) return null
             if (tileId in handledTiles) continue
 
-            val group = locks.members(tileId, allTileIds)
+            val group = locks.members(tileId)
                 .filter { it !in liftedTileIds && grid.slotOfOrNull(it) != null }
                 .toSet()
             if (group.isEmpty()) return null
@@ -358,7 +352,7 @@ object PushService {
                 if (occupant in movers || occupant in liftedTileIds) continue
                 if (planned.any { it.from == move.to && it.tileId == occupant }) continue
 
-                val blockerGroup = locks.members(occupant, allTileIds)
+                val blockerGroup = locks.members(occupant)
                     .filter { it !in liftedTileIds && grid.slotOfOrNull(it) != null }
                     .toSet()
                 // Blockers that are locked with nowhere to go → fail (caller may insert a row)

@@ -46,6 +46,11 @@ class DragEngine(
     private var lastCellWidthPx: Float = 0f
     private var lastCellHeightPx: Float = 0f
 
+    /** Recent start / commit / release steps for debug dumps. */
+    val dragTrace = DragTrace()
+
+    fun clearDragTrace() = dragTrace.clear()
+
     fun reshuffle() {
         cancelDragSafely()
         board = runSafely { ShuffleService.shuffled(manifest) } ?: board
@@ -65,6 +70,13 @@ class DragEngine(
             }
             drag = session
             fingerDeltaPx = Vec2.Zero
+            val letters = BoardDebug.homeOrderLetters(manifest)
+            val lifted = session.liftedTileIds.sorted().joinToString("") { letters[it] ?: "?$it" }
+            dragTrace.record(
+                kind = "start",
+                note = "lift {$lifted} at $origin → holes=${session.targetSlots}",
+                gridBrief = BoardDebug.gridBrief(session.grid, manifest, session.targetSlots),
+            )
             true
         } ?: false
     }
@@ -88,7 +100,12 @@ class DragEngine(
         if (drag == null) return board
         return runSafely {
             val active = drag ?: return@runSafely board
-            board = PlacementService.settlePreferred(
+            dragTrace.record(
+                kind = "release-before-settle",
+                note = "committed=${active.committedAnchor} finger=$fingerDeltaPx",
+                gridBrief = BoardDebug.gridBrief(active.grid, manifest, active.targetSlots),
+            )
+            board = SettleService.settle(
                 session = active,
                 fingerDeltaPx = fingerDeltaPx,
                 cellWidthPx = lastCellWidthPx,
@@ -98,6 +115,11 @@ class DragEngine(
             drag = null
             fingerDeltaPx = Vec2.Zero
             boardBeforeDrag = null
+            dragTrace.record(
+                kind = "release-after-settle",
+                note = "board ${board.cols}x${board.rows}",
+                gridBrief = BoardDebug.gridBrief(board.grid, manifest),
+            )
             board
         } ?: run {
             cancelDragSafely()
@@ -138,28 +160,14 @@ class DragEngine(
             )
             if (homeSwap != null) {
                 if (restingOccupancyChanged(active, homeSwap)) restingImpacts++
+                recordCommit("home-swap", active, homeSwap)
                 drag = homeSwap
                 pushCount++
                 continue
             }
 
-            // Finger-aim empty (singleton) or same-size swap before axis push.
-            val aimEmpty = active.tryFingerAimEmptyLand(fingerDeltaPx, cellWidthPx, cellHeightPx)
-            if (aimEmpty != null &&
-                PlacementService.fingerCoversAnchor(
-                    active,
-                    aimEmpty.committedAnchor,
-                    fingerDeltaPx,
-                    cellWidthPx,
-                    cellHeightPx,
-                )
-            ) {
-                if (restingOccupancyChanged(active, aimEmpty)) restingImpacts++
-                drag = aimEmpty
-                pushCount++
-                continue
-            }
-
+            // Same-size swap before empty-land — swap must win when the finger
+            // aims at an occupied congruent tile, not park on a vacated cell beside it.
             val aimSwap = active.tryFingerAimSameSizeSwap(fingerDeltaPx, cellWidthPx, cellHeightPx)
             if (aimSwap != null &&
                 hasOffAxisFingerAim(active, fingerDeltaPx, cellWidthPx, cellHeightPx) &&
@@ -172,7 +180,25 @@ class DragEngine(
                 )
             ) {
                 if (restingOccupancyChanged(active, aimSwap)) restingImpacts++
+                recordCommit("aim-swap", active, aimSwap)
                 drag = aimSwap
+                pushCount++
+                continue
+            }
+
+            val aimEmpty = active.tryFingerAimEmptyLand(fingerDeltaPx, cellWidthPx, cellHeightPx)
+            if (aimEmpty != null &&
+                PlacementService.fingerCoversAnchor(
+                    active,
+                    aimEmpty.committedAnchor,
+                    fingerDeltaPx,
+                    cellWidthPx,
+                    cellHeightPx,
+                )
+            ) {
+                if (restingOccupancyChanged(active, aimEmpty)) restingImpacts++
+                recordCommit("aim-empty", active, aimEmpty)
+                drag = aimEmpty
                 pushCount++
                 continue
             }
@@ -198,6 +224,7 @@ class DragEngine(
                 val needed = (jump - PUSH_THRESHOLD) * cellSize
                 if (signed > needed) {
                     if (restingOccupancyChanged(active, emptyJump)) restingImpacts++
+                    recordCommit("empty-jump-$direction", active, emptyJump)
                     drag = emptyJump
                     pushCount++
                     continue
@@ -213,10 +240,19 @@ class DragEngine(
             if (signed <= needed) break
 
             if (restingOccupancyChanged(active, candidate)) restingImpacts++
+            recordCommit("push-$direction", active, candidate)
             drag = candidate
             pushCount++
         }
         return restingImpacts
+    }
+
+    private fun recordCommit(kind: String, before: DragSession, after: DragSession) {
+        dragTrace.record(
+            kind = "commit:$kind",
+            note = "${before.committedAnchor} → ${after.committedAnchor}",
+            gridBrief = BoardDebug.gridBrief(after.grid, manifest, after.targetSlots),
+        )
     }
 
     /**

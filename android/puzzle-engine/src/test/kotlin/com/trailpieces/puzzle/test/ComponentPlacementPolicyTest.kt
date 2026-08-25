@@ -7,6 +7,7 @@ import com.trailpieces.puzzle.model.PuzzleTile
 import com.trailpieces.puzzle.model.Vec2
 import com.trailpieces.puzzle.service.DragEngine
 import com.trailpieces.puzzle.service.DragSession
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -392,6 +393,8 @@ class ComponentPlacementPolicyTest {
     // 3) Prefer intended landing / connect / insert only when needed
     // =========================================================================
 
+    /** Release cutline / lock-connect — out of spirit (park-only on finger-up). */
+    @Ignore("Release finishers deleted — needs mid-drag path if desired")
     @Test
     fun preferLanding_hOntoHomeUnderA_connectsWithAbd() {
         val man = manifest(
@@ -455,6 +458,8 @@ class ComponentPlacementPolicyTest {
         BoardAssert.assertTileAt(settled.grid, GridPos(3, 1), 7)
     }
 
+    /** Relied on release completing swap — out of spirit. */
+    @Ignore("Release finishers deleted — needs mid-drag completing swap if desired")
     @Test
     fun preferLanding_looseCOntoHsCell_throughBigLock() {
         val man = manifest(

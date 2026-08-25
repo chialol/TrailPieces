@@ -94,8 +94,10 @@ class DragEngineTest {
     @Test
     fun multiCellPushInOneMoveReportsOneRestingImpactPerCommit() {
         val e = engine(
-            // 5 above unlocked 3 above unlocked 4 — two Down pushes
-            PuzzleFixtures.boardFromRowMajor(manifest, listOf(5, 1, 3, 2, 4, 0)),
+            // 5 above unlocked 3 above unlocked 0 — two Down pushes.
+            // F's home is (2,1); keep a non-completing occupant there so
+            // mid-drag completing-home swap does not steal the column push.
+            PuzzleFixtures.boardFromRowMajor(manifest, listOf(5, 1, 3, 2, 0, 4)),
         )
         assertTrue(e.startDrag(GridPos(0, 0)))
         val move = e.moveFinger(Vec2(0f, 160f), cell, cell)
@@ -146,8 +148,8 @@ class DragEngineTest {
     @Test
     fun largeFingerMovePushesMultipleCells() {
         val e = engine(
-            // 5 above unlocked 3 above unlocked 4 — two Down pushes
-            PuzzleFixtures.boardFromRowMajor(manifest, listOf(5, 1, 3, 2, 4, 0)),
+            // Same column stack as multiCellPush… — see note there.
+            PuzzleFixtures.boardFromRowMajor(manifest, listOf(5, 1, 3, 2, 0, 4)),
         )
         assertTrue(e.startDrag(GridPos(0, 0)))
         e.moveFinger(Vec2(0f, 160f), cell, cell)

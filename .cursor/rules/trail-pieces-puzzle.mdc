@@ -26,7 +26,7 @@ Do **not** jump straight to Compose tweaks for logic bugs (locks, push, peel, tu
 - Dragging lifts a **lock group** (correct relative neighbors).
 - Push is axis-aligned. Resting lock groups are **rigid** (no peel).
 - Prefer in-place rigid shift + make-way; if Up is blocked by a group that cannot make way, **insert an empty row above** and park there (no new columns).
-- Fully empty rows **collapse** on settle.
+- Fully empty rows **collapse** on settle and after each mid-drag commit (no spacer rows to block future locks — locking commits on finger-up only).
 - Footprint may slide into **persistent empties**.
 - Tunneling through an axial group can advance the hole by more than one cell in one push.
 
@@ -47,6 +47,7 @@ When the user reports twitching, the lift **shifting under the finger**, **early
 - Locks = adjacent tiles whose **slot offset equals home offset** (not “touching” alone).
 - Swapped neighbors often **do not** lock (signed offset mismatch).
 - After a move, unexpected tiles may join a lock group by geometry — assert “still connected” carefully, not always exact set equality.
+- **Lock commit on settle**: `DragSession.locks` is the pointer-down partition. Mid-drag push/swap use that freeze only (no live recompute) so accidental contacts stay loose and committed groups cannot peel. Settle recomputes from final geometry.
 - Shuffle must use `enforceRigidLocks = false` / isolated locks or scramble cannot peel.
 
 ## Letter grid (tests & discussion)
