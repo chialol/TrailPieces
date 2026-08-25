@@ -78,6 +78,7 @@ private val OffsetVectorConverter = TwoWayConverter<Offset, AnimationVector2D>(
 fun PuzzleScreen(
     manifest: PuzzleManifest,
     initialBoard: PuzzleBoard? = null,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var shuffleSeed by remember(manifest) { mutableIntStateOf(0) }
@@ -214,6 +215,15 @@ fun PuzzleScreen(
             modifier = Modifier.padding(top = 8.dp),
         ) {
             Text("Debug dump")
+        }
+
+        if (onBack != null) {
+            Button(
+                onClick = onBack,
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                Text("Back to menu")
+            }
         }
     }
 }
@@ -467,7 +477,10 @@ private fun Modifier.lockedTileStyle(): Modifier = graphicsLayer {
 }
 
 @Composable
-fun MissingPuzzleScreen(modifier: Modifier = Modifier) {
+fun MissingPuzzleScreen(
+    onBack: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -495,5 +508,13 @@ fun MissingPuzzleScreen(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 24.dp),
         )
+        if (onBack != null) {
+            Button(
+                onClick = onBack,
+                modifier = Modifier.padding(top = 24.dp),
+            ) {
+                Text("Back to menu")
+            }
+        }
     }
 }

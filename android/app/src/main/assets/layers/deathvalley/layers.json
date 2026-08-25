@@ -1,0 +1,102 @@
+{
+  "id": "deathvalley",
+  "title": "Death Valley",
+  "mode": "layers",
+  "width": 1080,
+  "height": 1620,
+  "previewFile": "preview.webp",
+  "layerFormat": "webp",
+  "layerQuality": 85,
+  "reference": {
+    "sourceFile": "deathvalley.jpg",
+    "sourceWidth": 4000,
+    "sourceHeight": 6000
+  },
+  "mutedTraySaturation": 0.35,
+  "colorControl": {
+    "runtime": true,
+    "note": "Adjust saturation/warmth in the app via ColorMatrix; tray assets are optionally pre-muted only."
+  },
+  "layers": [
+    {
+      "id": 1,
+      "file": "layers/layer_01.webp",
+      "trayFile": "tray/layer_01.webp",
+      "bbox": {
+        "left": 0,
+        "top": 0,
+        "right": 1080,
+        "bottom": 1312
+      },
+      "coverage": 0.3103,
+      "sourceFile": "deathvalley-1.jpg",
+      "sourceWidth": 4000,
+      "sourceHeight": 6000,
+      "mask": "reference"
+    },
+    {
+      "id": 2,
+      "file": "layers/layer_02.webp",
+      "trayFile": "tray/layer_02.webp",
+      "bbox": {
+        "left": 0,
+        "top": 458,
+        "right": 1080,
+        "bottom": 1312
+      },
+      "coverage": 0.0902,
+      "sourceFile": "deathvalley-2.jpg",
+      "sourceWidth": 4000,
+      "sourceHeight": 6000,
+      "mask": "reference"
+    },
+    {
+      "id": 3,
+      "file": "layers/layer_03.webp",
+      "trayFile": "tray/layer_03.webp",
+      "bbox": {
+        "left": 0,
+        "top": 503,
+        "right": 831,
+        "bottom": 1312
+      },
+      "coverage": 0.1466,
+      "sourceFile": "deathvalley-3.jpg",
+      "sourceWidth": 4000,
+      "sourceHeight": 6000,
+      "mask": "reference"
+    },
+    {
+      "id": 4,
+      "file": "layers/layer_04.webp",
+      "trayFile": "tray/layer_04.webp",
+      "bbox": {
+        "left": 0,
+        "top": 695,
+        "right": 1080,
+        "bottom": 1312
+      },
+      "coverage": 0.2271,
+      "sourceFile": "deathvalley-4.jpg",
+      "sourceWidth": 4000,
+      "sourceHeight": 6000,
+      "mask": "reference"
+    },
+    {
+      "id": 5,
+      "file": "layers/layer_05.webp",
+      "trayFile": "tray/layer_05.webp",
+      "bbox": {
+        "left": 0,
+        "top": 1091,
+        "right": 1080,
+        "bottom": 1620
+      },
+      "coverage": 0.2367,
+      "sourceFile": "deathvalley-5.jpg",
+      "sourceWidth": 4000,
+      "sourceHeight": 6000,
+      "mask": "reference"
+    }
+  ]
+}

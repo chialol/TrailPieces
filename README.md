@@ -29,3 +29,11 @@ See [android/README.md](android/README.md) for detailed setup and troubleshootin
 1. Drop a portrait photo in **`shared/source/`** (e.g. `shared/source/trail.jpg`).
 2. Run the chop script — see [tools/chop_puzzle/README.md](tools/chop_puzzle/README.md).
 3. Rebuild/run the Android app. Tiles land in `android/app/src/main/assets/puzzles/default/`.
+
+## Adding layered scene images
+
+1. Drop `{stem}.jpg` (optional) plus `{stem}-1.jpg` … `{stem}-N.jpg` in **`shared/source/`**.
+2. Run [tools/prep_layers/README.md](tools/prep_layers/README.md).
+3. Rebuild/run. Assets land in `android/app/src/main/assets/layers/{stem}/`.
+
+The app home menu chooses **Trail puzzle** (existing) or **Layers (new)** (placeholder UI for now).
