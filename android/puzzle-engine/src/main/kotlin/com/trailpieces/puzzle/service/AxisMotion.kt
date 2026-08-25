@@ -12,6 +12,33 @@ import com.trailpieces.puzzle.model.step
  */
 object AxisMotion {
 
+    /**
+     * Occupants of [landing] that can translate as a footprint without peeling
+     * frozen locks. Allows several loose tiles filling the cells, or one lock
+     * group of the same shape — not a partial peel of a larger group.
+     */
+    fun congruentFootprintIds(
+        grid: SlotGrid,
+        landing: Set<GridPos>,
+        liftedTileIds: Set<Int>,
+        locks: FrozenLockGraph,
+    ): Set<Int>? {
+        if (landing.isEmpty() || landing.any { !grid.inBounds(it) }) return null
+        val contactIds = landing.mapNotNull { pos ->
+            grid.tileAt(pos)?.takeIf { it !in liftedTileIds }
+        }.toSet()
+        if (contactIds.size != landing.size) return null
+        for (id in contactIds) {
+            val group = locks.members(id)
+                .filter { it !in liftedTileIds && grid.slotOfOrNull(it) != null }
+                .toSet()
+            if (!group.all { it in contactIds }) return null
+        }
+        val slots = contactIds.map { grid.slotOf(it) }.toSet()
+        if (slots != landing) return null
+        return contactIds
+    }
+
     fun trySameSizeSwap(
         grid: SlotGrid,
         holes: Set<GridPos>,
@@ -22,19 +49,9 @@ object AxisMotion {
         if (holes.isEmpty() || stepped.size != holes.size) return null
         if (stepped.any { !grid.inBounds(it) }) return null
 
-        val contactIds = stepped.mapNotNull { pos ->
-            grid.tileAt(pos)?.takeIf { it !in liftedTileIds }
-        }.toSet()
-        if (contactIds.isEmpty()) return null
-
-        val seed = contactIds.first()
-        val group = locks.members(seed)
-            .filter { it !in liftedTileIds && grid.slotOfOrNull(it) != null }
-            .toSet()
+        val group = congruentFootprintIds(grid, stepped, liftedTileIds, locks) ?: return null
         if (group.size != holes.size) return null
-        if (!contactIds.all { it in group }) return null
         val groupSlots = group.map { grid.slotOf(it) }.toSet()
-        if (groupSlots != stepped) return null
         val shift = GridGeometry.translation(holes, groupSlots) ?: return null
         val destinations = group.map { id ->
             val from = grid.slotOf(id)

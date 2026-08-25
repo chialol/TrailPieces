@@ -91,12 +91,8 @@ object MidDragMotion {
             .toSet()
         if (landing.any { !session.grid.inBounds(it) }) return null
         if (!PlacementService.isSameSizeLanding(session, landing)) return null
-        if (PlacementService.isHomeLanding(session, landing) &&
-            PlacementService.shouldCutlineHomeInsteadOfSwap(session, landing) &&
-            !PlacementService.sameSizeSwapCompletesHomes(session, landing)
-        ) {
-            return null
-        }
+        // Home landings are allowed mid-drag: park-only release means the swap
+        // must already be visible. Never veto with settle-era cutline preference.
 
         val partnerHoles = swapPartnerHoles(session, anchor)
         var work = session.grid
@@ -148,7 +144,10 @@ object MidDragMotion {
     ): PushResult? {
         val home = PlacementService.homeAnchorForSettle(session) ?: return null
         if (home == session.startAnchor) return null
-        if (!PlacementService.fingerCoversHomeDominant(
+        // Full anchor cover (all axes), not dominant-only — otherwise a mostly
+        // vertical drag can snipe a sideways home swap, then residual push-Left
+        // undoes it in a haptic jitter loop.
+        if (!PlacementService.fingerCoversAnchor(
                 session, home, fingerDeltaPx, cellWidthPx, cellHeightPx,
             )
         ) {
@@ -252,19 +251,9 @@ object MidDragMotion {
         liftedTileIds: Set<Int>,
         locks: FrozenLockGraph,
     ): SlotGrid? {
-        val contactIds = landing.mapNotNull { pos ->
-            grid.tileAt(pos)?.takeIf { it !in liftedTileIds }
-        }.toSet()
-        if (contactIds.isEmpty()) return null
-
-        val seed = contactIds.first()
-        val group = locks.members(seed)
-            .filter { it !in liftedTileIds && grid.slotOfOrNull(it) != null }
-            .toSet()
+        val group = AxisMotion.congruentFootprintIds(grid, landing, liftedTileIds, locks) ?: return null
         if (group.size != landing.size) return null
-        if (!contactIds.all { it in group }) return null
         val groupSlots = group.map { grid.slotOf(it) }.toSet()
-        if (groupSlots != landing) return null
         val shift = GridGeometry.translation(groupSlots, holes) ?: return null
         val destinations = group.map { id ->
             val from = grid.slotOf(id)

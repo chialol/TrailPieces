@@ -151,22 +151,16 @@ object PlacementService {
         originalBoard: PuzzleBoard? = null,
     ): PuzzleBoard = SettleService.settle(session, fingerDeltaPx, cellWidthPx, cellHeightPx, originalBoard)
 
-    /** True when landing cells are exactly one resting CC congruent to the lift. */
+    /** True when landing cells are a congruent footprint (loose tiles or one CC). */
     internal fun isSameSizeLanding(session: DragSession, landing: Set<GridPos>): Boolean {
-        val locks = session.rigidLocks()
-        val allIds = session.manifest.tiles.map { it.id }
-        val contactIds = landing.mapNotNull { pos ->
-            session.grid.tileAt(pos)?.takeIf { it !in session.liftedTileIds }
-        }.toSet()
-        if (contactIds.isEmpty()) return false
-        val seed = contactIds.first()
-        val group = locks.members(seed)
-            .filter { it !in session.liftedTileIds && session.grid.slotOfOrNull(it) != null }
-            .toSet()
+        val group = AxisMotion.congruentFootprintIds(
+            grid = session.grid,
+            landing = landing,
+            liftedTileIds = session.liftedTileIds,
+            locks = session.rigidLocks(),
+        ) ?: return false
         if (group.size != session.liftedTileIds.size) return false
-        if (!contactIds.all { it in group }) return false
-        val groupSlots = group.mapNotNull { session.grid.slotOfOrNull(it) }.toSet()
-        return groupSlots == landing && GridGeometry.translation(groupSlots, session.targetSlots) != null
+        return GridGeometry.translation(landing, session.targetSlots) != null
     }
 
     internal fun targetAlongFingerPathForSettle(
