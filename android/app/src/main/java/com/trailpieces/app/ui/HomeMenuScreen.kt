@@ -54,7 +54,7 @@ fun HomeMenuScreen(
                 .fillMaxWidth()
                 .padding(vertical = 6.dp),
         ) {
-            Text("Layers (new)")
+            Text("Develop a print")
         }
     }
 }

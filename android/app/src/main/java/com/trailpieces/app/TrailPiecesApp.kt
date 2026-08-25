@@ -10,9 +10,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.trailpieces.app.layers.LayersScreen
 import com.trailpieces.app.puzzle.PuzzleLoader
 import com.trailpieces.app.ui.HomeMenuScreen
-import com.trailpieces.app.ui.LayersPlaceholderScreen
 import com.trailpieces.app.ui.MissingPuzzleScreen
 import com.trailpieces.app.ui.PuzzleScreen
 import com.trailpieces.puzzle.demo.CascadeDemo
@@ -72,7 +72,7 @@ fun TrailPiecesApp() {
                 }
             }
             AppDestination.LayersConcept -> {
-                LayersPlaceholderScreen(
+                LayersScreen(
                     onBack = { destination = AppDestination.Menu },
                     modifier = contentModifier,
                 )
