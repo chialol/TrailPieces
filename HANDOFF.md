@@ -2,9 +2,12 @@
 
 Last updated: 2026-08-24
 
-Use this doc to onboard a fresh agent session. Gameplay rules live in **`:puzzle-engine`**; Compose + gestures in **`:app`**.
+Use this to onboard a fresh agent session. Gameplay rules live in **`:puzzle-engine`**; Compose + gestures in **`:app`**.
 
-**Architecture (canonical — confirm all refactors against this):** [`docs/puzzle-architecture.md`](docs/puzzle-architecture.md)
+**Canonical architecture (confirm every change against this):**  
+[`docs/puzzle-architecture.md`](docs/puzzle-architecture.md)
+
+**Agent always-on rules:** [`.cursor/rules/trail-pieces-puzzle.mdc`](.cursor/rules/trail-pieces-puzzle.mdc)
 
 ---
 
@@ -12,96 +15,72 @@ Use this doc to onboard a fresh agent session. Gameplay rules live in **`:puzzle
 
 | Module | Responsibility |
 |--------|----------------|
-| **`:puzzle-engine`** | Pure JVM Kotlin — models, `PushService`, `DragSession`, `DragEngine`, `PlacementService`, `LockGroupService`, `ShuffleService`. All rules here. |
+| **`:puzzle-engine`** | Pure JVM Kotlin — models, mid-drag motion, park-only settle, locks, shuffle. All rules here. |
 | **`:app`** | Compose UI, `PuzzleGame` facade, `PuzzleScreen` gestures. **No** push/lock/settle logic in UI. |
 
 - **Manifest** (`PuzzleManifest.rows`) = solved puzzle height.
-- **Playfield** (`SlotGrid.rows`) may grow taller mid-drag (insert-row / cutline). UI must draw **`drag.grid.rows`**, not only manifest height.
-- **Persistent empties** = empty cells in rows that still have tiles (shown as `.` in debug). Not the same as lift hole (`_`).
+- **Playfield** (`SlotGrid.rows`) may grow mid-drag (insert-row). UI must draw **`drag.grid.rows` / resting grid height**, not only manifest height.
+- **Persistent empties** = empty cells in rows that still have tiles (debug `.`). Lift hole = `_`.
 
 ---
 
-## Core principles (product intent)
+## Core principles (product)
 
-### 1. WYSIWYG settle — “what you see is what you get”
+### 1. Park-only release (what you see is what you get)
 
-**Default:** The board at finger-up must match the mid-drag committed layout. On release, only **lock groups** recompute from final tile positions.
+Finger-up **never** rewrites resting tiles.
 
-- Mid-drag **committed anchor** (`DragSession.committedAnchor`) is the truth for where the lift lands.
-- `settlePreferred()` **baselines on `session.settlePlain()`** — park lifted tiles on committed holes, then collapse fully empty rows.
-- Do **not** re-place from `originalBoard` in a way that shuffles resting tiles the user already saw.
+- Mid-drag **`committedAnchor`** is where the lift lands.
+- `SettleService` / `DragSession.settle` / `endDrag` → **`ParkLifted` only** (park lift on holes → collapse empty rows → recompute locks).
+- **No** settle cutline, completing-swap, lock-connect, finger-aim re-place, score loop, or `originalBoard` replay.
 
-**Blocked on release (when `committedAnchor ≠ startAnchor`):**
+If a finish should exist, it must already be visible **mid-drag**.
 
-- **Latent home snap** — finger moved toward a tile’s correct slot but mid-drag committed elsewhere (e.g. S under Q at `(10,0)` while finger points home `(9,0)`). Old code scored +55 and rubber-banded; now guarded in `PlacementService.consider()`.
-
-**Still allowed on release (explicit upgrades only):**
-
-| Upgrade | Plain English | When |
-|---------|---------------|------|
-| **Cutline land** | Insert a blank row, repack below, land on correct slot | Finger clearly covers home; blocked landing needs row growth |
-| **Lock-connect land** | Land on correct slot and join neighbors (e.g. H under A) | `lockCompletingJoinsKeptAbove` + finger covers home |
-| **Completing-home swap** | Same-size swap that finishes both groups’ homes | Solves puzzle; finger toward home |
-| **Finger-aim swap** | Off-axis swap onto aimed tile | Usually when mid-drag did not complete swap layout |
-
-See `PlacementService.settlePreferred()` WYSIWYG guard (~line 433).
+Compare debug: `release-before-settle` vs `release-after-settle` — resting positions match except lift parked on `_`, locks recomputed, fully empty rows collapsed.
 
 ### 2. Locks commit on finger-up only
 
-- **`DragSession.locks`** = lock partition **frozen at pointer-down** (`BoardService.beginDrag`).
-- Mid-drag push / swap / make-way uses **`session.rigidLocks()`** only — not live `LockGroupService.compute`.
-- **Accidental** correct adjacency mid-drag must **not** rigidize (no mega-groups, no peel of pointer-down groups).
-- **Settle** recomputes locks from final geometry — new connections appear **after** release.
+- **`DragSession.frozenLocks`** = partition frozen at pointer-down (`beginDrag`).
+- Mid-drag uses **`session.rigidLocks()`** (`FrozenLockGraph`) only — never live `LockGroupService.compute`.
+- Accidental adjacency mid-drag does **not** rigidize.
+- **`ParkLifted`** recomputes locks from final geometry.
 
 Tests: `LockCommitOnSettleTest.kt`
 
-### 3. Mid-drag swap is visible; connection waits for release
+### 3. Swaps and pushes are mid-drag
 
-- Same-size swaps should appear **while the finger is down** (partner in pickup spot, hole where they were).
-- Partners stay **loose** mid-drag (frozen lock snapshot).
-- On release, layout sticks; neighbors may **connect** if geometry matches home offsets.
+- Same-size / completing-home swaps should appear **while the finger is down**.
+- Partners stay loose mid-drag (frozen locks); connections appear after park.
 
-**Mid-drag commit order** (`DragEngine.advancePushes`):
+**`DragEngine.advancePushes` order (approx.):** completing-home swap → aim-swap → aim-empty → axis push / tunnel.
 
-1. Completing-home swap  
-2. **Aim-swap** (same-size onto occupied aim) — **before** aim-empty  
-3. Aim-empty  
-4. Axis push / empty-jump / tunnel  
-
-**Partner parking for aim-swap** (`PlacementService.swapPartnerHoles`):
-
-- Moved **≥ 2 cells** from pickup → partner goes to **original pickup footprint** (X onto K after down-then-left).
-- Moved **1 cell** → partner uses **committed lift holes** (S under Q, U onto X).
-
-Evacuate occupants from pickup cells before off-axis swap when needed (`evacuatePartnerHoles`).
+Partner parking for aim-swap: see `MidDragMotion.swapPartnerHoles` (pickup vs committed holes).
 
 ### 4. Empty rows
 
-- **Fully empty rows always collapse on settle** (`collapseEmptyRows()`). No spacer rows to “reserve” future locks.
-- Locking is a **post-release** concern only.
-- **Mid-drag row collapse** (WYSIWYG height during drag) is **not wired** — attempt broke hole/anchor remap; `SlotGrid.rowCollapseMap()` exists for future work.
+- Fully empty rows **collapse on settle** (`collapseEmptyRows()`).
+- Mid-drag row collapse is **not wired** yet (`SlotGrid.rowCollapseMap()` exists for later).
 
 ### 5. Finger / gesture fidelity
 
-- Lifted tiles follow **total finger delta** from drag start (never snap `fingerDeltaPx` to committed).
-- Multi-cell tunnel/jump: look-ahead — finger must cover `(jump − 0.5) × cell` before commit (1-cell: `> 0.5`).
-- Prefer **nearest** tunnel landing (`PushService.resolveNewHoles`).
-- **Direction lock** within one `moveFinger` call.
-- **UI order:** `endDrag()` **before** `clearFingerDelta()` (`PuzzleScreen.kt`) — settle must see real finger on release.
+- Lift follows **total finger delta** from drag start (never snap `fingerDeltaPx` to committed).
+- Multi-cell look-ahead: residual `> (jump − 0.5) × cell` (1-cell: `> 0.5`).
+- Prefer **nearest** tunnel landing.
+- Direction lock within one `moveFinger` call.
+- UI: `endDrag()` **before** clearing finger delta so settle sees the real finger (park ignores finger for layout, but traces/debug still need it).
 
 ---
 
-## Vocabulary (plain English)
+## Vocabulary
 
 | Term | Meaning |
 |------|---------|
-| **Home** | Where a tile belongs in the **solved** picture (`PuzzleTile.home`). |
-| **Pickup footprint** | Cells where the lift started (`startAnchor` + shape offsets). |
-| **Committed anchor** | Where the engine has committed the lift to land mid-drag. |
-| **Lift hole** | `targetSlots` — cells of committed footprint; debug `_`. |
-| **Cutline land** | Make room on correct slot by inserting a row and pushing mass below. |
-| **Lock-connect** | Land on correct slot and snap to correctly aligned neighbors. |
-| **Persistent empty** | `.` — empty cell in a row that still has other tiles. |
+| **Home** | Solved slot (`PuzzleTile.home`). |
+| **Pickup footprint** | Start cells (`startAnchor` + shape). |
+| **Committed anchor** | Mid-drag land position for the lift. |
+| **Lift hole** | `targetSlots` — debug `_`. |
+| **Persistent empty** | `.` — empty in a non-empty row. |
+| **Park** | Release: fill holes with lift; no resting shuffle. |
 
 ---
 
@@ -109,35 +88,38 @@ Evacuate occupants from pickup cells before off-axis swap when needed (`evacuate
 
 | File | Role |
 |------|------|
-| `DragEngine.kt` | Gesture loop, commit order, trace, `endDrag` → `settlePreferred` |
-| `DragSession.kt` | `locks`, `targetSlots`, `tryPush`, aim-swap/empty, `settlePlain()` |
-| `PlacementService.kt` | Settle scoring, WYSIWYG guard, swap partner holes, cutline/home |
-| `PushService.kt` | Axis push, make-way, tunnel, same-size swap along axis |
+| `DragEngine.kt` | Gesture loop, mid-drag commit order, `endDrag` → `SettleService` |
+| `MidDragMotion.kt` | All layout commits while finger down |
+| `PushService.kt` / `AxisMotion.kt` | Axis push, make-way, tunnel, axis swap |
+| `FrozenLockGraph.kt` | Pointer-down lock snapshot |
+| `DragSession.kt` | Snapshot; delegates to `MidDragMotion`; `settle` → park |
+| `ParkLifted.kt` / `SettleService.kt` | Release = park only |
+| `PlacementService.kt` | Legacy finger math / predicates (shrink) |
 | `BoardService.kt` | `beginDrag` freezes locks |
-| `LockGroupService.kt` | Lock compute (home-offset adjacency) |
-| `BoardDebug.kt` / `DragTrace.kt` | Debug dump + trace ring buffer |
-| `PuzzleScreen.kt` | Draw `restingGrid`, gesture → `PuzzleGame` |
-| `PuzzleGame.kt` | Facade, `debugDump` |
+| `LockGroupService.kt` | Lock compute at rest |
+| `BoardDebug.kt` / `DragTrace.kt` | Debug dump + trace |
+| `PuzzleScreen.kt` / `PuzzleGame.kt` | Draw + facade |
 
 ---
 
-## Test map (priority regressions)
+## Test map (priority)
 
 | Test class | Covers |
 |------------|--------|
-| **`SettleHonorsCommittedTest`** | S under Q, zero/weak/strong finger toward home, scrambled `originalBoard`, empty-hole slide |
-| **`LockCommitOnSettleTest`** | No mid-drag rigidize; locks commit on settle; no peel |
-| **`SettlePreservesMidDragLocksTest`** | Zero-finger settle must not peel lock strip |
-| **`UXEmptyParkSettleTest`** | U onto X — X parks on empty, not dumped on release |
-| **`FingerAimSameSizeSwapTest`** | Mid-drag swap visible (down-then-left); settle layout |
-| **`SwapPartnerHolesTest`** | Pickup vs committed partner holes |
-| **`WHomeCutlineDumpTest` / `UHomeCutlineDumpTest`** | Cutline on release |
-| **`CompletingSameSizeSwapTest`** | C↔J, BDF↔KMO solve on release |
-| **`CollapseEmptyRowOnSettleTest`** | Empty row collapse policy |
+| **`SettleHonorsCommittedTest`** | Park honors mid-drag (S under Q, strong finger, empty slide) |
+| **`SettleBoundaryTest` / `SettleWysiwygGuardTest`** | Settle ≡ `ParkLifted` |
+| **`LockCommitOnSettleTest`** | No mid-drag rigidize; locks on park |
+| **`UXEmptyParkSettleTest`** | Mid-drag park sticks on release |
+| **`FingerAimSameSizeSwapTest`** | Mid-drag swap visible |
+| **`CompletingSameSizeSwapTest`** | Mid-drag completing swap + park (some multi-tile cases `@Ignore`) |
+| **`PushThroughConnectedComponentTest`** | Tunnel / insert-row mid-drag; park on release |
+| **`CollapseEmptyRowOnSettleTest`** | Empty row collapse |
 
-**Workflow for bugs:** reproduce in `puzzle-engine/src/test` → fix engine → `.\gradlew.bat :puzzle-engine:test` → then `assembleDebug` for device feel.
+**Ignored on purpose (wrong spirit or mid-drag not ready):** settle cutline dumps (`U`/`W`/`CorrectPlacement`), some `ComponentPlacementPolicy` prefer-landing settle finishers. Do **not** re-enable by restoring release upgrades.
 
-**Mini board vocabulary:**
+**TDD:** fail a unit test first → fix engine → `.\gradlew.bat :puzzle-engine:test` → then device.
+
+Mini board:
 
 ```
 A B
@@ -145,28 +127,24 @@ C D
 E F
 ```
 
-(`LetterSlots`, `PuzzleFixtures`)
-
 ---
 
 ## Debug trace
 
-`PuzzleGame.debugDump` includes drag trace (oldest → newest):
+`PuzzleGame.debugDump` — oldest → newest:
 
-- `start` — lift + holes (start pinned if ring wraps)
-- `commit:*` — push, aim-empty, aim-swap, empty-jump, home-swap, …
-- `release-before-settle` — `committed=… finger=…` + grid with `_` holes
-- `release-after-settle` — final board + row count
+- `start`, `commit:*`, `release-before-settle`, `release-after-settle`
 
-Compare **[n] release-before-settle** vs **[n+1] release-after-settle**. Resting tile positions should match except: lifted tile parked on `_`, locks recomputed, fully empty rows collapsed.
+Resting tiles must match before/after settle except park + lock recompute + empty-row collapse. Any other jump = architecture violation.
 
 ---
 
-## Known bugs / follow-ups
+## Known follow-ups
 
-1. **Left-then-down vs down-then-left** — indirect gesture paths may shove swap partner before aim-swap; down-then-left shows swap mid-drag reliably; left-then-down may only correct on settle. Reserving pickup footprint for whole drag would fix.
-2. **Mid-drag row collapse** — not wired; playfield height may differ mid-drag vs after settle when empty rows involved.
-3. **Singleton orphan empties** (e.g. `Q . / S .`) — collapse only removes **fully** empty rows; product decision whether to pack singleton holes on settle.
+1. Mid-drag completing swap gaps (e.g. BDF↔KMO, some diagonal SwapCH) — fix in **`MidDragMotion`**, not settle.
+2. Mid-drag empty-row collapse.
+3. Shrink `PlacementService` / `ReleaseUpgrade` dead settle code.
+4. Indirect gesture paths (left-then-down vs down-then-left) for partner parking.
 
 ---
 
@@ -179,21 +157,3 @@ cd android
 ```
 
 `JAVA_HOME` = Android Studio JBR if `java` not on PATH.
-
----
-
-## Recent canonical bug (S under Q)
-
-**Symptom:** Mid-drag `Q A / _ U` (committed `(10,0)`); release `S .` with U/V/T shuffled; or S snaps home `(9,0)`.
-
-**Cause:** `settlePreferred` scored home snap from pre-drag board despite committed away from start.
-
-**Fix:** WYSIWYG baseline + block latent home upgrade when `home == anchor && anchor != committedAnchor` (unless cutline / lock-connect / completing). Test: `strongFingerTowardHome_committedUnderQ_sticksPlain` with finger `Vec2(-469.5f, -117.75f)`.
-
----
-
-## Agent rules
-
-See `.cursor/rules/trail-pieces-puzzle.mdc` for always-on workflow (TDD, finger twitch checklist, lock pitfalls).
-
-**Architecture plan (canonical — confirm every iteration):** [`docs/ARCHITECTURE-PLAN.md`](../docs/ARCHITECTURE-PLAN.md)

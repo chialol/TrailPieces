@@ -1,34 +1,48 @@
 ---
-description: Trail Pieces puzzle engine — architecture, TDD workflow, and known interaction pitfalls
+description: Trail Pieces puzzle engine — architecture, TDD workflow, and interaction pitfalls
 alwaysApply: true
 ---
 
 # Trail Pieces — agent workflow
 
+## Canonical docs (read these)
+
+- **Architecture:** `docs/puzzle-architecture.md` — source of truth for layers and release = park only.
+- **Handoff:** `HANDOFF.md` — principles, test map, debug trace, commands.
+
+Confirm every gameplay change against the architecture doc. If code needs a settle “upgrade,” score loop, or guard to paper over a jump on finger-up, the architecture is wrong — fix mid-drag instead.
+
 ## Architecture (do not collapse)
 
-- **`:puzzle-engine`** — pure JVM Kotlin: models + services (`PushService`, `DragSession`, `DragEngine`, `LockGroupService`, `ShuffleService`). All game rules live here.
-- **`:app`** — Compose UI + `PuzzleGame` facade only. No push/lock/shuffle logic in the UI.
-- Playfield (`SlotGrid.rows`) can grow taller than `PuzzleManifest.rows` (insert row). Manifest height is the solved puzzle size.
+- **`:puzzle-engine`** — pure JVM Kotlin: models + mid-drag (`MidDragMotion`, `PushService`, `AxisMotion`, `FrozenLockGraph`) + **`ParkLifted` / `SettleService`**. All game rules live here.
+- **`:app`** — Compose UI + `PuzzleGame` facade only. No push/lock/shuffle/settle logic in the UI.
+- Playfield (`SlotGrid.rows`) can grow taller than `PuzzleManifest.rows` (insert row mid-drag). Manifest height is the solved puzzle size.
+- **Release = park only.** `SettleService.settle` → `ParkLifted.apply`. No cutline/swap/finishers on finger-up. Resting tiles must not move on release.
 
-## Default process for gameplay bugs
+## Default process for gameplay bugs (TDD)
 
-1. **Reproduce in a unit test** under `puzzle-engine/src/test` (prefer letter slots A–F on the mini 2×3 board via `LetterSlots` / `PuzzleFixtures`).
-2. Watch it fail.
-3. Fix engine code; keep UI changes minimal.
-4. Run `cd android && ./gradlew.bat :puzzle-engine:test` before claiming fixed.
-5. Only then rebuild the app for device feel (gestures/animation).
+1. **Reproduce in a unit test** under `puzzle-engine/src/test` (prefer letter slots A–F via `LetterSlots` / `PuzzleFixtures`).
+2. For motion features, assert **mid-drag layout** first; then assert **release equals park** (no resting-tile jump).
+3. Watch it fail.
+4. Fix **engine** code; keep UI changes minimal.
+5. Run `cd android && ./gradlew.bat :puzzle-engine:test` before claiming fixed.
+6. Only then rebuild the app for device feel (gestures/animation).
 
-Do **not** jump straight to Compose tweaks for logic bugs (locks, push, peel, tunnel, insert/collapse rows).
+Do **not** jump straight to Compose for logic bugs (locks, push, peel, tunnel, insert/collapse rows, settle jumps).
+
+Do **not** “fix” settle glitches by re-adding release upgrades. Commit the motion mid-drag, then park.
+
+If an old test expects settle-time board rewrite, `@Ignore` with reason or rewrite as mid-drag + park — do not restore the upgrade path.
 
 ## Interaction model (current intent)
 
-- Dragging lifts a **lock group** (correct relative neighbors).
-- Push is axis-aligned. Resting lock groups are **rigid** (no peel).
+- Dragging lifts a **lock group** (correct relative neighbors at pointer-down).
+- Push is axis-aligned. Resting lock groups are **rigid** mid-drag (frozen locks; no peel).
 - Prefer in-place rigid shift + make-way; if Up is blocked by a group that cannot make way, **insert an empty row above** and park there (no new columns).
-- Fully empty rows **collapse** on settle and after each mid-drag commit (no spacer rows to block future locks — locking commits on finger-up only).
+- Fully empty rows **collapse on settle** (park). Mid-drag row collapse not wired yet.
 - Footprint may slide into **persistent empties**.
 - Tunneling through an axial group can advance the hole by more than one cell in one push.
+- Same-size / completing-home swaps should show **while the finger is down**.
 
 ## Finger / “twitch” / offset / early-shift regressions (check these first)
 
@@ -41,13 +55,14 @@ When the user reports twitching, the lift **shifting under the finger**, **early
 5. Lifted tiles follow **total finger delta** from drag start (do not subtract per-cell after each push).
 6. UI must draw **`restingGrid.rows`**, not only `manifest.rows`, or grown boards clip and look like jumps.
 7. Mid-drag reverse must be allowed once residual covers the reverse jump the same way — no catch-up lock that blocks undo.
+8. On release dump: if `release-after-settle` differs from `release-before-settle` for resting tiles → park-only violation; fix settle callers or accidental upgrade resurrection.
 
 ## Lock / fixture pitfalls
 
 - Locks = adjacent tiles whose **slot offset equals home offset** (not “touching” alone).
 - Swapped neighbors often **do not** lock (signed offset mismatch).
 - After a move, unexpected tiles may join a lock group by geometry — assert “still connected” carefully, not always exact set equality.
-- **Lock commit on settle**: `DragSession.locks` is the pointer-down partition. Mid-drag push/swap use that freeze only (no live recompute) so accidental contacts stay loose and committed groups cannot peel. Settle recomputes from final geometry.
+- **Lock commit on settle:** `frozenLocks` is the pointer-down partition. Mid-drag uses that freeze only. Park recomputes from final geometry.
 - Shuffle must use `enforceRigidLocks = false` / isolated locks or scramble cannot peel.
 
 ## Letter grid (tests & discussion)

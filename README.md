@@ -12,6 +12,9 @@ trailPieces/
 └── docs/        # Design notes and documentation
 ```
 
+**Puzzle engine architecture** (park-only release, mid-drag owns motion):  
+[`docs/puzzle-architecture.md`](docs/puzzle-architecture.md) · session handoff [`HANDOFF.md`](HANDOFF.md)
+
 ## Getting started (Android)
 
 1. Open **Android Studio** → **Open** → select the `android/` folder.
