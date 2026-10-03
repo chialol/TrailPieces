@@ -20,6 +20,17 @@ android/.cxx/
 build/
 
 tools/chop_puzzle/.venv/
+__pycache__/
+*.pyc
+
+# Raw high-res source photos stay local; prep scripts write the WebP the app ships.
+shared/source/**/*.jpg
+shared/source/**/*.jpeg
+shared/source/**/*.png
+shared/source/**/*.webp
+shared/source/**/*.tif
+shared/source/**/*.tiff
+shared/source/**/*.heic
 
 backend/node_modules/
 backend/.env
