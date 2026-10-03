@@ -6,9 +6,10 @@ segment keeps the photo pixels and the cutout is near-white (JPEG has no alpha).
 
 This script:
   1. Detects the segment mask (prefer match-to-reference; else near-white cutout)
-  2. Writes aligned RGBA WebP layers (full canvas — stack cleanly in the app)
-  3. Writes tight tray crops (optional muted saturation for "undeveloped" chips)
-  4. Writes layers.json + a composite preview
+  2. Cleans the mask — keeps the largest blob, drops speckle islands
+  3. Writes aligned RGBA WebP layers (full canvas — stack cleanly in the app)
+  4. Writes tight tray crops (optional muted saturation for "undeveloped" chips)
+  5. Writes layers.json + a composite preview
 
 Defaults match chop_puzzle: max width 1080, lossy WebP ~85 — sharp on a phone,
 not larger than needed.
@@ -29,6 +30,8 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 
+from mask_cleanup import apply_cleaned_alpha, clean_alpha_mask
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE_DIR = REPO_ROOT / "shared" / "source"
 DEFAULT_OUTPUT_ROOT = REPO_ROOT / "android" / "app" / "src" / "main" / "assets" / "layers"
@@ -37,6 +40,9 @@ DEFAULT_QUALITY = 85
 DEFAULT_WHITE_THRESHOLD = 245
 DEFAULT_REF_TOLERANCE = 18
 DEFAULT_MUTED_SATURATION = 0.35
+DEFAULT_MASK_THRESHOLD = 64
+DEFAULT_OPEN_RADIUS = 3
+DEFAULT_CLOSE_RADIUS = 2
 LAYER_NAME_RE = re.compile(r"^(?P<stem>.+)-(?P<index>\d+)$", re.IGNORECASE)
 
 
@@ -143,7 +149,6 @@ def to_rgba_layer(
     max_width: int | None,
     white_threshold: int,
     ref_tolerance: int,
-    feather: float,
 ) -> tuple[Image.Image, dict]:
     with Image.open(source) as img:
         original_size = img.size
@@ -160,12 +165,8 @@ def to_rgba_layer(
                     alpha = alpha_from_reference(rgb, reference_rgb, ref_tolerance)
                 else:
                     alpha = alpha_from_white_cutout(rgb, white_threshold)
-                alpha = feather_alpha(alpha, feather)
                 rgba = rgb.convert("RGBA")
                 rgba.putalpha(alpha)
-            else:
-                if feather > 0:
-                    rgba.putalpha(feather_alpha(alpha, feather))
             return rgba, {
                 "sourceFile": source.name,
                 "sourceWidth": original_size[0],
@@ -181,7 +182,6 @@ def to_rgba_layer(
         else:
             alpha = alpha_from_white_cutout(rgb, white_threshold)
             mask_mode = "white-cutout"
-        alpha = feather_alpha(alpha, feather)
         rgba = rgb.convert("RGBA")
         rgba.putalpha(alpha)
         return rgba, {
@@ -190,6 +190,32 @@ def to_rgba_layer(
             "sourceHeight": original_size[1],
             "mask": mask_mode,
         }
+
+
+def finalize_layer_rgba(
+    rgba: Image.Image,
+    *,
+    clean_mask: bool,
+    mask_threshold: int,
+    open_radius: int,
+    close_radius: int,
+    feather: float,
+) -> tuple[Image.Image, dict | None]:
+    """Drop mask noise, then feather edges."""
+    if not clean_mask:
+        if feather > 0:
+            rgba.putalpha(feather_alpha(rgba.getchannel("A"), feather))
+        return rgba, None
+
+    cleaned_alpha, clean_stats = clean_alpha_mask(
+        rgba.getchannel("A"),
+        threshold=mask_threshold,
+        open_radius=open_radius,
+        close_radius=close_radius,
+        keep_largest_only=True,
+    )
+    cleaned_alpha = feather_alpha(cleaned_alpha, feather)
+    return apply_cleaned_alpha(rgba, cleaned_alpha), clean_stats
 
 
 def composite_preview(layers: list[Image.Image]) -> Image.Image:
@@ -212,6 +238,10 @@ def prep_layers(
     feather: float,
     muted_saturation: float,
     pad_crop: int,
+    clean_mask: bool,
+    mask_threshold: int,
+    open_radius: int,
+    close_radius: int,
 ) -> None:
     reference_path, layer_paths = find_layer_set(source_dir, stem)
 
@@ -243,7 +273,6 @@ def prep_layers(
             max_width=max_width,
             white_threshold=white_threshold,
             ref_tolerance=ref_tolerance,
-            feather=feather,
         )
         if reference_rgb is not None and rgba.size != reference_rgb.size:
             raise ValueError(
@@ -256,9 +285,18 @@ def prep_layers(
                 f"expected {prepared[0].size}"
             )
 
+        rgba, clean_stats = finalize_layer_rgba(
+            rgba,
+            clean_mask=clean_mask,
+            mask_threshold=mask_threshold,
+            open_radius=open_radius,
+            close_radius=close_radius,
+            feather=feather,
+        )
+
         bbox = bounding_box(rgba.getchannel("A"))
         if bbox is None:
-            raise ValueError(f"Layer has no visible pixels: {path.name}")
+            raise ValueError(f"Layer has no visible pixels after cleanup: {path.name}")
 
         ext = layer_extension(fmt)
         filename = f"layer_{index:02d}.{ext}"
@@ -285,13 +323,20 @@ def prep_layers(
                 "trayFile": f"tray/{tray_name}",
                 "bbox": {"left": left, "top": top, "right": right, "bottom": bottom},
                 "coverage": round(coverage, 4),
+                "maskCleanup": clean_stats,
                 **meta,
             }
         )
         prepared.append(rgba)
+        clean_note = ""
+        if clean_stats:
+            clean_note = (
+                f", {clean_stats['componentsBefore']}->{clean_stats['componentsKept']} comps, "
+                f"-{clean_stats['removedPixels']} px"
+            )
         print(
             f"  layer {index}: {path.name} -> {filename} "
-            f"({coverage * 100:.1f}% coverage, mask={meta['mask']})"
+            f"({coverage * 100:.1f}% coverage, mask={meta['mask']}{clean_note})"
         )
 
     preview = composite_preview(prepared).convert("RGB")
@@ -409,6 +454,29 @@ def parse_args() -> argparse.Namespace:
         default=4,
         help="Padding around tight tray crop in pixels",
     )
+    parser.add_argument(
+        "--no-clean-mask",
+        action="store_true",
+        help="Skip largest-blob mask cleanup (keep raw reference match)",
+    )
+    parser.add_argument(
+        "--mask-threshold",
+        type=int,
+        default=DEFAULT_MASK_THRESHOLD,
+        help="Alpha threshold for mask cleanup (default: 64)",
+    )
+    parser.add_argument(
+        "--open-radius",
+        type=int,
+        default=DEFAULT_OPEN_RADIUS,
+        help="Morphological open radius to drop thin speckle (default: 3)",
+    )
+    parser.add_argument(
+        "--close-radius",
+        type=int,
+        default=DEFAULT_CLOSE_RADIUS,
+        help="Morphological close radius to fill pinholes (default: 2)",
+    )
     return parser.parse_args()
 
 
@@ -430,6 +498,10 @@ def main() -> int:
             feather=args.feather,
             muted_saturation=args.muted_sat,
             pad_crop=args.pad_crop,
+            clean_mask=not args.no_clean_mask,
+            mask_threshold=args.mask_threshold,
+            open_radius=args.open_radius,
+            close_radius=args.close_radius,
         )
         return 0
     except (FileNotFoundError, OSError, ValueError) as exc:

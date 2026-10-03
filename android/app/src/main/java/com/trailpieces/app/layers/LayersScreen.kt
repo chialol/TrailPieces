@@ -1,11 +1,13 @@
 package com.trailpieces.app.layers
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.trailpieces.app.layers.v1.DevelopPrintScreen
 import com.trailpieces.app.layers.v2.SnapPlaceScreen
+import com.trailpieces.app.layers.v3.RevealScreen
 
 /**
  * Entry for layers mode. Mechanics are versioned under [LayersMechanicVersion]
@@ -37,45 +40,32 @@ fun LayersScreen(
     val manifest = remember { LayersLoader.loadDefault(context) }
     var activeMechanic by remember { mutableStateOf(mechanic) }
 
-    if (manifest == null) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "No layered scene yet",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = "Run tools/prep_layers/prep_layers.py then rebuild.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 12.dp),
-            )
-            TextButton(onClick = onBack, modifier = Modifier.padding(top = 24.dp)) {
-                Text("Back")
-            }
-        }
-        return
-    }
-
     Box(modifier = modifier.fillMaxSize()) {
         when (activeMechanic) {
             LayersMechanicVersion.DEVELOP_PRINT_V1 -> {
-                DevelopPrintScreen(
-                    manifest = manifest,
-                    onBack = onBack,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                if (manifest == null) {
+                    MissingLayers(onBack = onBack, modifier = Modifier.fillMaxSize())
+                } else {
+                    DevelopPrintScreen(
+                        manifest = manifest,
+                        onBack = onBack,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
             LayersMechanicVersion.SNAP_PLACE_V2 -> {
-                SnapPlaceScreen(
-                    manifest = manifest,
+                if (manifest == null) {
+                    MissingLayers(onBack = onBack, modifier = Modifier.fillMaxSize())
+                } else {
+                    SnapPlaceScreen(
+                        manifest = manifest,
+                        onBack = onBack,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+            LayersMechanicVersion.REVEAL_V3 -> {
+                RevealScreen(
                     onBack = onBack,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -85,6 +75,7 @@ fun LayersScreen(
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
+                .horizontalScroll(rememberScrollState())
                 .padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -100,6 +91,36 @@ fun LayersScreen(
                     },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun MissingLayers(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "No layered scene yet",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = "Run tools/prep_layers/prep_layers.py then rebuild.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        TextButton(onClick = onBack, modifier = Modifier.padding(top = 24.dp)) {
+            Text("Back")
         }
     }
 }

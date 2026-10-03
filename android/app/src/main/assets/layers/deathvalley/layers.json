@@ -26,9 +26,17 @@
         "left": 0,
         "top": 0,
         "right": 1080,
-        "bottom": 1312
+        "bottom": 541
       },
-      "coverage": 0.3103,
+      "coverage": 0.31,
+      "maskCleanup": {
+        "componentsBefore": 1,
+        "componentsKept": 1,
+        "largestComponentPx": 539889,
+        "removedPixels": 4254,
+        "coverageBefore": 0.3087,
+        "coverageAfter": 0.3063
+      },
       "sourceFile": "deathvalley-1.jpg",
       "sourceWidth": 4000,
       "sourceHeight": 6000,
@@ -40,11 +48,19 @@
       "trayFile": "tray/layer_02.webp",
       "bbox": {
         "left": 0,
-        "top": 458,
+        "top": 459,
         "right": 1080,
-        "bottom": 1312
+        "bottom": 735
       },
-      "coverage": 0.0902,
+      "coverage": 0.0898,
+      "maskCleanup": {
+        "componentsBefore": 1,
+        "componentsKept": 1,
+        "largestComponentPx": 152305,
+        "removedPixels": 716,
+        "coverageBefore": 0.0872,
+        "coverageAfter": 0.0868
+      },
       "sourceFile": "deathvalley-2.jpg",
       "sourceWidth": 4000,
       "sourceHeight": 6000,
@@ -56,11 +72,19 @@
       "trayFile": "tray/layer_03.webp",
       "bbox": {
         "left": 0,
-        "top": 503,
-        "right": 831,
-        "bottom": 1312
+        "top": 504,
+        "right": 781,
+        "bottom": 1057
       },
-      "coverage": 0.1466,
+      "coverage": 0.1462,
+      "maskCleanup": {
+        "componentsBefore": 1,
+        "componentsKept": 1,
+        "largestComponentPx": 251794,
+        "removedPixels": 1230,
+        "coverageBefore": 0.144,
+        "coverageAfter": 0.1433
+      },
       "sourceFile": "deathvalley-3.jpg",
       "sourceWidth": 4000,
       "sourceHeight": 6000,
@@ -74,9 +98,17 @@
         "left": 0,
         "top": 695,
         "right": 1080,
-        "bottom": 1312
+        "bottom": 1267
       },
-      "coverage": 0.2271,
+      "coverage": 0.2256,
+      "maskCleanup": {
+        "componentsBefore": 3,
+        "componentsKept": 1,
+        "largestComponentPx": 389286,
+        "removedPixels": 3138,
+        "coverageBefore": 0.2235,
+        "coverageAfter": 0.2217
+      },
       "sourceFile": "deathvalley-4.jpg",
       "sourceWidth": 4000,
       "sourceHeight": 6000,
@@ -88,11 +120,19 @@
       "trayFile": "tray/layer_05.webp",
       "bbox": {
         "left": 0,
-        "top": 1091,
+        "top": 1202,
         "right": 1080,
         "bottom": 1620
       },
-      "coverage": 0.2367,
+      "coverage": 0.2346,
+      "maskCleanup": {
+        "componentsBefore": 2,
+        "componentsKept": 1,
+        "largestComponentPx": 408067,
+        "removedPixels": 6442,
+        "coverageBefore": 0.2349,
+        "coverageAfter": 0.2312
+      },
       "sourceFile": "deathvalley-5.jpg",
       "sourceWidth": 4000,
       "sourceHeight": 6000,

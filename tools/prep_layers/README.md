@@ -50,8 +50,24 @@ tools\chop_puzzle\.venv\Scripts\pip install -r tools\chop_puzzle\requirements.tx
 | `--quality` | `85` | WebP quality 1–100 |
 | `--white-threshold` | `245` | Cutout detection if no reference photo |
 | `--ref-tolerance` | `18` | Match-to-reference tolerance |
-| `--feather` | `0.8` | Soften alpha edges |
+| `--feather` | `0.8` | Soften alpha edges (after cleanup) |
 | `--muted-sat` | `0.35` | Tray-chip saturation (undeveloped look) |
+| `--open-radius` | `3` | Morphological open — strips thin speckle |
+| `--close-radius` | `2` | Morphological close — fills pinholes in main blob |
+| `--no-clean-mask` | off | Skip largest-blob cleanup |
+
+## Mask cleanup
+
+Each segment export usually has **one dominant blob** plus tiny false-positive islands from
+reference matching. By default the script:
+
+1. Thresholds the alpha mask
+2. **Opens** (erode→dilate) to drop pepper noise and hair-thin wisps
+3. Keeps only the **largest connected component**
+4. **Closes** small holes inside the main blob
+5. Recomputes a tighter tray bbox
+
+This yields cleaner puzzle-piece silhouettes and more accurate drag bounds in the app.
 
 ## Output
 
@@ -85,4 +101,5 @@ only for tray chrome; let the finger scrub color on-device.
 
 1. If `{stem}.jpg` (or png/webp) exists → opaque where layer ≈ reference.
 2. Else → opaque where pixels are not near-white cutout fill.
-3. Optional Gaussian feather on alpha for softer edges.
+3. **Largest-blob cleanup** — drop stray islands and thin noise (see above).
+4. Gaussian feather on alpha for softer edges.

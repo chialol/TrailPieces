@@ -201,9 +201,9 @@ fun SnapPlaceScreen(
                 trayLayers.forEach { layer ->
                     key(layer.id) {
                         val isDragging = session.dragging?.layerId == layer.id
-                        val (bboxW, bboxH) = session.traySizePx(layer, sceneWidthPx, sceneHeightPx)
-                        val previewW = with(density) { (bboxW * TrayPreviewScale).toDp() }
-                        val previewH = with(density) { (bboxH * TrayPreviewScale).toDp() }
+                        val (pieceW, pieceH) = session.traySizePx(layer, sceneWidthPx, sceneHeightPx)
+                        val previewW = with(density) { (pieceW * TrayPreviewScale).toDp() }
+                        val previewH = with(density) { (pieceH * TrayPreviewScale).toDp() }
 
                         TrayPiece(
                             manifest = manifest,
@@ -211,14 +211,14 @@ fun SnapPlaceScreen(
                             width = previewW,
                             height = previewH,
                             visible = !isDragging,
-                            onDragStart = { pieceTopLeft ->
+                            onDragStart = { fingerInRoot ->
                                 session.startDrag(layer.id, Offset.Zero)
-                                pieceTopLeftInRoot = pieceTopLeft
+                                pieceTopLeftInRoot = fingerInRoot - Offset(pieceW / 2f, pieceH / 2f)
                                 bump()
                                 softHaptic(view)
                             },
-                            onDrag = { pieceTopLeft ->
-                                pieceTopLeftInRoot = pieceTopLeft
+                            onDrag = { fingerInRoot ->
+                                pieceTopLeftInRoot = fingerInRoot - Offset(pieceW / 2f, pieceH / 2f)
                                 bump()
                             },
                             onDragEnd = {
@@ -318,13 +318,13 @@ private fun TrayPiece(
     width: androidx.compose.ui.unit.Dp,
     height: androidx.compose.ui.unit.Dp,
     visible: Boolean,
-    onDragStart: (pieceTopLeftInRoot: Offset) -> Unit,
-    onDrag: (pieceTopLeftInRoot: Offset) -> Unit,
+    onDragStart: (fingerInRoot: Offset) -> Unit,
+    onDrag: (fingerInRoot: Offset) -> Unit,
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
 ) {
     var pieceOriginInRoot by remember { mutableStateOf(Offset.Zero) }
-    var dragDelta by remember { mutableStateOf(Offset.Zero) }
+    var fingerInRoot by remember { mutableStateOf(Offset.Zero) }
 
     Box(
         modifier = Modifier
@@ -336,13 +336,13 @@ private fun TrayPiece(
             }
             .pointerInput(layer.id) {
                 detectDragGestures(
-                    onDragStart = {
-                        dragDelta = Offset.Zero
-                        onDragStart(pieceOriginInRoot)
+                    onDragStart = { localStart ->
+                        fingerInRoot = pieceOriginInRoot + localStart
+                        onDragStart(fingerInRoot)
                     },
                     onDrag = { _, amount ->
-                        dragDelta += amount
-                        onDrag(pieceOriginInRoot + dragDelta)
+                        fingerInRoot += amount
+                        onDrag(fingerInRoot)
                     },
                     onDragEnd = onDragEnd,
                     onDragCancel = onDragCancel,

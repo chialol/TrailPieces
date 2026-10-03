@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 fun HomeMenuScreen(
     onTrailPuzzle: () -> Unit,
     onLayersConcept: () -> Unit,
+    onRevealPhoto: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -55,6 +56,14 @@ fun HomeMenuScreen(
                 .padding(vertical = 6.dp),
         ) {
             Text("Develop a print")
+        }
+        OutlinedButton(
+            onClick = onRevealPhoto,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp),
+        ) {
+            Text("Reveal a photo")
         }
     }
 }

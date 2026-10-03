@@ -36,4 +36,10 @@ See [android/README.md](android/README.md) for detailed setup and troubleshootin
 2. Run [tools/prep_layers/README.md](tools/prep_layers/README.md).
 3. Rebuild/run. Assets land in `android/app/src/main/assets/layers/{stem}/`.
 
-The app home menu chooses **Trail puzzle** (existing) or **Layers (new)** (placeholder UI for now).
+The app home menu chooses **Trail puzzle**, **Develop a print**, or **Reveal a photo**.
+
+## Adding a reveal photo (v3)
+
+1. Drop the high-res color photo, a same-size dark plate named `<filename>-bw.jpg`, and full-frame pieces in **`shared/source/reveal/<name>/`**.
+2. Run [tools/prep_reveal](tools/prep_reveal/README.md). That writes a downsized WebP (height capped at 1920px) into the app.
+3. Rebuild/run and open **Reveal a photo**.

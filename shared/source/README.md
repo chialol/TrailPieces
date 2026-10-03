@@ -21,4 +21,19 @@ deathvalley-5.jpg
 
 Then run [tools/prep_layers](../../tools/prep_layers/README.md).
 
+## Reveal a photo (v3)
+
+High-res files stay here. The prep script writes a phone-sized copy into the app.
+
+```
+shared/source/reveal/mountain/
+  photo.jpg            # full color, portrait or landscape
+  photo-bw.jpg         # dark plate, same pixel size
+  pieces/
+    01-meadow.png      # full frame, same pixel size, transparent outside the piece
+    02-river.png
+```
+
+Then run [tools/prep_reveal](../../tools/prep_reveal/README.md).
+
 Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp`

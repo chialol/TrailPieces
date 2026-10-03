@@ -10,6 +10,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.trailpieces.app.layers.LayersMechanicVersion
 import com.trailpieces.app.layers.LayersScreen
 import com.trailpieces.app.puzzle.PuzzleLoader
 import com.trailpieces.app.ui.HomeMenuScreen
@@ -22,6 +23,7 @@ private enum class AppDestination {
     Menu,
     TrailPuzzle,
     LayersConcept,
+    RevealPhoto,
 }
 
 @Composable
@@ -53,6 +55,7 @@ fun TrailPiecesApp() {
                 HomeMenuScreen(
                     onTrailPuzzle = { destination = AppDestination.TrailPuzzle },
                     onLayersConcept = { destination = AppDestination.LayersConcept },
+                    onRevealPhoto = { destination = AppDestination.RevealPhoto },
                     modifier = contentModifier,
                 )
             }
@@ -74,6 +77,13 @@ fun TrailPiecesApp() {
             AppDestination.LayersConcept -> {
                 LayersScreen(
                     onBack = { destination = AppDestination.Menu },
+                    modifier = contentModifier,
+                )
+            }
+            AppDestination.RevealPhoto -> {
+                LayersScreen(
+                    onBack = { destination = AppDestination.Menu },
+                    mechanic = LayersMechanicVersion.REVEAL_V3,
                     modifier = contentModifier,
                 )
             }

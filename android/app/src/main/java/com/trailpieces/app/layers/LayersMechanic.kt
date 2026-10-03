@@ -10,6 +10,12 @@ enum class LayersMechanicVersion(val id: String, val label: String) {
 
     /** Irregular masked pieces snap to home on the empty canvas. */
     SNAP_PLACE_V2("snap_place_v2", "Snap place"),
+
+    /**
+     * Dark plate you can pan, sequential color pieces that lock onto it,
+     * then the full photo comes alive.
+     */
+    REVEAL_V3("reveal_v3", "Reveal"),
 }
 
 object LayersMechanics {
