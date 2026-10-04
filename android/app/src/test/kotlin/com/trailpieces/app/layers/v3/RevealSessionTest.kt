@@ -3,6 +3,7 @@ package com.trailpieces.app.layers.v3
 import androidx.compose.ui.geometry.Offset
 import com.trailpieces.app.layers.LayerBBox
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,18 +21,12 @@ class RevealSessionTest {
     fun lockAdvancesAndMissStays() {
         val feedback = RecordingFeedback()
         val session = RevealSession(scene(), feedback)
+        val imageTopLeft = Offset(0f, 100f)
+
         session.startDrag(1)
         assertEquals(
             PlaceOutcome.Locked,
-            session.tryPlace(
-                pieceTopLeftInRoot = Offset(100f, 200f),
-                viewportTopLeftInRoot = Offset.Zero,
-                viewportWidthPx = 1000f,
-                imageWidthPx = 1000f,
-                imageHeightPx = 500f,
-                scrollPx = 0f,
-                snapThresholdPx = 72f,
-            ),
+            session.tryPlace(Offset(100f, 300f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
         )
         assertEquals(listOf(1), feedback.locked)
         assertEquals(0, feedback.aliveCount)
@@ -40,31 +35,15 @@ class RevealSessionTest {
         session.startDrag(2)
         assertEquals(
             PlaceOutcome.Missed,
-            session.tryPlace(
-                pieceTopLeftInRoot = Offset(0f, 0f),
-                viewportTopLeftInRoot = Offset.Zero,
-                viewportWidthPx = 1000f,
-                imageWidthPx = 1000f,
-                imageHeightPx = 500f,
-                scrollPx = 0f,
-                snapThresholdPx = 72f,
-            ),
+            session.tryPlace(Offset(0f, 0f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
         )
         assertEquals(2, session.current?.id)
-        assertEquals(0, feedback.aliveCount)
+        assertNull(session.draggingId)
 
         session.startDrag(2)
         assertEquals(
             PlaceOutcome.Locked,
-            session.tryPlace(
-                pieceTopLeftInRoot = Offset(400f, 100f),
-                viewportTopLeftInRoot = Offset.Zero,
-                viewportWidthPx = 1000f,
-                imageWidthPx = 1000f,
-                imageHeightPx = 500f,
-                scrollPx = 0f,
-                snapThresholdPx = 72f,
-            ),
+            session.tryPlace(Offset(420f, 220f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
         )
         assertTrue(session.isComplete)
         assertEquals(listOf(1, 2), feedback.locked)
@@ -73,11 +52,20 @@ class RevealSessionTest {
     }
 
     @Test
+    fun homeFollowsPanAndDisplayScale() {
+        val session = RevealSession(scene())
+        val meadow = session.pieces.first()
+        val panned = session.homeTopLeftInRoot(meadow, Offset(-300f, 50f), imageWidthPx = 2000f)
+        assertEquals(-300f + 100f * 2f, panned.x, 0.01f)
+        assertEquals(50f + 200f * 2f, panned.y, 0.01f)
+    }
+
+    @Test
     fun grabPointStaysUnderTheFingerWhenThePieceGrows() {
         val finger = Offset(400f, 900f)
         val fraction = Offset(0.25f, 0.8f)
-        val icon = anchoredTopLeft(finger, fraction, pieceWidthPx = 80f, pieceHeightPx = 48f)
-        val full = anchoredTopLeft(finger, fraction, pieceWidthPx = 1800f, pieceHeightPx = 640f)
+        val icon = anchoredTopLeft(finger, fraction, widthPx = 80f, heightPx = 48f)
+        val full = anchoredTopLeft(finger, fraction, widthPx = 1800f, heightPx = 640f)
         assertEquals(finger.x, icon.x + 0.25f * 80f, 0.01f)
         assertEquals(finger.y, icon.y + 0.8f * 48f, 0.01f)
         assertEquals(finger.x, full.x + 0.25f * 1800f, 0.01f)
@@ -85,61 +73,48 @@ class RevealSessionTest {
     }
 
     @Test
-    fun homeFollowsHorizontalScrollAndCentersNarrowPhotos() {
-        val session = RevealSession(scene())
-        val meadow = session.pieces.first()
-        val scrolled = session.homeTopLeftInRoot(
-            piece = meadow,
-            viewportLeft = 10f,
-            viewportTop = 20f,
-            viewportWidthPx = 400f,
-            imageWidthPx = 1000f,
-            imageHeightPx = 500f,
-            scrollPx = 80f,
-        )
-        assertEquals(10f - 80f + 100f, scrolled.x, 0.01f)
-        assertEquals(20f + 200f, scrolled.y, 0.01f)
-
-        val centered = session.homeTopLeftInRoot(
-            piece = meadow,
-            viewportLeft = 0f,
-            viewportTop = 0f,
-            viewportWidthPx = 400f,
-            imageWidthPx = 200f,
-            imageHeightPx = 100f,
-            scrollPx = 50f,
-        )
-        // Scene is 1000x500, image 200x100, so scale is 0.2. Bbox left 100 → 20px.
-        // Narrower than the viewport, so it is centered and scroll is ignored.
-        assertEquals((400f - 200f) / 2f + 20f, centered.x, 0.01f)
-        assertEquals(40f, centered.y, 0.01f)
+    fun landscapeFillsHeightAndPans() {
+        val fit = PhotoFit.of(scene(width = 3000, height = 2000), viewportWidthPx = 1080f, viewportHeightPx = 2000f)
+        assertEquals(2000f, fit.heightPx, 0.01f)
+        assertEquals(3000f, fit.widthPx, 0.01f)
+        assertTrue(fit.pans(1080f))
     }
 
-    private fun scene(): RevealScene = RevealScene(
+    @Test
+    fun portraitFitsWithoutPanning() {
+        val wide = PhotoFit.of(scene(width = 1606, height = 1920), viewportWidthPx = 1080f, viewportHeightPx = 2000f)
+        assertEquals(1080f, wide.widthPx, 0.01f)
+        assertEquals(1080f * 1920f / 1606f, wide.heightPx, 0.5f)
+        assertFalse(wide.pans(1080f))
+
+        val tall = PhotoFit.of(scene(width = 1000, height = 3000), viewportWidthPx = 1080f, viewportHeightPx = 2000f)
+        assertEquals(2000f, tall.heightPx, 0.5f)
+        assertFalse(tall.pans(1080f))
+    }
+
+    private fun scene(width: Int = 1000, height: Int = 500): RevealScene = RevealScene(
         id = "mountain",
         title = "Mountain",
-        width = 1000,
-        height = 500,
+        width = width,
+        height = height,
         plateFile = "plate.webp",
         aliveFile = "alive.webp",
+        coverFile = "cover.webp",
+        liftPad = 40,
         pieces = listOf(
-            RevealPiece(
-                id = 2,
-                order = 2,
-                label = "river",
-                file = "pieces/piece_02.webp",
-                trayFile = "tray/piece_02.webp",
-                bbox = LayerBBox(400, 100, 600, 250),
-            ),
-            RevealPiece(
-                id = 1,
-                order = 1,
-                label = "meadow",
-                file = "pieces/piece_01.webp",
-                trayFile = "tray/piece_01.webp",
-                bbox = LayerBBox(100, 200, 300, 400),
-            ),
+            piece(id = 2, label = "river", bbox = LayerBBox(400, 100, 600, 250)),
+            piece(id = 1, label = "meadow", bbox = LayerBBox(100, 200, 300, 400)),
         ),
+    )
+
+    private fun piece(id: Int, label: String, bbox: LayerBBox) = RevealPiece(
+        id = id,
+        order = id,
+        label = label,
+        cropFile = "crop/piece_0$id.webp",
+        liftFile = "lift/piece_0$id.webp",
+        iconFile = "icon/piece_0$id.webp",
+        bbox = bbox,
     )
 
     private class RecordingFeedback : RevealFeedback {

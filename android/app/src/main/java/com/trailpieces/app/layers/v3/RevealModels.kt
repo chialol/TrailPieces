@@ -15,9 +15,13 @@ data class RevealScene(
     val height: Int,
     val plateFile: String,
     val aliveFile: String,
+    val coverFile: String,
+    /** Transparent margin, in scene pixels, around each lift image for its outline and shadow. */
+    val liftPad: Int,
     val pieces: List<RevealPiece>,
 ) {
     val aspectRatio: Float get() = width.toFloat() / height.toFloat()
+    val isLandscape: Boolean get() = width >= height
 }
 
 data class RevealPiece(
@@ -26,10 +30,12 @@ data class RevealPiece(
     val order: Int,
     /** Short name such as "meadow", or null when the file was only numbered. */
     val label: String?,
-    /** Full-canvas RGBA, aligned with [RevealScene] so it stacks on the plate. */
-    val file: String,
-    /** Tight crop the player drags. */
-    val trayFile: String,
+    /** Tight crop, drawn at [bbox] once the piece locks. */
+    val cropFile: String,
+    /** [cropFile] padded by [RevealScene.liftPad] with an outline and shadow, drawn while dragging. */
+    val liftFile: String,
+    /** Small copy of [liftFile] for the waiting row. */
+    val iconFile: String,
     val bbox: LayerBBox,
 )
 

@@ -6,6 +6,8 @@
   "height": 1920,
   "plateFile": "plate.webp",
   "aliveFile": "alive.webp",
+  "coverFile": "cover.webp",
+  "liftPad": 41,
   "source": {
     "colorFile": "photo.jpg",
     "plateFile": "photo-bw.png",
@@ -16,12 +18,13 @@
     {
       "id": 1,
       "order": 1,
-      "file": "pieces/piece_01.webp",
-      "trayFile": "tray/piece_01.webp",
+      "cropFile": "crop/piece_01.webp",
+      "liftFile": "lift/piece_01.webp",
+      "iconFile": "icon/piece_01.webp",
       "bbox": {
-        "left": 1062,
-        "top": 1585,
-        "right": 2543,
+        "left": 1058,
+        "top": 1580,
+        "right": 2546,
         "bottom": 1920
       },
       "sourceFile": "01-river1.png",
@@ -30,13 +33,14 @@
     {
       "id": 2,
       "order": 2,
-      "file": "pieces/piece_02.webp",
-      "trayFile": "tray/piece_02.webp",
+      "cropFile": "crop/piece_02.webp",
+      "liftFile": "lift/piece_02.webp",
+      "iconFile": "icon/piece_02.webp",
       "bbox": {
-        "left": 2113,
-        "top": 237,
-        "right": 2793,
-        "bottom": 1323
+        "left": 2108,
+        "top": 233,
+        "right": 2797,
+        "bottom": 1327
       },
       "sourceFile": "02-forest1.png",
       "label": "forest1"
@@ -44,13 +48,14 @@
     {
       "id": 3,
       "order": 3,
-      "file": "pieces/piece_03.webp",
-      "trayFile": "tray/piece_03.webp",
+      "cropFile": "crop/piece_03.webp",
+      "liftFile": "lift/piece_03.webp",
+      "iconFile": "icon/piece_03.webp",
       "bbox": {
         "left": 0,
-        "top": 41,
-        "right": 676,
-        "bottom": 441
+        "top": 37,
+        "right": 681,
+        "bottom": 446
       },
       "sourceFile": "03-cliff.png",
       "label": "cliff"
@@ -58,13 +63,14 @@
     {
       "id": 4,
       "order": 4,
-      "file": "pieces/piece_04.webp",
-      "trayFile": "tray/piece_04.webp",
+      "cropFile": "crop/piece_04.webp",
+      "liftFile": "lift/piece_04.webp",
+      "iconFile": "icon/piece_04.webp",
       "bbox": {
-        "left": 899,
-        "top": 432,
-        "right": 1605,
-        "bottom": 942
+        "left": 894,
+        "top": 427,
+        "right": 1610,
+        "bottom": 947
       },
       "sourceFile": "04-clearance.png",
       "label": "clearance"
@@ -72,13 +78,14 @@
     {
       "id": 5,
       "order": 5,
-      "file": "pieces/piece_05.webp",
-      "trayFile": "tray/piece_05.webp",
+      "cropFile": "crop/piece_05.webp",
+      "liftFile": "lift/piece_05.webp",
+      "iconFile": "icon/piece_05.webp",
       "bbox": {
-        "left": 860,
-        "top": 1189,
-        "right": 2752,
-        "bottom": 1654
+        "left": 856,
+        "top": 1185,
+        "right": 2757,
+        "bottom": 1659
       },
       "sourceFile": "05-meadow.png",
       "label": "meadow"
@@ -86,13 +93,14 @@
     {
       "id": 6,
       "order": 6,
-      "file": "pieces/piece_06.webp",
-      "trayFile": "tray/piece_06.webp",
+      "cropFile": "crop/piece_06.webp",
+      "liftFile": "lift/piece_06.webp",
+      "iconFile": "icon/piece_06.webp",
       "bbox": {
         "left": 0,
-        "top": 195,
-        "right": 1396,
-        "bottom": 1420
+        "top": 190,
+        "right": 1401,
+        "bottom": 1425
       },
       "sourceFile": "06-forest2.png",
       "label": "forest2"
@@ -100,13 +108,14 @@
     {
       "id": 7,
       "order": 7,
-      "file": "pieces/piece_07.webp",
-      "trayFile": "tray/piece_07.webp",
+      "cropFile": "crop/piece_07.webp",
+      "liftFile": "lift/piece_07.webp",
+      "iconFile": "icon/piece_07.webp",
       "bbox": {
-        "left": 1207,
-        "top": 280,
-        "right": 1783,
-        "bottom": 621
+        "left": 1203,
+        "top": 275,
+        "right": 1787,
+        "bottom": 626
       },
       "sourceFile": "07-mountain.png",
       "label": "mountain"
@@ -114,13 +123,14 @@
     {
       "id": 8,
       "order": 8,
-      "file": "pieces/piece_08.webp",
-      "trayFile": "tray/piece_08.webp",
+      "cropFile": "crop/piece_08.webp",
+      "liftFile": "lift/piece_08.webp",
+      "iconFile": "icon/piece_08.webp",
       "bbox": {
         "left": 0,
         "top": 0,
-        "right": 2864,
-        "bottom": 496
+        "right": 2869,
+        "bottom": 501
       },
       "sourceFile": "08-sky.png",
       "label": "sky"
@@ -128,13 +138,14 @@
     {
       "id": 9,
       "order": 9,
-      "file": "pieces/piece_09.webp",
-      "trayFile": "tray/piece_09.webp",
+      "cropFile": "crop/piece_09.webp",
+      "liftFile": "lift/piece_09.webp",
+      "iconFile": "icon/piece_09.webp",
       "bbox": {
         "left": 0,
-        "top": 1210,
-        "right": 1285,
-        "bottom": 1830
+        "top": 1205,
+        "right": 1290,
+        "bottom": 1835
       },
       "sourceFile": "09-river2.png",
       "label": "river2"
@@ -142,13 +153,14 @@
     {
       "id": 10,
       "order": 10,
-      "file": "pieces/piece_10.webp",
-      "trayFile": "tray/piece_10.webp",
+      "cropFile": "crop/piece_10.webp",
+      "liftFile": "lift/piece_10.webp",
+      "iconFile": "icon/piece_10.webp",
       "bbox": {
-        "left": 877,
-        "top": 397,
-        "right": 2406,
-        "bottom": 1331
+        "left": 873,
+        "top": 392,
+        "right": 2411,
+        "bottom": 1336
       },
       "sourceFile": "10-forest3.png",
       "label": "forest3"

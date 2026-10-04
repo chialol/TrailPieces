@@ -5,13 +5,14 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
-import com.trailpieces.app.layers.LayerBBox
 import kotlin.math.hypot
 
 /**
  * Sequential snap-place. Only [current] can be dragged. A release near that
- * piece's bbox origin locks it and offers the next piece. Pan is owned by the
- * screen; pass the current scroll in so the home stays attached to the photo.
+ * piece's bbox origin locks it and offers the next piece.
+ *
+ * Positions are in root pixels. The screen passes where the photo's top-left
+ * currently sits (after any pan) and how wide it is drawn.
  */
 class RevealSession(
     val scene: RevealScene,
@@ -33,6 +34,8 @@ class RevealSession(
     /** The single piece currently offered, in [pieces] order. */
     val current: RevealPiece? get() = pieces.firstOrNull { it.id !in _placed }
 
+    fun piece(id: Int): RevealPiece = pieces.first { it.id == id }
+
     fun startDrag(pieceId: Int) {
         val piece = current ?: return
         if (pieceId != piece.id) return
@@ -43,73 +46,33 @@ class RevealSession(
         draggingId = null
     }
 
-    fun pieceSizePx(
-        piece: RevealPiece,
-        imageWidthPx: Float,
-        imageHeightPx: Float,
-    ): Pair<Float, Float> {
-        val scaleX = imageWidthPx / scene.width.toFloat()
-        val scaleY = imageHeightPx / scene.height.toFloat()
-        return piece.bbox.width * scaleX to piece.bbox.height * scaleY
-    }
+    /** Screen pixels per scene pixel. The photo is always drawn with a uniform scale. */
+    fun displayScale(imageWidthPx: Float): Float = imageWidthPx / scene.width.toFloat()
 
-    /**
-     * Top-left of [piece]'s bbox in the same root space as the viewport.
-     * Landscape photos that are wider than the viewport shift by [scrollPx].
-     * A photo narrower than the viewport is centered, and scroll is ignored.
-     */
     fun homeTopLeftInRoot(
         piece: RevealPiece,
-        viewportLeft: Float,
-        viewportTop: Float,
-        viewportWidthPx: Float,
+        imageTopLeftInRoot: Offset,
         imageWidthPx: Float,
-        imageHeightPx: Float,
-        scrollPx: Float,
     ): Offset {
-        val scaleX = imageWidthPx / scene.width.toFloat()
-        val scaleY = imageHeightPx / scene.height.toFloat()
-        val overflow = imageWidthPx - viewportWidthPx
-        val imageLeft = if (overflow <= 1f) {
-            viewportLeft + (viewportWidthPx - imageWidthPx) / 2f
-        } else {
-            viewportLeft - scrollPx.coerceIn(0f, overflow)
-        }
-        return Offset(
-            imageLeft + piece.bbox.left * scaleX,
-            viewportTop + piece.bbox.top * scaleY,
-        )
+        val scale = displayScale(imageWidthPx)
+        return imageTopLeftInRoot + Offset(piece.bbox.left * scale, piece.bbox.top * scale)
     }
 
     fun tryPlace(
         pieceTopLeftInRoot: Offset,
-        viewportTopLeftInRoot: Offset,
-        viewportWidthPx: Float,
+        imageTopLeftInRoot: Offset,
         imageWidthPx: Float,
-        imageHeightPx: Float,
-        scrollPx: Float,
         snapThresholdPx: Float,
     ): PlaceOutcome {
         val dragId = draggingId ?: return PlaceOutcome.Ignored
         val piece = current ?: return PlaceOutcome.Ignored
-        if (dragId != piece.id) {
-            draggingId = null
-            return PlaceOutcome.Ignored
-        }
-        val home = homeTopLeftInRoot(
-            piece = piece,
-            viewportLeft = viewportTopLeftInRoot.x,
-            viewportTop = viewportTopLeftInRoot.y,
-            viewportWidthPx = viewportWidthPx,
-            imageWidthPx = imageWidthPx,
-            imageHeightPx = imageHeightPx,
-            scrollPx = scrollPx,
-        )
+        draggingId = null
+        if (dragId != piece.id) return PlaceOutcome.Ignored
+        val home = homeTopLeftInRoot(piece, imageTopLeftInRoot, imageWidthPx)
         val dist = hypot(
             pieceTopLeftInRoot.x - home.x,
             pieceTopLeftInRoot.y - home.y,
         )
-        draggingId = null
         if (dist > snapThresholdPx) return PlaceOutcome.Missed
         _placed.add(piece.id)
         feedback.onCorrectRelease(piece.id)
@@ -118,23 +81,39 @@ class RevealSession(
     }
 }
 
-private val LayerBBox.width: Float get() = (right - left).toFloat()
-private val LayerBBox.height: Float get() = (bottom - top).toFloat()
-
 /**
- * Top-left so the point at [grabFraction] (0–1 across the piece) stays on [fingerInRoot].
- * Growing the piece keeps that same point under the finger; the rest may extend off screen.
+ * Top-left so the point at [grabFraction] (0–1 across the image) stays on [fingerInRoot].
+ * Growing the image keeps that same point under the finger; the rest may extend off screen.
  */
 fun anchoredTopLeft(
     fingerInRoot: Offset,
     grabFraction: Offset,
-    pieceWidthPx: Float,
-    pieceHeightPx: Float,
+    widthPx: Float,
+    heightPx: Float,
 ): Offset {
     val across = grabFraction.x.coerceIn(0f, 1f)
     val down = grabFraction.y.coerceIn(0f, 1f)
     return Offset(
-        fingerInRoot.x - across * pieceWidthPx,
-        fingerInRoot.y - down * pieceHeightPx,
+        fingerInRoot.x - across * widthPx,
+        fingerInRoot.y - down * heightPx,
     )
+}
+
+/**
+ * How the photo sits in the play area. Landscape fills the height and pans
+ * sideways. Portrait fits inside the area so it never pans.
+ */
+data class PhotoFit(val widthPx: Float, val heightPx: Float) {
+    fun pans(viewportWidthPx: Float): Boolean = widthPx > viewportWidthPx + 1f
+
+    companion object {
+        fun of(scene: RevealScene, viewportWidthPx: Float, viewportHeightPx: Float): PhotoFit {
+            val aspect = scene.aspectRatio
+            if (scene.isLandscape) {
+                return PhotoFit(viewportHeightPx * aspect, viewportHeightPx)
+            }
+            val width = minOf(viewportWidthPx, viewportHeightPx * aspect)
+            return PhotoFit(width, width / aspect)
+        }
+    }
 }

@@ -1,0 +1,124 @@
+{
+  "id": "mossyrock",
+  "title": "Mossy Rock",
+  "mode": "reveal_v3",
+  "width": 1606,
+  "height": 1920,
+  "plateFile": "plate.webp",
+  "aliveFile": "alive.webp",
+  "coverFile": "cover.webp",
+  "liftPad": 41,
+  "source": {
+    "colorFile": "photo.png",
+    "plateFile": "photo-bw.png",
+    "sourceWidth": 5464,
+    "sourceHeight": 6532
+  },
+  "pieces": [
+    {
+      "id": 1,
+      "order": 1,
+      "cropFile": "crop/piece_01.webp",
+      "liftFile": "lift/piece_01.webp",
+      "iconFile": "icon/piece_01.webp",
+      "bbox": {
+        "left": 338,
+        "top": 706,
+        "right": 1606,
+        "bottom": 1200
+      },
+      "sourceFile": "01-log.png",
+      "label": "log"
+    },
+    {
+      "id": 2,
+      "order": 2,
+      "cropFile": "crop/piece_02.webp",
+      "liftFile": "lift/piece_02.webp",
+      "iconFile": "icon/piece_02.webp",
+      "bbox": {
+        "left": 0,
+        "top": 1333,
+        "right": 1606,
+        "bottom": 1920
+      },
+      "sourceFile": "02-log2.png",
+      "label": "log2"
+    },
+    {
+      "id": 3,
+      "order": 3,
+      "cropFile": "crop/piece_03.webp",
+      "liftFile": "lift/piece_03.webp",
+      "iconFile": "icon/piece_03.webp",
+      "bbox": {
+        "left": 0,
+        "top": 0,
+        "right": 394,
+        "bottom": 638
+      },
+      "sourceFile": "03-tree.png",
+      "label": "tree"
+    },
+    {
+      "id": 4,
+      "order": 4,
+      "cropFile": "crop/piece_04.webp",
+      "liftFile": "lift/piece_04.webp",
+      "iconFile": "icon/piece_04.webp",
+      "bbox": {
+        "left": 571,
+        "top": 0,
+        "right": 1351,
+        "bottom": 352
+      },
+      "sourceFile": "04-canopy.png",
+      "label": "canopy"
+    },
+    {
+      "id": 5,
+      "order": 5,
+      "cropFile": "crop/piece_05.webp",
+      "liftFile": "lift/piece_05.webp",
+      "iconFile": "icon/piece_05.webp",
+      "bbox": {
+        "left": 210,
+        "top": 275,
+        "right": 1451,
+        "bottom": 798
+      },
+      "sourceFile": "05-rock.png",
+      "label": "rock"
+    },
+    {
+      "id": 6,
+      "order": 6,
+      "cropFile": "crop/piece_06.webp",
+      "liftFile": "lift/piece_06.webp",
+      "iconFile": "icon/piece_06.webp",
+      "bbox": {
+        "left": 1455,
+        "top": 0,
+        "right": 1606,
+        "bottom": 780
+      },
+      "sourceFile": "06-tree2.png",
+      "label": "tree2"
+    },
+    {
+      "id": 7,
+      "order": 7,
+      "cropFile": "crop/piece_07.webp",
+      "liftFile": "lift/piece_07.webp",
+      "iconFile": "icon/piece_07.webp",
+      "bbox": {
+        "left": 0,
+        "top": 789,
+        "right": 448,
+        "bottom": 1406
+      },
+      "sourceFile": "07-fern.png",
+      "label": "fern"
+    }
+  ]
+}

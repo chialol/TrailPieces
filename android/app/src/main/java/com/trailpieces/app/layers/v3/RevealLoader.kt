@@ -5,9 +5,9 @@ import com.trailpieces.app.layers.LayerBBox
 import org.json.JSONObject
 
 object RevealLoader {
-    fun loadDefault(context: Context): RevealScene? {
+    fun loadAll(context: Context): List<RevealScene> {
         val ids = context.assets.list("reveal").orEmpty().sorted()
-        return ids.firstNotNullOfOrNull { id -> load(context, id) }
+        return ids.mapNotNull { id -> load(context, id) }
     }
 
     fun load(context: Context, sceneId: String): RevealScene? {
@@ -32,8 +32,9 @@ object RevealLoader {
                         id = id,
                         order = piece.optInt("order", id),
                         label = piece.optString("label", "").ifBlank { null },
-                        file = piece.getString("file"),
-                        trayFile = piece.getString("trayFile"),
+                        cropFile = piece.getString("cropFile"),
+                        liftFile = piece.getString("liftFile"),
+                        iconFile = piece.getString("iconFile"),
                         bbox = LayerBBox(
                             left = bbox.getInt("left"),
                             top = bbox.getInt("top"),
@@ -51,6 +52,8 @@ object RevealLoader {
             height = root.getInt("height"),
             plateFile = root.getString("plateFile"),
             aliveFile = root.getString("aliveFile"),
+            coverFile = root.optString("coverFile", root.getString("aliveFile")),
+            liftPad = root.optInt("liftPad", 0),
             pieces = pieces,
         ).also { scene ->
             require(scene.pieces.isNotEmpty()) { "Scene has no pieces" }

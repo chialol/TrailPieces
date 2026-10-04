@@ -48,7 +48,17 @@ tools\chop_puzzle\.venv\Scripts\pip install -r tools\prep_layers\requirements.tx
 ```
 
 Rebuild the app after that. Assets land in
-`android/app/src/main/assets/reveal/mountain/`.
+`android/app/src/main/assets/reveal/mountain/`:
+
+| File | Use |
+|------|-----|
+| `plate.webp` / `alive.webp` | Dark starting photo and full-color finish |
+| `cover.webp` | Scene picker thumbnail |
+| `crop/piece_NN.webp` | Tight crop drawn where the piece locks |
+| `lift/piece_NN.webp` | Crop with a soft outline and shadow, drawn while dragging |
+| `icon/piece_NN.webp` | Small lift image for the waiting row |
+
+Every scene folder under `assets/reveal/` shows up in the picker.
 
 Open **Reveal a photo** on the home screen.
 
