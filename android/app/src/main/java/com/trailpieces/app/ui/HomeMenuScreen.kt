@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun HomeMenuScreen(
+    onWalkTrail: () -> Unit,
     onTrailPuzzle: () -> Unit,
     onLayersConcept: () -> Unit,
     onRevealPhoto: () -> Unit,
@@ -42,6 +43,14 @@ fun HomeMenuScreen(
             modifier = Modifier.padding(top = 12.dp, bottom = 32.dp),
         )
         Button(
+            onClick = onWalkTrail,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp),
+        ) {
+            Text("Walk a trail")
+        }
+        OutlinedButton(
             onClick = onTrailPuzzle,
             modifier = Modifier
                 .fillMaxWidth()

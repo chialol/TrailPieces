@@ -1,0 +1,19 @@
+{
+  "sceneries": [
+    {
+      "id": "meadow",
+      "title": "Meadow",
+      "summary": "Open grass and wildflowers."
+    },
+    {
+      "id": "forest",
+      "title": "Forest",
+      "summary": "Trees, moss, and shade."
+    },
+    {
+      "id": "alpine",
+      "title": "Alpine",
+      "summary": "High rock and a far ridge."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "trails": [
+    {
+      "id": "obsidian",
+      "title": "Obsidian",
+      "summary": "A short high-country walk. Two stops so far.",
+      "photoIds": ["mossyrock", "mountain"]
+    }
+  ]
+}

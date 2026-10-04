@@ -1,0 +1,14 @@
+{
+  "moods": [
+    {
+      "id": "quiet",
+      "title": "Quiet",
+      "summary": "Still air and soft ground."
+    },
+    {
+      "id": "open",
+      "title": "Open",
+      "summary": "Wide light and a long view."
+    }
+  ]
+}

@@ -107,14 +107,20 @@ fun RevealScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     feedback: RevealFeedback = SilentRevealFeedback,
+    initialSceneId: String? = null,
+    onCompleted: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scenes = remember { RevealLoader.loadAll(context) }
-    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedId by rememberSaveable(initialSceneId) { mutableStateOf(initialSceneId) }
     val selected = scenes.firstOrNull { it.id == selectedId }
+    val locked = initialSceneId != null
+    fun leave() {
+        if (locked) onBack() else selectedId = null
+    }
 
     when {
-        scenes.isEmpty() -> MissingRevealScene(onBack = onBack, modifier = modifier)
+        scenes.isEmpty() || (locked && selected == null) -> MissingRevealScene(onBack = onBack, modifier = modifier)
         selected == null -> ScenePicker(
             scenes = scenes,
             onPick = { selectedId = it.id },
@@ -122,12 +128,13 @@ fun RevealScreen(
             modifier = modifier,
         )
         else -> {
-            BackHandler { selectedId = null }
+            BackHandler { leave() }
             key(selected.id) {
                 RevealPlayfield(
                     scene = selected,
-                    onBack = { selectedId = null },
+                    onBack = { leave() },
                     feedback = feedback,
+                    onCompleted = onCompleted,
                     modifier = modifier,
                 )
             }
@@ -251,6 +258,7 @@ private fun RevealPlayfield(
     scene: RevealScene,
     onBack: () -> Unit,
     feedback: RevealFeedback,
+    onCompleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -280,6 +288,7 @@ private fun RevealPlayfield(
             feedback = feedback,
             onBack = onBack,
             onReplay = { epoch++ },
+            onCompleted = onCompleted,
             modifier = modifier,
         )
     }
@@ -292,6 +301,7 @@ private fun RevealRound(
     feedback: RevealFeedback,
     onBack: () -> Unit,
     onReplay: () -> Unit,
+    onCompleted: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -301,6 +311,9 @@ private fun RevealRound(
     val drag = remember { DragState() }
     val geo = remember { PlayGeometry() }
     val finale = remember { Finale() }
+    // The drag gesture captures the first release lambda. This ref stays current.
+    val onCompletedRef = remember { arrayOf(onCompleted) }
+    onCompletedRef[0] = onCompleted
     var settle by remember { mutableStateOf<Settle?>(null) }
     var fit by remember { mutableStateOf(PhotoFit(0f, 0f)) }
     val scroll = rememberScrollState()
@@ -409,7 +422,10 @@ private fun RevealRound(
             landing.progress.animateTo(1f, tween(SettleMs, easing = LinearEasing))
             if (settle === landing) settle = null
         }
-        if (session.isComplete) playFinale()
+        if (session.isComplete) {
+            onCompletedRef[0].invoke()
+            playFinale()
+        }
     }
 
     val complete = session.isComplete

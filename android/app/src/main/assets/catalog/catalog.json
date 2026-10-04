@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "moods": [
+    {
+      "id": "quiet",
+      "title": "Quiet",
+      "summary": "Still air and soft ground."
+    },
+    {
+      "id": "open",
+      "title": "Open",
+      "summary": "Wide light and a long view."
+    }
+  ],
+  "sceneries": [
+    {
+      "id": "meadow",
+      "title": "Meadow",
+      "summary": "Open grass and wildflowers."
+    },
+    {
+      "id": "forest",
+      "title": "Forest",
+      "summary": "Trees, moss, and shade."
+    },
+    {
+      "id": "alpine",
+      "title": "Alpine",
+      "summary": "High rock and a far ridge."
+    }
+  ],
+  "photos": [
+    {
+      "id": "mossyrock",
+      "title": "Mossy Rock",
+      "sceneryId": "forest",
+      "moodIds": [
+        "quiet"
+      ],
+      "revealId": "mossyrock",
+      "blurb": "A shaded boulder under the firs."
+    },
+    {
+      "id": "mountain",
+      "title": "Mountain",
+      "sceneryId": "alpine",
+      "moodIds": [
+        "open"
+      ],
+      "revealId": "mountain",
+      "blurb": "A long ridge in full light."
+    }
+  ],
+  "trails": [
+    {
+      "id": "obsidian",
+      "title": "Obsidian",
+      "summary": "A short high-country walk. Two stops so far.",
+      "photoIds": [
+        "mossyrock",
+        "mountain"
+      ]
+    }
+  ]
+}
