@@ -86,7 +86,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private val SnapThresholdDp = 56.dp
+private val SnapThresholdDp = 20.dp
 private val ActiveIconHeight = 60.dp
 private val WaitingIconHeight = 40.dp
 private val IconMaxWidth = 150.dp
@@ -94,6 +94,8 @@ private val Backdrop = Color(0xFF0D0E0C)
 private val OnBackdrop = Color(0xFFE9E5DA)
 
 private const val GrowMs = 170
+private const val CenterMs = 140
+private val PieceCenter = Offset(0.5f, 0.5f)
 private const val ReturnMs = 260
 private const val SettleSlide = 0.3f
 private const val SettleMs = 520
@@ -213,8 +215,12 @@ private fun SceneCard(scene: RevealScene, onClick: () -> Unit) {
 private class DragState {
     var pieceId by mutableStateOf<Int?>(null)
     var finger by mutableStateOf(Offset.Zero)
-    /** Where on the lift image the finger is, 0–1 on each axis. */
-    var grab = Offset(0.5f, 0.5f)
+    /**
+     * Where on the lift image the finger is, 0–1 on each axis. Starts at the touch
+     * point on the icon and settles on the center while the piece is still icon-sized.
+     */
+    val grabAnim = Animatable(PieceCenter, Offset.VectorConverter)
+    val grab: Offset get() = grabAnim.value
     var iconSizePx = Size.Zero
     var iconTopLeftInRoot = Offset.Zero
     val grow = Animatable(0f)
@@ -440,11 +446,16 @@ private fun RevealRound(
                             if (drag.returning || drag.pieceId != null) return@WaitingRow
                             session.startDrag(piece.id)
                             if (session.draggingId != piece.id) return@WaitingRow
-                            drag.grab = grab
                             drag.iconSizePx = iconSize
                             drag.iconTopLeftInRoot = iconTopLeft
                             drag.finger = fingerInRoot
                             scope.launch { runCatching { drag.grow.snapTo(0f) } }
+                            scope.launch {
+                                runCatching {
+                                    drag.grabAnim.snapTo(grab)
+                                    drag.grabAnim.animateTo(PieceCenter, tween(CenterMs, easing = FastOutSlowInEasing))
+                                }
+                            }
                             drag.pieceId = piece.id
                         },
                         onDrag = { fingerInRoot ->
