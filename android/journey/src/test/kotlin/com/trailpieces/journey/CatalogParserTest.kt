@@ -34,6 +34,20 @@ class CatalogParserTest {
         )
         assertEquals("mossyrock", catalog.photos.single().revealId)
         assertEquals("quiet", catalog.photos.single().moodIds.single())
+        assertEquals("", catalog.photos.single().story)
+    }
+
+    @Test
+    fun readsStoryFromPhotoSceneryAndTrail() {
+        val catalog = CatalogParser.parse(
+            sampleJson()
+                .replace(""""blurb": "A shaded boulder."""", """"blurb": "A shaded boulder.", "story": "A mossy place."""")
+                .replace(""""summary": "Shade."""", """"summary": "Shade.", "story": "Trees close in."""")
+                .replace(""""summary": "A short walk."""", """"summary": "A short walk.", "story": "Along the ridge.""""),
+        )
+        assertEquals("A mossy place.", catalog.photos.first().story)
+        assertEquals("Trees close in.", catalog.sceneries.first { it.id == "forest" }.story)
+        assertEquals("Along the ridge.", catalog.trails.single().story)
     }
 
     @Test
@@ -79,6 +93,8 @@ class CatalogParserTest {
         assertEquals("alpine", index.photo("mountain")!!.sceneryId)
         assertTrue(index.sceneriesWithPhotos().none { it.id == "meadow" })
         assertTrue(catalog.sceneries.any { it.id == "meadow" })
+        assertTrue(index.photo("multnomah")!!.story.contains("620"))
+        assertTrue(index.trail("columbia")!!.story.isNotBlank())
     }
 }
 

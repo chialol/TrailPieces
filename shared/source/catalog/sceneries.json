@@ -3,22 +3,26 @@
     {
       "id": "meadow",
       "title": "Meadow",
-      "summary": "Open grass and wildflowers."
+      "summary": "Open grass and wildflowers.",
+      "story": "Open grass, often where the trees break."
     },
     {
       "id": "forest",
       "title": "Forest",
-      "summary": "Trees, moss, and shade."
+      "summary": "Trees, moss, and shade.",
+      "story": "Shade, moss, and a close view of the trunks."
     },
     {
       "id": "alpine",
       "title": "Alpine",
-      "summary": "High rock and a far ridge."
+      "summary": "High rock and a far ridge.",
+      "story": "High rock and a long view."
     },
     {
       "id": "waterfall",
       "title": "Waterfall",
-      "summary": "Falling water, mist, and wet stone."
+      "summary": "Falling water, mist, and wet stone.",
+      "story": "A stream falling over a cliff, sometimes in more than one step."
     }
   ]
 }

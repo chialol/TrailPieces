@@ -10,8 +10,8 @@ This is the app flow around a finished photo. It does not change puzzle-engine r
 2. The player picks a lens: **Mood**, **Scenery**, or **Trail**.
 3. Mood or scenery shows the photos tagged with that choice. A trail shows its stops in walk order, each with collected state.
 4. Choosing a photo opens that photo’s reveal scene directly. The reveal scene picker is not shown on this path.
-5. When the last piece locks, the photo is collected immediately, including if the player leaves during the finale without pressing Continue. The trail fraction updates (`1 of 5` on Obsidian). **Continue** offers the next uncollected stop on the trail this completion resolved, in walk order, wrapping once to an earlier gap. It never offers the photo just finished. When that trail has nothing left, Continue returns to the trail. Replay of the same photo stays available and does not change the fraction.
-6. Leaving before the last piece locks does not collect the photo. Back returns along the screens that opened the photo (photo, then the mood, scenery, or trail list, then the lens, then home). It does not follow the trail Continue resolved.
+5. When the last piece locks, the photo is collected immediately, including if the player leaves during the finale. The finale (flash, color, sheen) plays with nothing covering the photo. After that, a landscape photo eases back until the whole frame is visible, and pinch zoom turns on. Only then does the reading panel appear, in the space beside the photo: the trail fraction (`1 of 1` on Columbia Gorge), the place and trail stories, and **Continue**. Replay stays in the top bar.
+6. Opening a photo that is already collected skips the puzzle and the finale. It shows the full-color photo, already fit to the screen, with pinch zoom, the same panel, and replay at the top. Replay starts the puzzle. Leaving before the last piece locks does not collect the photo. Back returns along the screens that opened the photo.
 
 A photo has one scenery (meadow, forest, …) and any number of moods. Trails are ordered lists of photos. Completing a photo fills that stop on every trail that lists it. The two pilot photos each sit on one trail, so the fraction reads as “this trail.”
 
@@ -114,7 +114,7 @@ Package `com.trailpieces.journey`. Kotlin JVM, same style as `:puzzle-engine`. J
 
 ```kotlin
 data class Mood(val id: String, val title: String, val summary: String)
-data class Scenery(val id: String, val title: String, val summary: String)
+data class Scenery(val id: String, val title: String, val summary: String, val story: String)
 
 data class Photo(
     val id: String,
@@ -123,6 +123,7 @@ data class Photo(
     val moodIds: List<String>,
     val revealId: String,
     val blurb: String,
+    val story: String,
 )
 
 data class Trail(
@@ -130,6 +131,7 @@ data class Trail(
     val title: String,
     val summary: String,
     val photoIds: List<String>,
+    val story: String,
 )
 
 data class Catalog(
@@ -233,11 +235,29 @@ Back pops one frame: photo, then the list that opened it, then the lens, then ho
 - `initialSceneId: String? = null` — skip the picker and open this scene; back calls `onBack`
 - `onCompleted: () -> Unit = {}` — no id argument. Reveal does not know the catalog photo id, and `revealId` may differ from it.
 
-Fire `onCompleted` synchronously when the last piece locks, at the same moment as `playFinale()`. The journey calls `recordCompletion(playingPhotoId)` from a scope that Back does not cancel. Replay may invoke the callback again; the write is idempotent. The overlay reads `continueAfter` for that photo id and the session’s trail id, then stores the offer’s `trailId` on the session.
+Fire `onCompleted` synchronously when the last piece locks, at the same moment as `playFinale()`. The journey calls `recordCompletion(playingPhotoId)` from a scope that Back does not cancel, and computes the Continue offer then, but does not show it yet. Replay may invoke the callback again; the write is idempotent. The offer’s `trailId` is stored on the session. The reading panel waits for `onPresentationSettled`, described below.
 
-Continue with a `nextPhotoId` replaces the playing photo id, keeps the offer’s `trailId`, and keys `RevealScreen` so the new scene starts clean. The fraction and Continue overlay clear when the playing photo id changes. Continue with a null `nextPhotoId` opens that trail when the offer has one, and otherwise returns to the list that opened the photo.
+Continue with a `nextPhotoId` replaces the playing photo id, keeps the offer’s `trailId`, and keys `RevealScreen` so the new scene starts clean. The fraction and Continue panel clear when the playing photo id changes. They also clear when the player hits replay on the same photo: replay restores play framing (landscape height-fill, pinch off) and keeps the panel hidden through the puzzle and the next finale, until `onPresentationSettled` fires again. Continue with a null `nextPhotoId` opens that trail when the offer has one, and otherwise returns to the list that opened the photo.
 
 Cover thumbnails are a convention, not a catalog field: `assets/reveal/<revealId>/cover.webp`. The journey records the catalog photo id, never the reveal scene id.
+
+## After the photo is complete
+
+The collection is still saved when the last piece locks (`onCompleted`), before the finale. The reading panel waits.
+
+1. The existing finale runs on the framing used during play. Landscape stays height-filling and pannable. Nothing is drawn over the photo.
+2. When the sheen finishes, a landscape photo animates from that framing to a contain fit: the whole photo sits inside the play area. The move is slow, about 1.8s, eased like a lens pulling back, and it keeps the center of the current view until the whole frame is inside. A portrait photo already fits, so it skips this move.
+3. Pinch zoom and pan turn on only after that animation (or right after the sheen, for a portrait). The player cannot pinch smaller than the whole-photo fit. They can pinch back in to at least the size the photo had during play, and pan while zoomed in. Gestures stay off during the lens move.
+4. The journey then shows the reading panel in the open space around the photo, not on top of it. On a landscape photo the panel uses the band left by the zoom-out. On a portrait photo the photo eases up enough to open that band. The panel scrolls inside itself if the copy is long. It shows, when present:
+   - trail name and fraction (`1 of 1 collected`)
+   - the photo story, or the scenery story when the photo has none
+   - the trail story
+   - **Continue**, with the same next-stop rules as before
+5. `onPresentationSettled` fires once at step 4. Re-opening a collected photo jumps straight here: full-color contained photo, pinch on, panel visible, no finale and no lens animation. The top bar’s replay control hides the panel, restores play framing, and starts the puzzle from the first piece. The panel stays hidden until the next `onPresentationSettled`.
+
+`story` is an optional string on a photo (`meta.json`), a scenery, and a trail. Blank means “leave it out.” A place such as Multnomah is the photo story, because the shared waterfall scenery also covers Sahalie. The trail story is the path. The scenery story is the short note about that kind of place. The import script copies `story` through. Missing keys stay empty strings, so older catalogs still parse.
+
+Reveal a photo, outside a trail, still plays the finale, the landscape zoom-out, and pinch zoom. It has no reading panel.
 
 ## Out of scope
 

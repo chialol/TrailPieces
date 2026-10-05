@@ -2,6 +2,7 @@ package com.trailpieces.app.layers.v3
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
@@ -16,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -63,6 +66,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
@@ -101,6 +105,11 @@ private const val SettleSlide = 0.3f
 private const val SettleMs = 520
 private const val AliveMs = 1100
 private const val SheenMs = 1500
+private const val LensMs = 1800
+private const val ShrinkMs = 1000
+private val LensEasing = CubicBezierEasing(0.45f, 0.05f, 0.2f, 1f)
+private val MinBand = 168.dp
+private val MaxBand = 300.dp
 
 @Composable
 fun RevealScreen(
@@ -109,6 +118,11 @@ fun RevealScreen(
     feedback: RevealFeedback = SilentRevealFeedback,
     initialSceneId: String? = null,
     onCompleted: () -> Unit = {},
+    onPresentationSettled: () -> Unit = {},
+    onReplayStarted: () -> Unit = {},
+    startCompleted: Boolean = false,
+    readingBand: Boolean = false,
+    footer: @Composable () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scenes = remember { RevealLoader.loadAll(context) }
@@ -135,6 +149,11 @@ fun RevealScreen(
                     onBack = { leave() },
                     feedback = feedback,
                     onCompleted = onCompleted,
+                    onPresentationSettled = onPresentationSettled,
+                    onReplayStarted = onReplayStarted,
+                    startCompleted = startCompleted,
+                    readingBand = readingBand,
+                    footer = footer,
                     modifier = modifier,
                 )
             }
@@ -239,6 +258,8 @@ private class PlayGeometry {
     var rootOrigin = Offset.Zero
     var viewportBounds = Rect.Zero
     var imageTopLeftInRoot = Offset.Zero
+    var viewW = 0f
+    var viewH = 0f
     val iconTopLeftInRoot = HashMap<Int, Offset>()
 }
 
@@ -246,10 +267,18 @@ private class Settle(val pieceId: Int, val fromScene: Offset) {
     val progress = Animatable(0f)
 }
 
-private class Finale {
-    val alive = Animatable(0f)
+private class Viewer {
+    var scale by mutableFloatStateOf(1f)
+    var pan by mutableStateOf(Offset.Zero)
+}
+
+private class Finale(
+    aliveStart: Float = 0f,
+    sheenStart: Float = 0f,
+) {
+    val alive = Animatable(aliveStart)
     val flash = Animatable(0f)
-    val sheen = Animatable(0f)
+    val sheen = Animatable(sheenStart)
     val pulse = Animatable(1f)
 }
 
@@ -259,6 +288,11 @@ private fun RevealPlayfield(
     onBack: () -> Unit,
     feedback: RevealFeedback,
     onCompleted: () -> Unit,
+    onPresentationSettled: () -> Unit,
+    onReplayStarted: () -> Unit,
+    startCompleted: Boolean,
+    readingBand: Boolean,
+    footer: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -280,6 +314,7 @@ private fun RevealPlayfield(
         return
     }
 
+    var showFinished by remember { mutableStateOf(startCompleted) }
     var epoch by remember { mutableStateOf(0) }
     key(epoch) {
         RevealRound(
@@ -287,8 +322,16 @@ private fun RevealPlayfield(
             bitmaps = loaded,
             feedback = feedback,
             onBack = onBack,
-            onReplay = { epoch++ },
+            onReplay = {
+                showFinished = false
+                onReplayStarted()
+                epoch++
+            },
             onCompleted = onCompleted,
+            onPresentationSettled = onPresentationSettled,
+            startCompleted = showFinished,
+            readingBand = readingBand,
+            footer = footer,
             modifier = modifier,
         )
     }
@@ -302,26 +345,49 @@ private fun RevealRound(
     onBack: () -> Unit,
     onReplay: () -> Unit,
     onCompleted: () -> Unit,
+    onPresentationSettled: () -> Unit,
+    startCompleted: Boolean,
+    readingBand: Boolean,
+    footer: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    val session = remember { RevealSession(scene) }
+    val session = remember {
+        RevealSession(scene).also { if (startCompleted) it.restoreComplete() }
+    }
     session.feedback = feedback
     val drag = remember { DragState() }
     val geo = remember { PlayGeometry() }
-    val finale = remember { Finale() }
-    // The drag gesture captures the first release lambda. This ref stays current.
+    val finale = remember { Finale(if (startCompleted) 1f else 0f, if (startCompleted) 1f else 0f) }
+    val viewer = remember { Viewer() }
+    val lens = remember { Animatable(if (startCompleted && scene.isLandscape) 1f else 0f) }
+    val shrink = remember { Animatable(if (startCompleted) 1f else 0f) }
+    var settled by remember { mutableStateOf(startCompleted) }
+    var pinchOn by remember { mutableStateOf(startCompleted) }
+    var lensStartScroll by remember { mutableFloatStateOf(0f) }
+    var notified by remember { mutableStateOf(false) }
+    // The drag gesture captures the first release lambda. These refs stay current.
     val onCompletedRef = remember { arrayOf(onCompleted) }
     onCompletedRef[0] = onCompleted
+    val onSettledRef = remember { arrayOf(onPresentationSettled) }
+    onSettledRef[0] = onPresentationSettled
     var settle by remember { mutableStateOf<Settle?>(null) }
     var fit by remember { mutableStateOf(PhotoFit(0f, 0f)) }
     val scroll = rememberScrollState()
+    val bandScroll = rememberScrollState()
     val snapThresholdPx = with(density) { SnapThresholdDp.toPx() }
 
     LaunchedEffect(Unit) {
+        if (startCompleted) {
+            if (!notified) {
+                notified = true
+                onSettledRef[0].invoke()
+            }
+            return@LaunchedEffect
+        }
         val max = snapshotFlow { scroll.maxValue }.first { it in 1 until Int.MAX_VALUE }
-        scroll.scrollTo(max / 2)
+        if (lens.value == 0f) scroll.scrollTo(max / 2)
     }
 
     LaunchedEffect(Unit) {
@@ -374,6 +440,14 @@ private fun RevealRound(
         returnToRow(id)
     }
 
+    fun notifySettled() {
+        if (notified) return
+        notified = true
+        pinchOn = true
+        settled = true
+        onSettledRef[0].invoke()
+    }
+
     fun playFinale() {
         scope.launch {
             delay(SettleMs.toLong())
@@ -388,6 +462,28 @@ private fun RevealRound(
             launch { finale.alive.animateTo(1f, tween(AliveMs, easing = FastOutSlowInEasing)) }
             delay(380)
             finale.sheen.animateTo(1f, tween(SheenMs, easing = FastOutSlowInEasing))
+            val viewW = geo.viewW
+            val viewH = geo.viewH
+            if (viewW > 0f && viewH > 0f && scene.isLandscape) {
+                val play = PhotoFit.of(scene, viewW, viewH)
+                if (play.pans(viewW)) {
+                    lensStartScroll = scroll.value.toFloat()
+                    lens.animateTo(1f, tween(LensMs, easing = LensEasing))
+                }
+            }
+            if (viewW > 0f && viewH > 0f) {
+                val contain = PhotoFit.contained(scene, viewW, viewH)
+                val plan = settledBand(
+                    containHeightPx = contain.heightPx,
+                    viewportHeightPx = viewH,
+                    minBandPx = with(density) { MinBand.toPx() },
+                    maxBandPx = with(density) { MaxBand.toPx() },
+                )
+                if (readingBand && plan.mode == BandMode.Shrink) {
+                    shrink.animateTo(1f, tween(ShrinkMs, easing = FastOutSlowInEasing))
+                }
+            }
+            notifySettled()
         }
     }
 
@@ -492,42 +588,115 @@ private fun RevealRound(
             ) {
                 val viewW = constraints.maxWidth.toFloat()
                 val viewH = constraints.maxHeight.toFloat()
-                val nextFit = PhotoFit.of(scene, viewW, viewH)
-                if (nextFit != fit) fit = nextFit
-                val imageW = with(density) { nextFit.widthPx.toDp() }
-                val imageH = with(density) { nextFit.heightPx.toDp() }
-                val pans = nextFit.pans(viewW)
+                geo.viewW = viewW
+                geo.viewH = viewH
+                val fullContain = PhotoFit.contained(scene, viewW, viewH)
+                val plan = if (readingBand) {
+                    settledBand(
+                        containHeightPx = fullContain.heightPx,
+                        viewportHeightPx = viewH,
+                        minBandPx = with(density) { MinBand.toPx() },
+                        maxBandPx = with(density) { MaxBand.toPx() },
+                    )
+                } else {
+                    SettledBand(BandMode.Overlay, 0f)
+                }
+                val inset = if (plan.mode == BandMode.Shrink) plan.bandPx * shrink.value else 0f
+                val photoH = (viewH - inset).coerceAtLeast(1f)
+                val play = PhotoFit.of(scene, viewW, photoH)
+                val contain = PhotoFit.contained(scene, viewW, photoH)
+                val frame = if (scene.isLandscape) {
+                    lensFrame(play, contain, viewW, lensStartScroll, lens.value)
+                } else {
+                    LensFrame(play, 0f)
+                }
+                val shown = frame.fit
+                if (shown != fit) fit = shown
+                val scrollTarget = if (lens.value > 0f) frame.scrollPx.roundToInt() else null
+                LaunchedEffect(scrollTarget) {
+                    if (scrollTarget != null) scroll.scrollTo(scrollTarget.coerceAtLeast(0))
+                }
+                val imageW = with(density) { shown.widthPx.toDp() }
+                val imageH = with(density) { shown.heightPx.toDp() }
+                val pans = shown.pans(viewW) && !pinchOn
+                val pinchMax = maxPinch(play, contain)
 
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = finale.pulse.value
-                            scaleY = finale.pulse.value
-                        }
+                        .align(Alignment.TopStart)
+                        .fillMaxWidth()
+                        .height(with(density) { photoH.toDp() })
+                        .clipToBounds()
                         .then(
-                            if (pans) {
-                                Modifier.horizontalScroll(scroll, enabled = drag.pieceId == null)
+                            if (pinchOn) {
+                                Modifier.pointerInput(pinchMax) {
+                                    detectTransformGestures { _, panChange, zoom, _ ->
+                                        val next = pinchScale(viewer.scale, zoom, pinchMax)
+                                        viewer.scale = next
+                                        viewer.pan = pinchPan(
+                                            viewer.pan + panChange,
+                                            viewW,
+                                            photoH,
+                                            shown.widthPx * next,
+                                            shown.heightPx * next,
+                                        )
+                                        if (next <= 1.01f) viewer.pan = Offset.Zero
+                                    }
+                                }
                             } else {
                                 Modifier
                             },
                         ),
-                    contentAlignment = if (pans) Alignment.CenterStart else Alignment.Center,
                 ) {
-                    Canvas(
+                    Box(
                         modifier = Modifier
-                            .size(imageW, imageH)
-                            .onGloballyPositioned { geo.imageTopLeftInRoot = it.positionInRoot() },
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = finale.pulse.value
+                                scaleY = finale.pulse.value
+                            }
+                            .then(
+                                if (pans) {
+                                    Modifier.horizontalScroll(scroll, enabled = drag.pieceId == null)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        contentAlignment = if (pans) Alignment.CenterStart else Alignment.Center,
                     ) {
-                        drawPhoto(
-                            scene = scene,
-                            bitmaps = bitmaps,
-                            placedIds = session.placedIds,
-                            settle = settle,
-                            finale = finale,
-                            visibleLeft = if (pans) scroll.value.toFloat() else 0f,
-                            visibleWidth = if (pans) viewW else size.width,
-                        )
+                        Canvas(
+                            modifier = Modifier
+                                .size(imageW, imageH)
+                                .graphicsLayer {
+                                    scaleX = viewer.scale
+                                    scaleY = viewer.scale
+                                    translationX = viewer.pan.x
+                                    translationY = viewer.pan.y
+                                    transformOrigin = TransformOrigin.Center
+                                }
+                                .onGloballyPositioned { geo.imageTopLeftInRoot = it.positionInRoot() },
+                        ) {
+                            drawPhoto(
+                                scene = scene,
+                                bitmaps = bitmaps,
+                                placedIds = session.placedIds,
+                                settle = settle,
+                                finale = finale,
+                                visibleLeft = if (pans) scroll.value.toFloat() else 0f,
+                                visibleWidth = if (pans) viewW else size.width,
+                            )
+                        }
+                    }
+                }
+                if (settled && plan.bandPx > 1f) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(with(density) { plan.bandPx.toDp() })
+                            .verticalScroll(bandScroll),
+                    ) {
+                        footer()
                     }
                 }
             }

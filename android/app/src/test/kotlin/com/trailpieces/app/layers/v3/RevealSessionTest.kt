@@ -92,6 +92,49 @@ class RevealSessionTest {
         assertFalse(tall.pans(1080f))
     }
 
+    @Test
+    fun containedFitShowsTheWholeLandscapePhoto() {
+        val scene = scene(width = 3000, height = 2000)
+        val fit = PhotoFit.contained(scene, viewportWidthPx = 1080f, viewportHeightPx = 2000f)
+        assertEquals(1080f, fit.widthPx, 0.01f)
+        assertEquals(720f, fit.heightPx, 0.01f)
+        assertFalse(fit.pans(1080f))
+    }
+
+    @Test
+    fun lensPullbackKeepsTheViewCenterUntilThePhotoFits() {
+        val play = PhotoFit(widthPx = 3000f, heightPx = 2000f)
+        val contain = PhotoFit(widthPx = 1080f, heightPx = 720f)
+        val start = lensFrame(play, contain, viewportWidthPx = 1080f, startScrollPx = 960f, t = 0f)
+        assertEquals(3000f, start.fit.widthPx, 0.01f)
+        assertEquals(960f, start.scrollPx, 0.01f)
+
+        val end = lensFrame(play, contain, viewportWidthPx = 1080f, startScrollPx = 960f, t = 1f)
+        assertEquals(1080f, end.fit.widthPx, 0.01f)
+        assertEquals(0f, end.scrollPx, 0.01f)
+        assertTrue(end.fit.heightPx <= 2000f)
+    }
+
+    @Test
+    fun pinchCannotGoSmallerThanTheWholePhoto() {
+        assertEquals(1f, pinchScale(current = 1f, zoom = 0.4f, maxScale = 3f), 0.01f)
+        assertEquals(3f, pinchScale(current = 2.5f, zoom = 2f, maxScale = 3f), 0.01f)
+    }
+
+    @Test
+    fun aFilledPortraitOpensABandByShrinking() {
+        val band = settledBand(containHeightPx = 2000f, viewportHeightPx = 2000f, minBandPx = 168f, maxBandPx = 300f)
+        assertEquals(BandMode.Shrink, band.mode)
+        assertEquals(168f, band.bandPx, 0.01f)
+    }
+
+    @Test
+    fun aLandscapeLetterboxHoldsTheBandWithoutShrinking() {
+        val band = settledBand(containHeightPx = 720f, viewportHeightPx = 2000f, minBandPx = 168f, maxBandPx = 300f)
+        assertEquals(BandMode.Overlay, band.mode)
+        assertEquals(300f, band.bandPx, 0.01f)
+    }
+
     private fun scene(width: Int = 1000, height: Int = 500): RevealScene = RevealScene(
         id = "mountain",
         title = "Mountain",

@@ -106,6 +106,7 @@ def load_photos() -> list[dict]:
         blurb = meta.get("blurb") or ""
         if not isinstance(blurb, str):
             raise CatalogError(f"{photo_id} blurb must be a string")
+        story = optional_string(meta, "story", photo_id)
         photos.append(
             {
                 "id": photo_id,
@@ -114,6 +115,7 @@ def load_photos() -> list[dict]:
                 "moodIds": [item.strip() for item in mood_ids],
                 "revealId": reveal_id.strip(),
                 "blurb": blurb,
+                "story": story,
             }
         )
     if not photos:
@@ -135,6 +137,7 @@ def load_registry(path: Path, key: str) -> list[dict]:
         summary = item.get("summary") or ""
         if not isinstance(summary, str):
             raise CatalogError(f"{item_id} summary must be a string")
+        story = optional_string(item, "story", item_id)
         if key == "trails":
             photo_ids = item.get("photoIds")
             if not isinstance(photo_ids, list) or not all(isinstance(stop, str) and stop.strip() for stop in photo_ids):
@@ -144,11 +147,12 @@ def load_registry(path: Path, key: str) -> list[dict]:
                     "id": item_id,
                     "title": title,
                     "summary": summary,
+                    "story": story,
                     "photoIds": [stop.strip() for stop in photo_ids],
                 }
             )
         else:
-            cleaned.append({"id": item_id, "title": title, "summary": summary})
+            cleaned.append({"id": item_id, "title": title, "summary": summary, "story": story})
     return cleaned
 
 
@@ -162,6 +166,13 @@ def read_json(path: Path) -> dict:
     if not isinstance(document, dict):
         raise CatalogError(f"{path.relative_to(ROOT)} must be a JSON object")
     return document
+
+
+def optional_string(item: dict, field: str, owner: str) -> str:
+    value = item.get(field) or ""
+    if not isinstance(value, str):
+        raise CatalogError(f"{owner} {field} must be a string")
+    return value.strip()
 
 
 def required_string(item: dict, field: str, owner: str) -> str:

@@ -14,6 +14,7 @@ data class Scenery(
     val id: String,
     val title: String,
     val summary: String,
+    val story: String = "",
 )
 
 data class Photo(
@@ -24,6 +25,8 @@ data class Photo(
     /** Folder under `assets/reveal/`. Defaults to [id] when authoring omits it. */
     val revealId: String,
     val blurb: String,
+    /** About this place. Shown after the photo settles. */
+    val story: String = "",
 )
 
 data class Trail(
@@ -32,6 +35,7 @@ data class Trail(
     val summary: String,
     /** Walk order. A photo may appear on more than one trail. */
     val photoIds: List<String>,
+    val story: String = "",
 )
 
 data class Catalog(

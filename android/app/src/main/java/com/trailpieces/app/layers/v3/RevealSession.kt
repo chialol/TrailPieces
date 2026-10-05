@@ -79,6 +79,13 @@ class RevealSession(
         if (isComplete) feedback.onSceneAlive()
         return PlaceOutcome.Locked
     }
+
+    /** Opens the finished photo with every piece already home. */
+    fun restoreComplete() {
+        draggingId = null
+        _placed.clear()
+        pieces.forEach { _placed.add(it.id) }
+    }
 }
 
 /**
@@ -115,5 +122,81 @@ data class PhotoFit(val widthPx: Float, val heightPx: Float) {
             val width = minOf(viewportWidthPx, viewportHeightPx * aspect)
             return PhotoFit(width, width / aspect)
         }
+
+        /** Whole photo inside the viewport. Landscape no longer fills the height. */
+        fun contained(scene: RevealScene, viewportWidthPx: Float, viewportHeightPx: Float): PhotoFit {
+            val aspect = scene.aspectRatio.coerceAtLeast(0.01f)
+            val width = minOf(viewportWidthPx, viewportHeightPx * aspect)
+            return PhotoFit(width, width / aspect)
+        }
     }
+}
+
+/**
+ * One frame of the lens pull-back. [t] is 0 at the play framing and 1 when the
+ * whole photo fits. The point at the center of the viewport stays put until
+ * the image is narrow enough to center.
+ */
+data class LensFrame(val fit: PhotoFit, val scrollPx: Float)
+
+fun lensFrame(
+    play: PhotoFit,
+    contain: PhotoFit,
+    viewportWidthPx: Float,
+    startScrollPx: Float,
+    t: Float,
+): LensFrame {
+    val u = t.coerceIn(0f, 1f)
+    val width = play.widthPx + (contain.widthPx - play.widthPx) * u
+    val height = if (play.widthPx <= 0f) play.heightPx else width * play.heightPx / play.widthPx
+    val center = startScrollPx + viewportWidthPx / 2f
+    val fraction = if (play.widthPx <= 0f) 0.5f else center / play.widthPx
+    val desired = fraction * width - viewportWidthPx / 2f
+    val maxScroll = (width - viewportWidthPx).coerceAtLeast(0f)
+    return LensFrame(PhotoFit(width, height), desired.coerceIn(0f, maxScroll))
+}
+
+fun maxPinch(play: PhotoFit, contain: PhotoFit): Float {
+    val back = if (contain.widthPx <= 0f) 1f else play.widthPx / contain.widthPx
+    return maxOf(back, 3f)
+}
+
+fun pinchScale(current: Float, zoom: Float, maxScale: Float): Float {
+    return (current * zoom).coerceIn(1f, maxScale.coerceAtLeast(1f))
+}
+
+/** Keeps a zoomed photo from sliding so far that an empty gap opens inside the viewport. */
+fun pinchPan(
+    pan: Offset,
+    viewportWidthPx: Float,
+    viewportHeightPx: Float,
+    contentWidthPx: Float,
+    contentHeightPx: Float,
+): Offset {
+    val maxX = ((contentWidthPx - viewportWidthPx) / 2f).coerceAtLeast(0f)
+    val maxY = ((contentHeightPx - viewportHeightPx) / 2f).coerceAtLeast(0f)
+    return Offset(pan.x.coerceIn(-maxX, maxX), pan.y.coerceIn(-maxY, maxY))
+}
+
+enum class BandMode { Overlay, Shrink }
+
+/**
+ * Where the reading band sits once the photo fits.
+ * A tall letterbox holds the band without moving the photo.
+ * A photo that already fills the height shrinks to open one.
+ */
+data class SettledBand(val mode: BandMode, val bandPx: Float)
+
+fun settledBand(
+    containHeightPx: Float,
+    viewportHeightPx: Float,
+    minBandPx: Float,
+    maxBandPx: Float,
+): SettledBand {
+    val letterbox = ((viewportHeightPx - containHeightPx) / 2f).coerceAtLeast(0f)
+    if (letterbox >= minBandPx) {
+        return SettledBand(BandMode.Overlay, letterbox.coerceAtMost(maxBandPx))
+    }
+    val band = minBandPx.coerceAtMost(viewportHeightPx * 0.45f).coerceAtLeast(0f)
+    return SettledBand(BandMode.Shrink, band)
 }

@@ -4,39 +4,46 @@
     {
       "id": "quiet",
       "title": "Quiet",
-      "summary": "Still air and soft ground."
+      "summary": "Still air and soft ground.",
+      "story": ""
     },
     {
       "id": "open",
       "title": "Open",
-      "summary": "Wide light and a long view."
+      "summary": "Wide light and a long view.",
+      "story": ""
     },
     {
       "id": "wild",
       "title": "Wild",
-      "summary": "Moving water and weather."
+      "summary": "Moving water and weather.",
+      "story": ""
     }
   ],
   "sceneries": [
     {
       "id": "meadow",
       "title": "Meadow",
-      "summary": "Open grass and wildflowers."
+      "summary": "Open grass and wildflowers.",
+      "story": "Open grass, often where the trees break."
     },
     {
       "id": "forest",
       "title": "Forest",
-      "summary": "Trees, moss, and shade."
+      "summary": "Trees, moss, and shade.",
+      "story": "Shade, moss, and a close view of the trunks."
     },
     {
       "id": "alpine",
       "title": "Alpine",
-      "summary": "High rock and a far ridge."
+      "summary": "High rock and a far ridge.",
+      "story": "High rock and a long view."
     },
     {
       "id": "waterfall",
       "title": "Waterfall",
-      "summary": "Falling water, mist, and wet stone."
+      "summary": "Falling water, mist, and wet stone.",
+      "story": "A stream falling over a cliff, sometimes in more than one step."
     }
   ],
   "photos": [
@@ -48,7 +55,8 @@
         "quiet"
       ],
       "revealId": "mossyrock",
-      "blurb": "A shaded boulder under the firs."
+      "blurb": "A shaded boulder under the firs.",
+      "story": ""
     },
     {
       "id": "mountain",
@@ -58,7 +66,19 @@
         "open"
       ],
       "revealId": "mountain",
-      "blurb": "A long ridge in full light."
+      "blurb": "A long ridge in full light.",
+      "story": ""
+    },
+    {
+      "id": "multnomah",
+      "title": "Multnomah Falls",
+      "sceneryId": "waterfall",
+      "moodIds": [
+        "wild"
+      ],
+      "revealId": "multnomah",
+      "blurb": "Two drops and the bridge between them.",
+      "story": "Multnomah Falls drops 620 feet in two tiers, the tallest in Oregon. Benson Bridge crosses between them."
     },
     {
       "id": "sahalie",
@@ -68,7 +88,8 @@
         "wild"
       ],
       "revealId": "sahalie",
-      "blurb": "Mist and moss where the river drops."
+      "blurb": "Mist and moss where the river drops.",
+      "story": "Sahalie Falls drops over a lava shelf on the upper McKenzie. Koosah Falls is a short walk downstream."
     }
   ],
   "trails": [
@@ -76,6 +97,7 @@
       "id": "obsidian",
       "title": "Obsidian",
       "summary": "A short high-country walk. Two stops so far.",
+      "story": "",
       "photoIds": [
         "mossyrock",
         "mountain"
@@ -85,8 +107,18 @@
       "id": "mckenzie",
       "title": "McKenzie River",
       "summary": "Down the river, starting at the falls.",
+      "story": "The McKenzie runs west from Clear Lake through lava and forest toward the Willamette Valley.",
       "photoIds": [
         "sahalie"
+      ]
+    },
+    {
+      "id": "columbia",
+      "title": "Columbia Gorge",
+      "summary": "Waterfalls along the gorge.",
+      "story": "The Columbia River cuts through the Cascades here. Creeks fall off the Oregon cliffs in a long line of waterfalls.",
+      "photoIds": [
+        "multnomah"
       ]
     }
   ]

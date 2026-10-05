@@ -1,0 +1,139 @@
+{
+  "id": "multnomah",
+  "title": "Multnomah Falls",
+  "mode": "reveal_v3",
+  "width": 2164,
+  "height": 1920,
+  "plateFile": "plate.webp",
+  "aliveFile": "alive.webp",
+  "coverFile": "cover.webp",
+  "liftPad": 41,
+  "source": {
+    "colorFile": "photo.png",
+    "plateFile": "photo-bw.png",
+    "sourceWidth": 4404,
+    "sourceHeight": 3907
+  },
+  "pieces": [
+    {
+      "id": 1,
+      "order": 1,
+      "cropFile": "crop/piece_01.webp",
+      "liftFile": "lift/piece_01.webp",
+      "iconFile": "icon/piece_01.webp",
+      "bbox": {
+        "left": 416,
+        "top": 365,
+        "right": 1757,
+        "bottom": 1259
+      },
+      "sourceFile": "01-bridge.png",
+      "label": "bridge"
+    },
+    {
+      "id": 2,
+      "order": 2,
+      "cropFile": "crop/piece_02.webp",
+      "liftFile": "lift/piece_02.webp",
+      "iconFile": "icon/piece_02.webp",
+      "bbox": {
+        "left": 0,
+        "top": 0,
+        "right": 829,
+        "bottom": 1148
+      },
+      "sourceFile": "02-cliff1.png",
+      "label": "cliff1"
+    },
+    {
+      "id": 3,
+      "order": 3,
+      "cropFile": "crop/piece_03.webp",
+      "liftFile": "lift/piece_03.webp",
+      "iconFile": "icon/piece_03.webp",
+      "bbox": {
+        "left": 1256,
+        "top": 1033,
+        "right": 2164,
+        "bottom": 1920
+      },
+      "sourceFile": "03-cliff2.png",
+      "label": "cliff2"
+    },
+    {
+      "id": 4,
+      "order": 4,
+      "cropFile": "crop/piece_04.webp",
+      "liftFile": "lift/piece_04.webp",
+      "iconFile": "icon/piece_04.webp",
+      "bbox": {
+        "left": 1446,
+        "top": 0,
+        "right": 2164,
+        "bottom": 1358
+      },
+      "sourceFile": "04-cliff3.png",
+      "label": "cliff3"
+    },
+    {
+      "id": 5,
+      "order": 5,
+      "cropFile": "crop/piece_05.webp",
+      "liftFile": "lift/piece_05.webp",
+      "iconFile": "icon/piece_05.webp",
+      "bbox": {
+        "left": 802,
+        "top": 691,
+        "right": 1451,
+        "bottom": 1296
+      },
+      "sourceFile": "05-topfallbottom.png",
+      "label": "topfallbottom"
+    },
+    {
+      "id": 6,
+      "order": 6,
+      "cropFile": "crop/piece_06.webp",
+      "liftFile": "lift/piece_06.webp",
+      "iconFile": "icon/piece_06.webp",
+      "bbox": {
+        "left": 0,
+        "top": 1009,
+        "right": 904,
+        "bottom": 1854
+      },
+      "sourceFile": "06-cliff4.png",
+      "label": "cliff4"
+    },
+    {
+      "id": 7,
+      "order": 7,
+      "cropFile": "crop/piece_07.webp",
+      "liftFile": "lift/piece_07.webp",
+      "iconFile": "icon/piece_07.webp",
+      "bbox": {
+        "left": 784,
+        "top": 1219,
+        "right": 1378,
+        "bottom": 1920
+      },
+      "sourceFile": "07-bottomfall.png",
+      "label": "bottomfall"
+    },
+    {
+      "id": 8,
+      "order": 8,
+      "cropFile": "crop/piece_08.webp",
+      "liftFile": "lift/piece_08.webp",
+      "iconFile": "icon/piece_08.webp",
+      "bbox": {
+        "left": 635,
+        "top": 0,
+        "right": 1653,
+        "bottom": 605
+      },
+      "sourceFile": "08-topfalltop.png",
+      "label": "topfalltop"
+    }
+  ]
+}

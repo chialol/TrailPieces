@@ -56,8 +56,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 
-private val CompletionCream = Color(0xFFF4F1E8)
-private val CompletionInk = Color(0xFF1B4332)
+private val ReadingInk = Color(0xFFE9E5DA)
 
 @Composable
 fun JourneyScreen(
@@ -112,6 +111,7 @@ private class WalkSession(initial: PlayerProgress) {
     var place by mutableStateOf<JourneyPlace>(nav.current)
     var offer by mutableStateOf<ContinueOffer?>(null)
     var offerPhotoId by mutableStateOf<String?>(null)
+    var panelReady by mutableStateOf(false)
 
     fun sync() {
         place = nav.current
@@ -126,6 +126,7 @@ private class WalkSession(initial: PlayerProgress) {
         sync()
         offer = next
         offerPhotoId = photoId
+        panelReady = false
         // Starts immediately, so the photo is stored before Back can leave this screen.
         saveScope.launch(start = CoroutineStart.UNDISPATCHED) {
             graph.progress.recordCompletion(photoId)
@@ -233,7 +234,7 @@ private fun JourneyReady(
                 progress = session.progress,
                 trailId = null,
                 onBack = { pop(session) },
-                onPhoto = { photo -> openPhoto(session, photo.id, trailId = null) },
+                onPhoto = { photo -> openPhoto(session, catalog, photo.id, trailId = null) },
                 modifier = modifier,
             )
         }
@@ -246,7 +247,7 @@ private fun JourneyReady(
                 progress = session.progress,
                 trailId = null,
                 onBack = { pop(session) },
-                onPhoto = { photo -> openPhoto(session, photo.id, trailId = null) },
+                onPhoto = { photo -> openPhoto(session, catalog, photo.id, trailId = null) },
                 modifier = modifier,
             )
         }
@@ -263,7 +264,7 @@ private fun JourneyReady(
                     progress = session.progress,
                     trailId = trail.id,
                     onBack = { pop(session) },
-                    onPhoto = { photo -> openPhoto(session, photo.id, trail.id) },
+                    onPhoto = { photo -> openPhoto(session, catalog, photo.id, trail.id) },
                     modifier = modifier,
                 )
             }
@@ -278,20 +279,29 @@ private fun JourneyReady(
                         RevealScreen(
                             onBack = {
                                 session.offer = null
+                                session.panelReady = false
                                 pop(session)
                             },
                             initialSceneId = photo.revealId,
+                            startCompleted = photo.id in session.progress.completedPhotoIds,
+                            readingBand = true,
                             onCompleted = { session.onPhotoCompleted(catalog, graph, saveScope) },
+                            onPresentationSettled = { session.panelReady = true },
+                            onReplayStarted = { session.panelReady = false },
+                            footer = {
+                                val shown = session.offer?.takeIf {
+                                    session.panelReady && session.offerPhotoId == photo.id
+                                }
+                                if (shown != null) {
+                                    ReadingPanel(
+                                        photo = photo,
+                                        offer = shown,
+                                        index = index,
+                                        onContinue = { continueFrom(session, shown) },
+                                    )
+                                }
+                            },
                             modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                    val shown = session.offer?.takeIf { session.offerPhotoId == photo.id }
-                    if (shown != null) {
-                        CompletionCard(
-                            offer = shown,
-                            index = index,
-                            onContinue = { continueFrom(session, shown) },
-                            modifier = Modifier.align(Alignment.BottomCenter),
                         )
                     }
                 }
@@ -305,15 +315,27 @@ private fun pop(session: WalkSession) {
     session.sync()
 }
 
-private fun openPhoto(session: WalkSession, photoId: String, trailId: String?) {
+private fun openPhoto(session: WalkSession, catalog: Catalog, photoId: String, trailId: String?) {
+    session.panelReady = false
     session.offer = null
-    session.nav.open(JourneyPlace.Playing(photoId, trailId))
+    session.offerPhotoId = null
+    val offer = if (photoId in session.progress.completedPhotoIds) {
+        continueAfter(catalog, session.progress, photoId, trailId)
+    } else {
+        null
+    }
+    if (offer != null) {
+        session.offer = offer
+        session.offerPhotoId = photoId
+    }
+    session.nav.open(JourneyPlace.Playing(photoId, trailId ?: offer?.trailId))
     session.sync()
 }
 
 private fun continueFrom(session: WalkSession, offer: ContinueOffer) {
     session.offer = null
     session.offerPhotoId = null
+    session.panelReady = false
     val nextPhotoId = offer.nextPhotoId
     if (nextPhotoId != null) {
         session.nav.continueTo(nextPhotoId, offer.trailId)
@@ -523,50 +545,65 @@ private fun Cover(revealId: String, title: String) {
 }
 
 @Composable
-private fun CompletionCard(
+private fun ReadingPanel(
+    photo: Photo,
     offer: ContinueOffer,
     index: CatalogIndex,
     onContinue: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val trail = offer.trailId?.let { index.trail(it) }
+    val scenery = index.scenery(photo.sceneryId)
     val next = offer.nextPhotoId?.let { index.photo(it) }
+    val placeStory = photo.story.ifBlank { scenery?.story.orEmpty() }
+    val trailStory = trail?.story.orEmpty()
     val label = when {
         next != null -> "Continue"
         trail != null -> "Back to ${trail.title}"
         else -> "Keep browsing"
     }
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        shape = RoundedCornerShape(18.dp),
-        color = CompletionCream,
-        shadowElevation = 8.dp,
-    ) {
-        Column(Modifier.padding(18.dp)) {
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Text(
+            text = trail?.title ?: "Collected",
+            style = MaterialTheme.typography.titleMedium,
+            color = ReadingInk,
+        )
+        Text(
+            text = if (offer.total == 0) "Saved" else "${fraction(offer.collected, offer.total)} collected",
+            style = MaterialTheme.typography.bodyLarge,
+            color = ReadingInk,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        if (placeStory.isNotBlank()) {
             Text(
-                text = trail?.title ?: "Collected",
-                style = MaterialTheme.typography.titleMedium,
-                color = CompletionInk,
+                text = placeStory,
+                style = MaterialTheme.typography.bodyMedium,
+                color = ReadingInk.copy(alpha = 0.9f),
+                modifier = Modifier.padding(top = 10.dp),
             )
+        }
+        if (trailStory.isNotBlank() && trailStory != placeStory) {
             Text(
-                text = if (offer.total == 0) "Saved" else "${fraction(offer.collected, offer.total)} collected",
-                style = MaterialTheme.typography.bodyLarge,
-                color = CompletionInk.copy(alpha = 0.8f),
-                modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
+                text = trailStory,
+                style = MaterialTheme.typography.bodyMedium,
+                color = ReadingInk.copy(alpha = 0.9f),
+                modifier = Modifier.padding(top = 8.dp),
             )
-            if (next != null) {
-                Text(
-                    text = next.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = CompletionInk.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(bottom = 10.dp),
-                )
-            }
-            Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-                Text(label)
-            }
+        }
+        if (next != null) {
+            Text(
+                text = next.title,
+                style = MaterialTheme.typography.labelLarge,
+                color = ReadingInk.copy(alpha = 0.75f),
+                modifier = Modifier.padding(top = 12.dp),
+            )
+        }
+        Button(
+            onClick = onContinue,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
+        ) {
+            Text(label)
         }
     }
 }

@@ -53,6 +53,7 @@ object CatalogParser {
                 id = requiredId(item, "scenery"),
                 title = item.getString("title"),
                 summary = item.optString("summary", ""),
+                story = item.optString("story", ""),
             )
         }
         requireUnique(sceneries.map { it.id }, "scenery")
@@ -85,6 +86,7 @@ object CatalogParser {
                 moodIds = photoMoods,
                 revealId = revealId,
                 blurb = item.optString("blurb", ""),
+                story = item.optString("story", ""),
             )
         }
         requireUnique(photos.map { it.id }, "photo")
@@ -106,6 +108,7 @@ object CatalogParser {
                 title = item.getString("title"),
                 summary = item.optString("summary", ""),
                 photoIds = stops,
+                story = item.optString("story", ""),
             )
         }
         requireUnique(trails.map { it.id }, "trail")

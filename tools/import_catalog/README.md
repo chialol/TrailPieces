@@ -25,6 +25,8 @@ shared/source/reveal/mossyrock/meta.json
 }
 ```
 
+`story` is optional on a photo, a scenery, and a trail. It is the longer note shown after that photo is finished. A blank story is left out.
+
 Trail order is the `photoIds` array in `trails.json`. A photo can be listed on
 more than one trail. Leave a new scenery in `sceneries.json` even before a
 photo uses it; the picker hides sceneries that have no photo yet.
