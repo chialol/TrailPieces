@@ -9,6 +9,11 @@
       "id": "open",
       "title": "Open",
       "summary": "Wide light and a long view."
+    },
+    {
+      "id": "wild",
+      "title": "Wild",
+      "summary": "Moving water and weather."
     }
   ]
 }

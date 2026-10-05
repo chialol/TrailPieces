@@ -5,6 +5,12 @@
       "title": "Obsidian",
       "summary": "A short high-country walk. Two stops so far.",
       "photoIds": ["mossyrock", "mountain"]
+    },
+    {
+      "id": "mckenzie",
+      "title": "McKenzie River",
+      "summary": "Down the river, starting at the falls.",
+      "photoIds": ["sahalie"]
     }
   ]
 }

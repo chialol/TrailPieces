@@ -10,6 +10,11 @@
       "id": "open",
       "title": "Open",
       "summary": "Wide light and a long view."
+    },
+    {
+      "id": "wild",
+      "title": "Wild",
+      "summary": "Moving water and weather."
     }
   ],
   "sceneries": [
@@ -27,6 +32,11 @@
       "id": "alpine",
       "title": "Alpine",
       "summary": "High rock and a far ridge."
+    },
+    {
+      "id": "waterfall",
+      "title": "Waterfall",
+      "summary": "Falling water, mist, and wet stone."
     }
   ],
   "photos": [
@@ -49,6 +59,16 @@
       ],
       "revealId": "mountain",
       "blurb": "A long ridge in full light."
+    },
+    {
+      "id": "sahalie",
+      "title": "Sahalie Falls",
+      "sceneryId": "waterfall",
+      "moodIds": [
+        "wild"
+      ],
+      "revealId": "sahalie",
+      "blurb": "Mist and moss where the river drops."
     }
   ],
   "trails": [
@@ -59,6 +79,14 @@
       "photoIds": [
         "mossyrock",
         "mountain"
+      ]
+    },
+    {
+      "id": "mckenzie",
+      "title": "McKenzie River",
+      "summary": "Down the river, starting at the falls.",
+      "photoIds": [
+        "sahalie"
       ]
     }
   ]

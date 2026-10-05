@@ -1,0 +1,139 @@
+{
+  "id": "sahalie",
+  "title": "Sahalie Falls",
+  "mode": "reveal_v3",
+  "width": 2206,
+  "height": 1920,
+  "plateFile": "plate.webp",
+  "aliveFile": "alive.webp",
+  "coverFile": "cover.webp",
+  "liftPad": 41,
+  "source": {
+    "colorFile": "photo.png",
+    "plateFile": "photo-bw.png",
+    "sourceWidth": 6277,
+    "sourceHeight": 5464
+  },
+  "pieces": [
+    {
+      "id": 1,
+      "order": 1,
+      "cropFile": "crop/piece_01.webp",
+      "liftFile": "lift/piece_01.webp",
+      "iconFile": "icon/piece_01.webp",
+      "bbox": {
+        "left": 1470,
+        "top": 742,
+        "right": 2206,
+        "bottom": 1401
+      },
+      "sourceFile": "01-moss1.png",
+      "label": "moss1"
+    },
+    {
+      "id": 2,
+      "order": 2,
+      "cropFile": "crop/piece_02.webp",
+      "liftFile": "lift/piece_02.webp",
+      "iconFile": "icon/piece_02.webp",
+      "bbox": {
+        "left": 0,
+        "top": 1268,
+        "right": 761,
+        "bottom": 1910
+      },
+      "sourceFile": "02-mist.png",
+      "label": "mist"
+    },
+    {
+      "id": 3,
+      "order": 3,
+      "cropFile": "crop/piece_03.webp",
+      "liftFile": "lift/piece_03.webp",
+      "iconFile": "icon/piece_03.webp",
+      "bbox": {
+        "left": 118,
+        "top": 0,
+        "right": 1120,
+        "bottom": 992
+      },
+      "sourceFile": "03-cliff.png",
+      "label": "cliff"
+    },
+    {
+      "id": 4,
+      "order": 4,
+      "cropFile": "crop/piece_04.webp",
+      "liftFile": "lift/piece_04.webp",
+      "iconFile": "icon/piece_04.webp",
+      "bbox": {
+        "left": 1343,
+        "top": 1163,
+        "right": 2206,
+        "bottom": 1861
+      },
+      "sourceFile": "04-moss2.png",
+      "label": "moss2"
+    },
+    {
+      "id": 5,
+      "order": 5,
+      "cropFile": "crop/piece_05.webp",
+      "liftFile": "lift/piece_05.webp",
+      "iconFile": "icon/piece_05.webp",
+      "bbox": {
+        "left": 1436,
+        "top": 0,
+        "right": 2206,
+        "bottom": 740
+      },
+      "sourceFile": "05-cliff2.png",
+      "label": "cliff2"
+    },
+    {
+      "id": 6,
+      "order": 6,
+      "cropFile": "crop/piece_06.webp",
+      "liftFile": "lift/piece_06.webp",
+      "iconFile": "icon/piece_06.webp",
+      "bbox": {
+        "left": 702,
+        "top": 47,
+        "right": 1541,
+        "bottom": 1686
+      },
+      "sourceFile": "06-fall.png",
+      "label": "fall"
+    },
+    {
+      "id": 7,
+      "order": 7,
+      "cropFile": "crop/piece_07.webp",
+      "liftFile": "lift/piece_07.webp",
+      "iconFile": "icon/piece_07.webp",
+      "bbox": {
+        "left": 0,
+        "top": 530,
+        "right": 806,
+        "bottom": 1459
+      },
+      "sourceFile": "07-moss3.png",
+      "label": "moss3"
+    },
+    {
+      "id": 8,
+      "order": 8,
+      "cropFile": "crop/piece_08.webp",
+      "liftFile": "lift/piece_08.webp",
+      "iconFile": "icon/piece_08.webp",
+      "bbox": {
+        "left": 351,
+        "top": 1501,
+        "right": 1690,
+        "bottom": 1920
+      },
+      "sourceFile": "08-ground.png",
+      "label": "ground"
+    }
+  ]
+}
