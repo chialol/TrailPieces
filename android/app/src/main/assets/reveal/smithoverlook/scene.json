@@ -22,10 +22,10 @@
       "liftFile": "lift/piece_01.webp",
       "iconFile": "icon/piece_01.webp",
       "bbox": {
-        "left": 1846,
+        "left": 1845,
         "top": 0,
         "right": 3093,
-        "bottom": 507
+        "bottom": 508
       },
       "sourceFile": "01.png"
     },
@@ -36,8 +36,8 @@
       "liftFile": "lift/piece_02.webp",
       "iconFile": "icon/piece_02.webp",
       "bbox": {
-        "left": 2504,
-        "top": 145,
+        "left": 2503,
+        "top": 146,
         "right": 3093,
         "bottom": 855
       },
@@ -66,7 +66,7 @@
       "bbox": {
         "left": 1722,
         "top": 379,
-        "right": 2515,
+        "right": 2516,
         "bottom": 1151
       },
       "sourceFile": "04.png"
@@ -79,7 +79,7 @@
       "iconFile": "icon/piece_05.webp",
       "bbox": {
         "left": 1908,
-        "top": 1082,
+        "top": 1081,
         "right": 3093,
         "bottom": 1920
       },
@@ -106,8 +106,8 @@
       "liftFile": "lift/piece_07.webp",
       "iconFile": "icon/piece_07.webp",
       "bbox": {
-        "left": 1423,
-        "top": 1053,
+        "left": 1422,
+        "top": 1052,
         "right": 2242,
         "bottom": 1869
       },
@@ -122,7 +122,7 @@
       "bbox": {
         "left": 873,
         "top": 879,
-        "right": 2071,
+        "right": 2072,
         "bottom": 1920
       },
       "sourceFile": "08.png"
@@ -136,7 +136,7 @@
       "bbox": {
         "left": 865,
         "top": 586,
-        "right": 1927,
+        "right": 1928,
         "bottom": 1092
       },
       "sourceFile": "09.png"
@@ -204,7 +204,7 @@
       "liftFile": "lift/piece_14.webp",
       "iconFile": "icon/piece_14.webp",
       "bbox": {
-        "left": 718,
+        "left": 717,
         "top": 358,
         "right": 1838,
         "bottom": 784
@@ -220,7 +220,7 @@
       "bbox": {
         "left": 863,
         "top": 0,
-        "right": 2184,
+        "right": 2185,
         "bottom": 512
       },
       "sourceFile": "15.png"

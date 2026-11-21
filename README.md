@@ -36,10 +36,17 @@ See [android/README.md](android/README.md) for detailed setup and troubleshootin
 2. Run [tools/prep_layers/README.md](tools/prep_layers/README.md).
 3. Rebuild/run. Assets land in `android/app/src/main/assets/layers/{stem}/`.
 
-The app home menu chooses **Trail puzzle**, **Develop a print**, or **Reveal a photo**.
+The app home menu includes **Walk a trail**, **Trail puzzle**, **Develop a print**, and **Reveal a photo**.
 
-## Adding a reveal photo (v3)
+## Adding a photo for Walk a trail
 
-1. Drop the high-res color photo, a same-size dark plate named `<filename>-bw.jpg`, and full-frame pieces in **`shared/source/reveal/<name>/`**.
-2. Run [tools/prep_reveal](tools/prep_reveal/README.md). That writes a downsized WebP (height capped at 1920px) into the app.
-3. Rebuild/run and open **Reveal a photo**.
+1. Put `photo.jpg` in **`shared/source/reveal/<id>/`**.
+2. Seed `meta.json` for that folder. That is the only agent step. If a trail was named, the photo id is added to that trail's `photoIds` in `shared/source/catalog/trails.json` at the same time.
+3. Cut in the tracer (`.\tools\trace_pieces\serve.ps1`) and save into that same folder. Unzip a downloaded zip there too, next to `photo.jpg`.
+4. Add `photo-bw.jpg` (same pixel size), then from the repo:
+
+```powershell
+.\tools\finish_reveal.ps1 <id>
+```
+
+That preps the scene. When the photo id is already on a trail, it also imports the catalog. Install from Android Studio and open **Walk a trail**. If the id is not on a trail, the photo will not appear there until it is added to a trail's `photoIds` and this command (or [import_catalog](tools/import_catalog/README.md)) is run again. Details: [tools/prep_reveal/README.md](tools/prep_reveal/README.md).

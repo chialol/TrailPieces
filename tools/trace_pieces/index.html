@@ -231,7 +231,7 @@
       <div id="list"></div>
       <div id="facts"></div>
       <div class="nextstep">
-        <div class="helptext">Then, from the repo:</div>
+        <div class="helptext">Save into the scene folder, add photo-bw.jpg, then from the repo. Install from Android Studio and open Walk a trail.</div>
         <pre class="cmd" id="command"></pre>
         <button type="button" class="textbtn" id="copyCmd">Copy command</button>
       </div>
@@ -316,6 +316,7 @@
       </div>
     </div>
     <p style="margin-top:14px;">A plain lasso starts a new piece. Shift adds to the selected one. The file is named <kbd>01-bridge.png</kbd>, a full-frame PNG the size of the photo, transparent outside the outline. Play order is the list order, top first. <kbd>pieces/paths.json</kbd> is only so this page can reopen the outlines.</p>
+    <p>Next: save into the scene folder. A zip unzips there, next to photo.jpg, not into a sibling folder. Add photo-bw.jpg at the same pixel size, then from the repo run <kbd>.\tools\finish_reveal.ps1</kbd> with the photo id. Install from Android Studio and open Walk a trail.</p>
     <form method="dialog" style="text-align:right;"><button type="submit" class="textbtn">Close</button></form>
   </div>
 </dialog>
@@ -877,8 +878,29 @@
   function strokeCut(context, piece) {
     if (piece.kind !== "cut") return;
     context.lineJoin = "round";
+    context.lineCap = "round";
     context.lineWidth = 2;
+    context.strokeStyle = "#fff";
     context.stroke();
+  }
+  // Fill and stroke the mask first, then apply it to the photo in one step.
+  // Stroking under destination-in keeps only the outline and drops the interior.
+  function clipToPiece(context, piece, project) {
+    const mask = document.createElement("canvas");
+    mask.width = context.canvas.width;
+    mask.height = context.canvas.height;
+    const mg = mask.getContext("2d");
+    mg.setTransform(context.getTransform());
+    mg.fillStyle = "#fff";
+    const drew = fillAdds(mg, piece, project);
+    strokeCut(mg, piece);
+    punchSubs(mg, piece, project);
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.globalCompositeOperation = "destination-in";
+    context.drawImage(mask, 0, 0);
+    context.restore();
+    return drew;
   }
   function punchSubs(context, piece, project) {
     const subs = piece.subpaths.filter((sub) => sub.op === "sub" && sub.points.length >= 3);
@@ -1626,11 +1648,7 @@
       return;
     }
     context.drawImage(preview, 0, 0, width, height);
-    context.globalCompositeOperation = "destination-in";
-    context.fillStyle = "#fff";
-    fillAdds(context, piece, projectPreview);
-    strokeCut(context, piece);
-    punchSubs(context, piece, projectPreview);
+    clipToPiece(context, piece, projectPreview);
   }
   function ensureComposite() {
     const key = `${mode}|${geomRev}|${selectedId}|${platePreview ? 1 : 0}`;
@@ -2390,11 +2408,7 @@
       if (raster) lg.drawImage(raster.image, 0, 0, fullW, fullH);
     } else {
       lg.drawImage(fullImage, 0, 0, fullW, fullH);
-      lg.globalCompositeOperation = "destination-in";
-      lg.fillStyle = "#fff";
-      fillAdds(lg, piece, identity);
-      strokeCut(lg, piece);
-      punchSubs(lg, piece, identity);
+      clipToPiece(lg, piece, identity);
     }
     g.drawImage(layer, 0, 0);
     return surface.toDataURL("image/png");
@@ -2957,7 +2971,7 @@
     const found = registries.trails.filter((trail) => (trail.photoIds || []).includes(id));
     if (!id) { $("trails").textContent = ""; return; }
     if (!found.length) {
-      $("trails").innerHTML = `Not on a trail yet. Add <b>${esc(id)}</b> to a photoIds list in <b>shared/source/catalog/trails.json</b> when it should show up in the walk.`;
+      $("trails").innerHTML = `Not on a trail yet. <b>${esc(id)}</b> will not appear in Walk a trail until its id is added to a trail photoIds list in <b>shared/source/catalog/trails.json</b> and .\\tools\\finish_reveal.ps1 ${esc(id)} is run again.`;
       return;
     }
     $("trails").innerHTML = `On ${found.map((trail) => `<b>${esc(trail.title)}</b>`).join(", ")}. ${esc(found.map((trail) => trail.summary).filter(Boolean).join(" "))}`;
@@ -2971,8 +2985,7 @@
   }
   function updateCommand() {
     const id = $("photoId").value.trim() || "scene";
-    const title = ($("title").value.trim() || id).replaceAll('"', "'");
-    $("command").textContent = `.\\tools\\chop_puzzle\\.venv\\Scripts\\python .\\tools\\prep_reveal\\prep_reveal.py ${id} --title "${title}"`;
+    $("command").textContent = `.\\tools\\finish_reveal.ps1 ${id}`;
   }
   function updateSave() {
     const button = $("saveBtn");
@@ -3030,15 +3043,16 @@
         existingPieceNames = written;
         dirty = false;
         const metaNote = metaBlob ? "meta.json updated." : "Add a title and scenery when you want meta.json written.";
-        setStatus(`Saved ${exportPieces.length} piece${exportPieces.length === 1 ? "" : "s"} into ${$("photoId").value || "the folder"}. ${metaNote}`);
+        const id = $("photoId").value.trim() || "scene";
+        setStatus(`Saved into ${id} next to photo.jpg. ${metaNote} Add photo-bw.jpg, then .\\tools\\finish_reveal.ps1 ${id}. Install from Android Studio and open Walk a trail.`);
       } else {
         const zip = buildZip(files.map((file) => ({ name: file.name, data: file.data })));
         const id = $("photoId").value.trim() || "pieces";
         downloadBlob(zip, `${id}-pieces.zip`);
         dirty = false;
         setStatus(metaBlob
-          ? `Downloaded ${id}-pieces.zip. Unzip it into the scene folder, next to the photo.`
-          : `Downloaded ${id}-pieces.zip. Title and scenery were left out until both are filled in.`);
+          ? `Unzip into shared/source/reveal/${id} so pieces/ and meta.json sit next to photo.jpg, not in ${id}-pieces. Add photo-bw.jpg, then .\\tools\\finish_reveal.ps1 ${id}. Install from Android Studio and open Walk a trail.`
+          : `Unzip pieces/ next to photo.jpg in shared/source/reveal/${id}, not in ${id}-pieces. Add photo-bw.jpg, then .\\tools\\finish_reveal.ps1 ${id}. Install from Android Studio and open Walk a trail. Title and scenery were left out.`);
       }
     } catch (error) {
       setStatus(error.message || "Save failed.", true);
@@ -3058,12 +3072,8 @@
     surface.height = fullH;
     const g = surface.getContext("2d");
     g.drawImage(fullImage, 0, 0);
-    g.globalCompositeOperation = "destination-in";
-    g.fillStyle = "#fff";
-    const drew = fillAdds(g, piece, identity);
+    const drew = clipToPiece(g, piece, identity);
     if (!drew) throw new Error(`${piece.label || "A piece"} has no outline to export.`);
-    strokeCut(g, piece);
-    punchSubs(g, piece, identity);
     return canvasBlob(surface);
   }
   function pathsDocument(exportPieces) {
@@ -3342,8 +3352,8 @@
   function wire() {
     const folderOk = !!(window.showDirectoryPicker && window.isSecureContext);
     $("folderNote").textContent = folderOk
-      ? "Save writes pieces/01-name.png and meta.json into the folder you open."
-      : "This page was opened as a file, so Save downloads a zip. Run tools/trace_pieces/serve.ps1 and use Chrome or Edge to save straight into the scene folder.";
+      ? "Open folder saves pieces/ and meta.json next to photo.jpg. Add photo-bw.jpg at the same pixel size, run the command on the right, then install from Android Studio and open Walk a trail."
+      : "Save downloads a zip. Unzip it into the scene folder next to photo.jpg, not a sibling folder. Add photo-bw.jpg, run finish_reveal, then install from Android Studio and open Walk a trail. Serve with tools/trace_pieces/serve.ps1 to save in place.";
     renderSceneryOptions();
     renderMoods();
     renderList();
@@ -3459,7 +3469,7 @@
       } else if (staged) {
         setStatus(`Opened ${staged.id}. That folder has no meta.json yet.`);
       } else if (location.protocol === "file:") {
-        setStatus("Opened the photo. Use Open folder to bring in meta.json. A single file can't see the folder beside it.");
+        setStatus("Opened the photo. Metadata loads when this page is served with tools/trace_pieces/serve.ps1. A file:// page can't see the folder beside it.");
       } else {
         setStatus("Opened the photo. It didn't match a scene folder, so no metadata came with it.");
       }
@@ -3480,7 +3490,7 @@
       updateCommand();
       try {
         await navigator.clipboard.writeText($("command").textContent);
-        setStatus("Copied the prep_reveal command.");
+        setStatus("Copied the finish command.");
       } catch {
         setStatus("Select the command under the photo and copy it.", true);
       }
@@ -3642,7 +3652,7 @@
       updateSave();
       const photoId = $("photoId").value.trim();
       if (photoId && sceneHandle == null && !meta.title) {
-        setStatus(`Loaded ${photoName}. Download a zip, or open the scene folder when you want to save in place.`);
+        setStatus(`Loaded ${photoName}. Open the scene folder to save in place, or unzip the zip there so pieces/ and meta.json sit next to photo.jpg.`);
       }
     });
     fetch("../../shared/source/catalog/sceneries.json").then((res) => res.json()).then((data) => {
@@ -3771,6 +3781,22 @@
       check(corner[3] === 0, `corner alpha ${corner[3]}`);
       check(solid[3] === 255, `solid alpha ${solid[3]}`);
       check(hole[3] === 0, `hole alpha ${hole[3]}`);
+      const slice = emptyPiece("slice");
+      slice.kind = "cut";
+      slice.subpaths = [{
+        op: "add", bezier: false, smooth: 0, raw: null,
+        points: toCorners([{ x: 80, y: 60 }, { x: 240, y: 60 }, { x: 240, y: 200 }, { x: 80, y: 200 }]),
+      }];
+      const sliceBlob = await renderPieceBlob(slice);
+      const sliceBitmap = await createImageBitmap(sliceBlob);
+      rg.clearRect(0, 0, 640, 400);
+      rg.drawImage(sliceBitmap, 0, 0);
+      const sliceInside = rg.getImageData(160, 130, 1, 1).data;
+      const sliceEdge = rg.getImageData(79, 130, 1, 1).data;
+      const sliceOutside = rg.getImageData(2, 2, 1, 1).data;
+      check(sliceInside[3] > 200, `cut interior alpha ${sliceInside[3]}`);
+      check(sliceEdge[3] > 0, `cut stroke alpha ${sliceEdge[3]}`);
+      check(sliceOutside[3] === 0, `cut outside alpha ${sliceOutside[3]}`);
       const mask = document.createElement("canvas");
       mask.width = 80;
       mask.height = 60;

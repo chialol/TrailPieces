@@ -94,19 +94,14 @@ Walk order is array order. A photo may be listed on more than one trail. Trail m
 - photo ids are unique and match a `meta.json` folder
 - every `sceneryId` and `moodId` exists
 - every trail `photoIds` entry has a meta file
-- each photo’s reveal folder already contains `scene.json` under `assets/reveal/` (run `prep_reveal` first)
+- each photo’s reveal folder already contains `scene.json` under `assets/reveal/` (`.\tools\finish_reveal.ps1 <id>` runs `prep_reveal`, then `import_catalog` when that id is already on a trail)
 - moods, sceneries, and trails have unique ids
 
 Empty sceneries (a meadow defined before any photo is tagged) are kept in the document and hidden in the picker.
 
 Seed content uses the two pilots only. Obsidian lists `mossyrock` then `mountain`. A meadow scenery is registered with no photo until one is added. Tags on the pilots are placeholders to edit in `meta.json`.
 
-Adding a photo later:
-
-1. Drop the image and pieces, run `prep_reveal`.
-2. Add `meta.json` in that folder.
-3. Append the photo id to a trail (and add moods or sceneries if they are new).
-4. Run `import_catalog` and rebuild.
+The Trail list in **Walk a trail** shows a photo when its id is in that trail's `photoIds` in `trails.json`, `import_catalog` has written `catalog.json`, and the scene assets exist. Mood and Scenery list any catalog photo with that tag. Put `photo.jpg` in `shared/source/reveal/<id>/`, seed `meta.json`, and if a trail was named then add the photo id to that trail's `photoIds`. Cut and save into the scene folder, add `photo-bw.jpg`, then run `.\tools\finish_reveal.ps1 <id>`. That preps the scene and, when the id is already on a trail, imports the catalog. When it is not on a trail, the assets are still prepped and the photo stays off Walk a trail until the id is added and `finish_reveal` (or `import_catalog`) is run again. Install from Android Studio and open Walk a trail. See [tools/prep_reveal/README.md](../tools/prep_reveal/README.md).
 
 ## Domain (`:journey`)
 

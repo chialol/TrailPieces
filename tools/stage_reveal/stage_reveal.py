@@ -147,7 +147,9 @@ def commit(folder: Path) -> None:
     pieces = piece_names(folder)
     if not pieces:
         raise StageError(
-            f"{folder.name} has no pieces yet. Commit waits until the cuts are saved in pieces/."
+            f"{folder.name} has no pieces yet. Save into shared/source/reveal/{folder.name}/pieces "
+            "so the files sit next to photo.jpg (unzip a zip there, not into a sibling folder). "
+            "Commit waits until those cuts are in the folder."
         )
     meta = read_meta(folder / "meta.json")
     reveal_id = (meta.get("revealId") or folder.name).strip()
@@ -155,8 +157,11 @@ def commit(folder: Path) -> None:
     if not scene.is_file():
         raise StageError(
             f"{folder.name} has no android/app/src/main/assets/reveal/{reveal_id}/scene.json. "
-            "The dark plate has to be in the folder, then run "
-            f"tools/chop_puzzle/.venv/Scripts/python tools/prep_reveal/prep_reveal.py {reveal_id}"
+            "Add photo-bw.jpg next to the photo, then from the repo run "
+            f".\\tools\\finish_reveal.ps1 {folder.name}. "
+            "When the photo id is already on a trail, that also imports the catalog. "
+            "Install from Android Studio and open Walk a trail. "
+            "Commit does not prep or install."
         )
     script = ROOT / "tools" / "import_catalog" / "import_catalog.py"
     result = subprocess.run([sys.executable, str(script)], check=False)

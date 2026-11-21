@@ -42,7 +42,11 @@ shared/source/reveal/mossyrock/
     02-log2.png
 ```
 
-The number in a piece's filename is its play order. A new scene or new photos need a regenerate:
+The number in a piece's filename is its play order. `01.png` is valid.
+
+A new photo for **Walk a trail** follows [tools/prep_reveal/README.md](../tools/prep_reveal/README.md): seed `meta.json` (and, when a trail was named, add the photo id to that trail's `photoIds`), cut and save into the scene folder, add `photo-bw.jpg`, then `.\tools\finish_reveal.ps1 <id>`. That preps the scene and, when the id is already on a trail, imports the catalog. Install from Android Studio and open **Walk a trail**. Reloading an installed APK does not see new assets.
+
+Regenerating a scene that is already cut:
 
 ```powershell
 cd C:\src\2026\natureGame
