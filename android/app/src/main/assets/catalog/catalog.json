@@ -107,6 +107,17 @@
       "revealId": "smithoverlook",
       "blurb": "The Crooked River under the Smith Rock cliffs.",
       "story": "Smith Rock stands above the Crooked River in Oregon's high desert."
+    },
+    {
+      "id": "smithrock2",
+      "title": "Smith Rock",
+      "sceneryId": "canyon",
+      "moodIds": [
+        "open"
+      ],
+      "revealId": "smithrock2",
+      "blurb": "A sheer cliff and a jagged spire over dry grass.",
+      "story": ""
     }
   ],
   "trails": [
