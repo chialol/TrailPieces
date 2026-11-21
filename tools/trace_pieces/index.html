@@ -298,6 +298,7 @@
         <div class="rowline"><span>Slash pieces apart</span><span><kbd>C</kbd></span></div>
         <div class="rowline"><span>Back to drawing</span><span><kbd>L</kbd></span></div>
         <div class="rowline"><span>Split one piece</span><span>Drag across it, edge to edge</span></div>
+        <div class="rowline"><span>Pen slash</span><span><kbd>P</kbd>, then <kbd>Enter</kbd></span></div>
       </div>
       <div>
         <h3>Points</h3>
@@ -404,10 +405,11 @@
   const HINTS = {
     lasso: "Drag around a piece. It closes and smooths on release. Shift adds. Alt or right-drag cuts away.",
     pen: "Click corners, drag curves. Enter closes. Shift locks the segment to 45°.",
+    cutpen: "Click the corners of the slash. Drag a point to curve it. Enter cuts. Esc cancels.",
     select: "Drag points. Double-click an edge to add one. Delete removes the point, or the piece if none is selected.",
     hand: "Drag to pan. Scrolling zooms toward the cursor.",
     zoom: "Click zooms in. Alt-click zooms out. Drag a rectangle to fill the view.",
-    cut: "Slash from one edge of a piece to the other. The part you cut off becomes a new piece, and the photo stays covered.",
+    cut: "Drag a slash, or press P and click the corners. Enter cuts. The part you cut off becomes a new piece.",
   };
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
@@ -1205,9 +1207,11 @@
       scheduleDraw();
       return;
     }
-    const amount = smoothAmount();
-    const smooth = smoothOpen(gesture.points, amount);
-    let found = smooth ? cutsForStroke(smooth) : [];
+    let found = [];
+    if (!gesture.exact) {
+      const smooth = smoothOpen(gesture.points, smoothAmount());
+      if (smooth) found = cutsForStroke(smooth);
+    }
     if (!found.length) found = cutsForStroke(gesture.points);
     if (!found.length) {
       setStatus("That slash has to cross one piece from edge to edge. Stopping inside a piece does not split it.");
@@ -1531,7 +1535,7 @@
       button.setAttribute("aria-pressed", button.dataset.tool === tool ? "true" : "false");
     }
     updateCursor();
-    setStatus(HINTS[tool]);
+    setStatus(workflow === "cut" && tool === "pen" ? HINTS.cutpen : HINTS[tool]);
     scheduleDraw();
   }
   function updateWorkflowButtons() {
@@ -1830,8 +1834,42 @@
     ctx.stroke();
     ctx.setLineDash([]);
   }
+  function penStroke(state, includeCursor) {
+    const pts = state.points.map((point) => ({ ...point }));
+    if (includeCursor && state.cursor && !state.placing && pts.length) {
+      pts.push({ x: state.cursor.x, y: state.cursor.y, inX: null, inY: null, outX: null, outY: null, corner: true });
+    }
+    if (pts.length < 2) return pts;
+    const out = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      const curved = a.outX != null || b.inX != null;
+      const steps = curved ? 12 : 1;
+      for (let step = 0; step < steps; step++) out.push(cubic(a, handleOf(a, "out"), handleOf(b, "in"), b, step / steps));
+    }
+    const last = pts[pts.length - 1];
+    out.push({ x: last.x, y: last.y });
+    return out;
+  }
+  function refreshCutPreview() {
+    if (!pen?.cut) return;
+    pen.preview = pen.points.length ? offcutFor(penStroke(pen, true)) : null;
+  }
   function drawPen() {
     if (!pen?.points.length) return;
+    if (pen.cut && pen.preview && pen.preview.length >= 3) {
+      ctx.beginPath();
+      const start = toScreen(pen.preview[0].x, pen.preview[0].y);
+      ctx.moveTo(start.x, start.y);
+      for (const point of pen.preview) {
+        const screen = toScreen(point.x, point.y);
+        ctx.lineTo(screen.x, screen.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = "rgba(228, 194, 122, 0.28)";
+      ctx.fill();
+    }
     ctx.beginPath();
     const pts = pen.points;
     const first = toScreen(pts[0].x, pts[0].y);
@@ -1968,6 +2006,24 @@
     return piece.subpaths.map((sub) => (sub.raw ? sub.raw.map((point) => ({ ...point })) : null));
   }
   function beginPen(image, shift) {
+    if (workflow === "cut") {
+      if (!pieces.length) seedCover();
+      if (!isCutPartition()) {
+        setStatus("Press C to start a cut from the whole photo.");
+        return;
+      }
+      if (!pen?.cut) {
+        pen = { points: [], cursor: image, placing: false, created: false, before: null, op: "cut", cut: true, preview: null };
+      }
+      let at = image;
+      if (shift && pen.points.length) at = constrain45(pen.points[pen.points.length - 1], image);
+      pen.points.push({ x: at.x, y: at.y, inX: null, inY: null, outX: null, outY: null, corner: true });
+      pen.placing = true;
+      pen.closing = false;
+      refreshCutPreview();
+      scheduleDraw();
+      return;
+    }
     if (!pen) {
       const before = capture();
       let created = false;
@@ -2016,6 +2072,7 @@
     if (!drag || drag.pointerId !== event.pointerId) {
       if (pen && tool === "pen") {
         pen.cursor = event.shiftKey && pen.points.length ? constrain45(pen.points[pen.points.length - 1], image) : image;
+        refreshCutPreview();
         scheduleDraw();
       }
       return;
@@ -2064,6 +2121,7 @@
         last.inY = mirrored.y;
         last.corner = false;
       }
+      refreshCutPreview();
       scheduleDraw();
       return;
     }
@@ -2171,6 +2229,7 @@
         last.corner = true;
       }
       if (pen) pen.placing = false;
+      refreshCutPreview();
       if (pen?.closing) finishPen();
       scheduleDraw();
       return;
@@ -2225,6 +2284,23 @@
     }
   }
   function finishPen() {
+    if (pen?.cut) {
+      if (pen.points.length < 2) {
+        setStatus("A pen slash needs two points. Enter cuts.");
+        return;
+      }
+      const points = penStroke(pen, false);
+      const saved = pen;
+      pen = null;
+      const before = pieces.length;
+      commitCut({ points, exact: true });
+      if (pieces.length === before) {
+        pen = saved;
+        refreshCutPreview();
+        scheduleDraw();
+      }
+      return;
+    }
     if (!pen || pen.points.length < 3) {
       setStatus("A pen piece needs at least three points.");
       return;
@@ -3247,8 +3323,10 @@
     else if (key === "l") setWorkflow("draw");
     else if (key === "c") setWorkflow("cut");
     else if (key === "p") {
-      workflow = "draw";
-      updateWorkflowButtons();
+      if (workflow !== "cut") {
+        workflow = "draw";
+        updateWorkflowButtons();
+      }
       setTool("pen");
     }
     else if (key === "h") setTool("hand");
@@ -3318,10 +3396,16 @@
       button.addEventListener("click", () => {
         const next = button.dataset.tool;
         if (next === "cut") setWorkflow("cut");
-        else if (next === "lasso" || next === "pen") {
+        else if (next === "lasso") {
           workflow = "draw";
           updateWorkflowButtons();
-          setTool(next);
+          setTool("lasso");
+        } else if (next === "pen") {
+          if (workflow !== "cut") {
+            workflow = "draw";
+            updateWorkflowButtons();
+          }
+          setTool("pen");
         } else setTool(next);
       });
     });
@@ -3614,6 +3698,15 @@
         check(insideRing(cornerCut.larger, 50, 50), "center in remainder");
       }
       check(!splitRing(cover, [{ x: -10, y: 50 }, { x: 40, y: 50 }]), "slash that stops inside");
+      const penLine = penStroke({
+        points: [
+          { x: -10, y: 20, inX: null, inY: null, outX: null, outY: null, corner: true },
+          { x: 30, y: -10, inX: null, inY: null, outX: null, outY: null, corner: true },
+        ],
+        placing: false,
+      }, false);
+      check(penLine.length === 2 && penLine[0].x === -10 && penLine[1].x === 30, "pen slash stays on the clicks");
+      check(!!splitRing(cover, penLine), "pen slash splits");
       const inner = [{ x: 20, y: 20 }, { x: 80, y: 20 }, { x: 80, y: 80 }, { x: 20, y: 80 }];
       const crossed = splitRing(inner, [{ x: 0, y: 50 }, { x: 100, y: 50 }]);
       check(!!crossed, "overhanging slash");
