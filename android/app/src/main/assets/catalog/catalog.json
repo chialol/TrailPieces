@@ -44,6 +44,12 @@
       "title": "Waterfall",
       "summary": "Falling water, mist, and wet stone.",
       "story": "A stream falling over a cliff, sometimes in more than one step."
+    },
+    {
+      "id": "canyon",
+      "title": "Canyon",
+      "summary": "Rock walls and a river below.",
+      "story": "A cut in the rock, with the river at the bottom."
     }
   ],
   "photos": [
@@ -90,6 +96,17 @@
       "revealId": "sahalie",
       "blurb": "Mist and moss where the river drops.",
       "story": "Sahalie Falls drops over a lava shelf on the upper McKenzie. Koosah Falls is a short walk downstream."
+    },
+    {
+      "id": "smithoverlook",
+      "title": "Smith Overlook",
+      "sceneryId": "canyon",
+      "moodIds": [
+        "open"
+      ],
+      "revealId": "smithoverlook",
+      "blurb": "The Crooked River under the Smith Rock cliffs.",
+      "story": "Smith Rock stands above the Crooked River in Oregon's high desert."
     }
   ],
   "trails": [

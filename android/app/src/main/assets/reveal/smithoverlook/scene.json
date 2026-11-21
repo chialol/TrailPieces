@@ -1,0 +1,229 @@
+{
+  "id": "smithoverlook",
+  "title": "Smith Overlook",
+  "mode": "reveal_v3",
+  "width": 3093,
+  "height": 1920,
+  "plateFile": "plate.webp",
+  "aliveFile": "alive.webp",
+  "coverFile": "cover.webp",
+  "liftPad": 41,
+  "source": {
+    "colorFile": "photo.jpg",
+    "plateFile": "photo-bw.jpg",
+    "sourceWidth": 8192,
+    "sourceHeight": 5086
+  },
+  "pieces": [
+    {
+      "id": 1,
+      "order": 1,
+      "cropFile": "crop/piece_01.webp",
+      "liftFile": "lift/piece_01.webp",
+      "iconFile": "icon/piece_01.webp",
+      "bbox": {
+        "left": 1846,
+        "top": 0,
+        "right": 3093,
+        "bottom": 507
+      },
+      "sourceFile": "01.png"
+    },
+    {
+      "id": 2,
+      "order": 2,
+      "cropFile": "crop/piece_02.webp",
+      "liftFile": "lift/piece_02.webp",
+      "iconFile": "icon/piece_02.webp",
+      "bbox": {
+        "left": 2504,
+        "top": 145,
+        "right": 3093,
+        "bottom": 855
+      },
+      "sourceFile": "02.png"
+    },
+    {
+      "id": 3,
+      "order": 3,
+      "cropFile": "crop/piece_03.webp",
+      "liftFile": "lift/piece_03.webp",
+      "iconFile": "icon/piece_03.webp",
+      "bbox": {
+        "left": 2194,
+        "top": 351,
+        "right": 3093,
+        "bottom": 1225
+      },
+      "sourceFile": "03.png"
+    },
+    {
+      "id": 4,
+      "order": 4,
+      "cropFile": "crop/piece_04.webp",
+      "liftFile": "lift/piece_04.webp",
+      "iconFile": "icon/piece_04.webp",
+      "bbox": {
+        "left": 1722,
+        "top": 379,
+        "right": 2515,
+        "bottom": 1151
+      },
+      "sourceFile": "04.png"
+    },
+    {
+      "id": 5,
+      "order": 5,
+      "cropFile": "crop/piece_05.webp",
+      "liftFile": "lift/piece_05.webp",
+      "iconFile": "icon/piece_05.webp",
+      "bbox": {
+        "left": 1908,
+        "top": 1082,
+        "right": 3093,
+        "bottom": 1920
+      },
+      "sourceFile": "05.png"
+    },
+    {
+      "id": 6,
+      "order": 6,
+      "cropFile": "crop/piece_06.webp",
+      "liftFile": "lift/piece_06.webp",
+      "iconFile": "icon/piece_06.webp",
+      "bbox": {
+        "left": 1163,
+        "top": 1669,
+        "right": 2780,
+        "bottom": 1920
+      },
+      "sourceFile": "06.png"
+    },
+    {
+      "id": 7,
+      "order": 7,
+      "cropFile": "crop/piece_07.webp",
+      "liftFile": "lift/piece_07.webp",
+      "iconFile": "icon/piece_07.webp",
+      "bbox": {
+        "left": 1423,
+        "top": 1053,
+        "right": 2242,
+        "bottom": 1869
+      },
+      "sourceFile": "07.png"
+    },
+    {
+      "id": 8,
+      "order": 8,
+      "cropFile": "crop/piece_08.webp",
+      "liftFile": "lift/piece_08.webp",
+      "iconFile": "icon/piece_08.webp",
+      "bbox": {
+        "left": 873,
+        "top": 879,
+        "right": 2071,
+        "bottom": 1920
+      },
+      "sourceFile": "08.png"
+    },
+    {
+      "id": 9,
+      "order": 9,
+      "cropFile": "crop/piece_09.webp",
+      "liftFile": "lift/piece_09.webp",
+      "iconFile": "icon/piece_09.webp",
+      "bbox": {
+        "left": 865,
+        "top": 586,
+        "right": 1927,
+        "bottom": 1092
+      },
+      "sourceFile": "09.png"
+    },
+    {
+      "id": 10,
+      "order": 10,
+      "cropFile": "crop/piece_10.webp",
+      "liftFile": "lift/piece_10.webp",
+      "iconFile": "icon/piece_10.webp",
+      "bbox": {
+        "left": 0,
+        "top": 1116,
+        "right": 1077,
+        "bottom": 1920
+      },
+      "sourceFile": "10.png"
+    },
+    {
+      "id": 11,
+      "order": 11,
+      "cropFile": "crop/piece_11.webp",
+      "liftFile": "lift/piece_11.webp",
+      "iconFile": "icon/piece_11.webp",
+      "bbox": {
+        "left": 0,
+        "top": 741,
+        "right": 1084,
+        "bottom": 1539
+      },
+      "sourceFile": "11.png"
+    },
+    {
+      "id": 12,
+      "order": 12,
+      "cropFile": "crop/piece_12.webp",
+      "liftFile": "lift/piece_12.webp",
+      "iconFile": "icon/piece_12.webp",
+      "bbox": {
+        "left": 0,
+        "top": 0,
+        "right": 873,
+        "bottom": 405
+      },
+      "sourceFile": "12.png"
+    },
+    {
+      "id": 13,
+      "order": 13,
+      "cropFile": "crop/piece_13.webp",
+      "liftFile": "lift/piece_13.webp",
+      "iconFile": "icon/piece_13.webp",
+      "bbox": {
+        "left": 0,
+        "top": 351,
+        "right": 863,
+        "bottom": 957
+      },
+      "sourceFile": "13.png"
+    },
+    {
+      "id": 14,
+      "order": 14,
+      "cropFile": "crop/piece_14.webp",
+      "liftFile": "lift/piece_14.webp",
+      "iconFile": "icon/piece_14.webp",
+      "bbox": {
+        "left": 718,
+        "top": 358,
+        "right": 1838,
+        "bottom": 784
+      },
+      "sourceFile": "14.png"
+    },
+    {
+      "id": 15,
+      "order": 15,
+      "cropFile": "crop/piece_15.webp",
+      "liftFile": "lift/piece_15.webp",
+      "iconFile": "icon/piece_15.webp",
+      "bbox": {
+        "left": 863,
+        "top": 0,
+        "right": 2184,
+        "bottom": 512
+      },
+      "sourceFile": "15.png"
+    }
+  ]
+}
