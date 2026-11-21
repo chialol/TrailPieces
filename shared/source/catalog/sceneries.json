@@ -23,6 +23,12 @@
       "title": "Waterfall",
       "summary": "Falling water, mist, and wet stone.",
       "story": "A stream falling over a cliff, sometimes in more than one step."
+    },
+    {
+      "id": "canyon",
+      "title": "Canyon",
+      "summary": "Rock walls and a river below.",
+      "story": "A cut in the rock, with the river at the bottom."
     }
   ]
 }

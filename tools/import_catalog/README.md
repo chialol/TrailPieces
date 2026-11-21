@@ -27,6 +27,8 @@ shared/source/reveal/mossyrock/meta.json
 
 `story` is optional on a photo, a scenery, and a trail. It is the longer note shown after that photo is finished. A blank story is left out.
 
+A `meta.json` with no prepped `scene.json` is skipped. That is how a photo can be staged in the trace tool before its pieces are ready. A trail that lists that photo is still an error.
+
 Trail order is the `photoIds` array in `trails.json`. A photo can be listed on
 more than one trail. Leave a new scenery in `sceneries.json` even before a
 photo uses it; the picker hides sceneries that have no photo yet.

@@ -9,7 +9,9 @@ Authoring (committed):
 Output (also committed, and the future GET /v1/catalog body):
   android/app/src/main/assets/catalog/catalog.json
 
-Run prep_reveal for a photo before importing it. This script does not touch images.
+Run prep_reveal for a photo before importing it. A folder with meta.json but no
+scene.json yet is skipped, so a staged photo can stay out of the app catalog.
+This script does not touch images.
 """
 
 from __future__ import annotations
@@ -55,8 +57,9 @@ def build() -> dict:
 
     scenery_ids = {item["id"] for item in sceneries}
     mood_ids = {item["id"] for item in moods}
-    photo_ids = {item["id"] for item in photos}
+    referenced = {photo_id for trail in trails for photo_id in trail["photoIds"]}
 
+    ready = []
     for photo in photos:
         if photo["sceneryId"] not in scenery_ids:
             raise CatalogError(f"{photo['id']} uses unknown scenery {photo['sceneryId']}")
@@ -65,10 +68,22 @@ def build() -> dict:
             raise CatalogError(f"{photo['id']} uses unknown mood {unknown[0]}")
         reveal_id = photo["revealId"]
         scene = REVEAL_ASSETS / reveal_id / "scene.json"
-        if not scene.is_file():
+        if scene.is_file():
+            ready.append(photo)
+            continue
+        if photo["id"] in referenced:
             raise CatalogError(
-                f"{photo['id']} needs assets/reveal/{reveal_id}/scene.json. Run prep_reveal first."
+                f"{photo['id']} is on a trail but has no assets/reveal/{reveal_id}/scene.json. "
+                "Run prep_reveal first."
             )
+        print(
+            f"import_catalog: skipped {photo['id']} (no scene.json yet)",
+            file=sys.stderr,
+        )
+    if not ready:
+        raise CatalogError("no photo has a prepped scene.json yet")
+    photos = ready
+    photo_ids = {item["id"] for item in photos}
 
     for trail in trails:
         require_unique(trail["photoIds"], f"photo on trail {trail['id']}")

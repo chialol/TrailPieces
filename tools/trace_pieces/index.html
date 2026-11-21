@@ -182,7 +182,7 @@
     <div class="spacer"></div>
     <div class="filebox">
       <button type="button" id="folderBtn">Open folder</button>
-      <button type="button" id="photoBtn">Open photo</button>
+      <button type="button" id="photoBtn" title="Open one image. When this page is served from the repo, metadata is filled from the matching scene folder.">Open photo</button>
       <button type="button" id="saveBtn" class="primary" disabled>Download zip</button>
     </div>
   </header>
@@ -238,8 +238,8 @@
       <div class="meta">
         <div class="meta-head"><h2>Photo</h2></div>
         <div id="trails"></div>
-        <label class="field">Scene id
-          <input id="photoId" data-field="photoId" autocomplete="off" spellcheck="false" placeholder="multnomah">
+        <label class="field">Photo id
+          <input id="photoId" data-field="photoId" autocomplete="off" spellcheck="false" placeholder="smithoverlook" title="Folder name for this photo. Not the scenery.">
         </label>
         <label class="field">Title
           <input id="title" data-field="title" placeholder="Multnomah Falls">
@@ -247,8 +247,8 @@
         <label class="field">Scenery
           <select id="scenery"></select>
         </label>
-        <label class="field" id="sceneryCustomWrap" hidden>Scenery id
-          <input id="sceneryCustom" autocomplete="off" spellcheck="false" placeholder="meadow">
+        <label class="field" id="sceneryCustomWrap" hidden>New scenery id
+          <input id="sceneryCustom" autocomplete="off" spellcheck="false" placeholder="canyon" title="Only for a scenery that is not in the list yet.">
         </label>
         <div id="sceneryHelp" class="helptext"></div>
         <div class="field" style="margin-bottom:4px;">Moods</div>
@@ -259,8 +259,8 @@
         <label class="field">Story
           <textarea id="story" data-field="story" rows="4" placeholder="Shown after the photo is finished. Optional."></textarea>
         </label>
-        <label class="field">Asset folder, if it differs from the scene id
-          <input id="revealId" data-field="revealId" autocomplete="off" spellcheck="false" placeholder="same as scene id">
+        <label class="field">Asset folder, if it differs from the photo id
+          <input id="revealId" data-field="revealId" autocomplete="off" spellcheck="false" placeholder="same as the photo id">
         </label>
       </div>
     </aside>
@@ -335,6 +335,7 @@
       { id: "forest", title: "Forest", summary: "Trees, moss, and shade.", story: "Shade, moss, and a close view of the trunks." },
       { id: "alpine", title: "Alpine", summary: "High rock and a far ridge.", story: "High rock and a long view." },
       { id: "waterfall", title: "Waterfall", summary: "Falling water, mist, and wet stone.", story: "A stream falling over a cliff, sometimes in more than one step." },
+      { id: "canyon", title: "Canyon", summary: "Rock walls and a river below.", story: "A cut in the rock, with the river at the bottom." },
     ],
     moods: [
       { id: "quiet", title: "Quiet", summary: "Still air and soft ground." },
@@ -2540,6 +2541,67 @@
     canRevertToPng = false;
     Object.assign(meta, { title: "", sceneryId: "", moodIds: [], blurb: "", story: "", revealId: "" });
   }
+  function photoCandidates(id) {
+    const names = [];
+    for (const stem of ["photo", id, "color"]) {
+      for (const ext of ["jpg", "jpeg", "png", "webp"]) names.push(`${stem}.${ext}`);
+    }
+    return names;
+  }
+  async function sha256Hex(bytes) {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  async function revealSceneIds() {
+    const res = await fetch("/shared/source/reveal/");
+    if (!res.ok) return [];
+    const html = await res.text();
+    return [...html.matchAll(/href="([^"]+)\/"/g)]
+      .map((match) => decodeURIComponent(match[1]))
+      .filter((name) => name && name !== ".." && !name.includes("/"));
+  }
+  async function matchRevealScene(file) {
+    if (location.protocol === "file:") return null;
+    let ids = [];
+    try { ids = await revealSceneIds(); }
+    catch { return null; }
+    const hits = [];
+    for (const id of ids) {
+      for (const name of photoCandidates(id)) {
+        const res = await fetch(`/shared/source/reveal/${encodeURIComponent(id)}/${encodeURIComponent(name)}`, { method: "HEAD" });
+        if (!res.ok) continue;
+        if (Number(res.headers.get("content-length")) === file.size) hits.push({ id, name });
+      }
+    }
+    if (hits.length === 1) return hits[0];
+    if (hits.length < 2) return null;
+    const local = await sha256Hex(await file.arrayBuffer());
+    for (const hit of hits) {
+      const res = await fetch(`/shared/source/reveal/${encodeURIComponent(hit.id)}/${encodeURIComponent(hit.name)}`);
+      if (!res.ok) continue;
+      if (await sha256Hex(await res.arrayBuffer()) === local) return hit;
+    }
+    return null;
+  }
+  async function adoptSceneMeta(file) {
+    const scene = await matchRevealScene(file);
+    if (!scene) return null;
+    $("photoId").value = scene.id;
+    let title = "";
+    try {
+      const res = await fetch(`/shared/source/reveal/${encodeURIComponent(scene.id)}/meta.json`);
+      if (res.ok) {
+        applyMetaText(await res.text());
+        title = meta.title;
+      }
+    } catch { /* the photo still opens without metadata */ }
+    fillMetaForm();
+    renderMoods();
+    renderFacts();
+    renderTrails();
+    updateCommand();
+    return { id: scene.id, title };
+  }
   async function loadPhotoFile(file) {
     setStatus("Opening photo…");
     const image = await loadImage(file);
@@ -2750,10 +2812,12 @@
     $("blurb").value = meta.blurb;
     $("story").value = meta.story;
     $("revealId").value = meta.revealId;
-    const known = registries.sceneries.some((item) => item.id === meta.sceneryId);
-    $("scenery").value = meta.sceneryId && !known ? "__other" : (meta.sceneryId || "");
-    $("sceneryCustomWrap").hidden = $("scenery").value !== "__other";
-    $("sceneryCustom").value = known ? "" : meta.sceneryId;
+    renderSceneryOptions();
+    const sceneryId = meta.sceneryId.trim();
+    const listed = sceneryId && [...$("scenery").options].some((option) => option.value === sceneryId);
+    $("scenery").value = listed ? sceneryId : "";
+    $("sceneryCustomWrap").hidden = true;
+    $("sceneryCustom").value = "";
     updateSceneryHelp();
   }
   function readMetaForm() {
@@ -2784,11 +2848,16 @@
 
   function renderSceneryOptions() {
     const select = $("scenery");
-    const current = select.value;
-    select.innerHTML = `<option value="">Choose scenery</option>` + registries.sceneries.map((item) =>
+    const selected = meta.sceneryId.trim();
+    const choices = registries.sceneries.slice();
+    if (selected && !choices.some((item) => item.id === selected)) {
+      const title = selected.charAt(0).toUpperCase() + selected.slice(1);
+      choices.push({ id: selected, title, summary: "", story: "" });
+    }
+    select.innerHTML = `<option value="">Choose scenery</option>` + choices.map((item) =>
       `<option value="${esc(item.id)}">${esc(item.title)}</option>`
     ).join("") + `<option value="__other">Other…</option>`;
-    select.value = [...select.options].some((option) => option.value === current) ? current : "";
+    select.value = selected && [...select.options].some((option) => option.value === selected) ? selected : "";
   }
   function renderMoods() {
     const host = $("moods");
@@ -2803,7 +2872,9 @@
   function updateSceneryHelp() {
     const id = $("scenery").value === "__other" ? $("sceneryCustom").value.trim() : $("scenery").value;
     const scenery = registries.sceneries.find((item) => item.id === id);
-    $("sceneryHelp").textContent = scenery ? `${scenery.summary} ${scenery.story || ""}`.trim() : "";
+    $("sceneryHelp").textContent = scenery
+      ? `${scenery.id} — ${`${scenery.summary} ${scenery.story || ""}`.trim()}`
+      : ($("scenery").value === "__other" ? "Type an id for a scenery that is not in the list yet." : "");
   }
   function renderTrails() {
     const id = $("photoId").value.trim();
@@ -3295,11 +3366,21 @@
       resetDocument();
       if (!$("photoId").value) $("photoId").value = slugify(file.name.replace(/\.[^.]+$/, ""));
       await loadPhotoFile(file);
+      const staged = await adoptSceneMeta(file);
       if (workflow === "cut") {
         seedCover();
         setStatus("The photo is one piece. Slash across it to cut a part off.");
+      } else if (staged?.title) {
+        setStatus(`${staged.title} loaded from ${staged.id}/meta.json. Open folder when you want to save back into the scene.`);
+      } else if (staged) {
+        setStatus(`Opened ${staged.id}. That folder has no meta.json yet.`);
+      } else if (location.protocol === "file:") {
+        setStatus("Opened the photo. Use Open folder to bring in meta.json. A single file can't see the folder beside it.");
+      } else {
+        setStatus("Opened the photo. It didn't match a scene folder, so no metadata came with it.");
       }
       fillMetaForm();
+      renderMoods();
       renderTrails();
       updateCommand();
       dirty = false;
@@ -3466,11 +3547,17 @@
       $("photoId").readOnly = false;
       await loadFileSet(files, {});
       await hydrateRasters();
+      if (!meta.title) {
+        const photo = files.find((item) => /^(photo|color)\./i.test(item.name))
+          || files.find((item) => IMAGE_EXT.test(item.name) && !PIECE_FILE.test(item.name));
+        const staged = photo ? await adoptSceneMeta(photo) : null;
+        if (staged?.title) setStatus(`${staged.title} loaded from ${staged.id}/meta.json. Open folder when you want to save back into the scene.`);
+      }
       bump(true);
       dirty = false;
       updateSave();
       const photoId = $("photoId").value.trim();
-      if (photoId && sceneHandle == null) {
+      if (photoId && sceneHandle == null && !meta.title) {
         setStatus(`Loaded ${photoName}. Download a zip, or open the scene folder when you want to save in place.`);
       }
     });
