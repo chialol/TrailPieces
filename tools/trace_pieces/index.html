@@ -1,0 +1,3141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trace pieces</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #141311;
+    --panel: #211e1b;
+    --panel-2: #2a2622;
+    --line: #3d3832;
+    --text: #f4f0e8;
+    --muted: #aaa396;
+    --faint: #746e64;
+    --accent: #e4c27a;
+    --accent-ink: #2c2416;
+    --danger: #e39480;
+    --ok: #9cbe96;
+    --shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.45; }
+  kbd {
+    font: 11px/1.4 "Segoe UI", sans-serif;
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0 5px;
+    background: var(--panel-2);
+    color: var(--text);
+  }
+  #app { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+  header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    background: var(--panel); flex: none;
+  }
+  header h1 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: 0.01em; }
+  header h1 span { color: var(--muted); font-weight: 500; }
+  .spacer { flex: 1; }
+  .modes, .zoombox, .smoothbox, .filebox { display: flex; align-items: center; gap: 6px; }
+  .modes { background: var(--bg); border-radius: 8px; padding: 2px; }
+  .modes button, .tool, .textbtn, .filebox button {
+    border: 0; background: transparent; color: var(--muted); border-radius: 6px; padding: 6px 10px;
+  }
+  .modes button[aria-pressed="true"] { background: var(--panel-2); color: var(--text); }
+  .smoothbox { color: var(--muted); font-size: 12px; gap: 8px; }
+  .smoothbox input { width: 110px; accent-color: var(--accent); }
+  #zoomLabel {
+    min-width: 64px; text-align: center; background: var(--bg); border-radius: 6px; padding: 6px 8px;
+    color: var(--text); border: 0;
+  }
+  .filebox button.primary { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .filebox button.primary.dirty { box-shadow: inset 0 0 0 1px #8a6a2e; }
+  main { flex: 1; display: flex; min-height: 0; }
+  .toolbar {
+    width: 48px; flex: none; display: flex; flex-direction: column; gap: 4px;
+    padding: 8px 6px; border-right: 1px solid var(--line); background: var(--panel);
+  }
+  .tool {
+    width: 36px; height: 36px; padding: 0; display: grid; place-items: center; color: var(--muted);
+  }
+  .tool[aria-pressed="true"] { background: var(--panel-2); color: var(--accent); }
+  .tool:hover, .modes button:hover, .textbtn:hover { color: var(--text); }
+  .stage { flex: 1; position: relative; min-width: 0; background: #0c0b0a; }
+  canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+  #empty {
+    position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  }
+  #empty .card {
+    pointer-events: auto; width: min(440px, calc(100% - 48px));
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 22px 18px; box-shadow: var(--shadow);
+  }
+  #empty h2 { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+  #empty p { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+  #empty .row { display: flex; gap: 8px; margin-top: 8px; }
+  .side {
+    width: 340px; flex: none; display: flex; flex-direction: column; min-height: 0;
+    border-left: 1px solid var(--line); background: var(--panel);
+  }
+  .pieces-head, .meta-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    padding: 10px 12px 6px;
+  }
+  .pieces-head h2, .meta-head h2 { margin: 0; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  .textbtn { padding: 2px 6px; font-size: 12px; }
+  #coverage { color: var(--faint); font-size: 12px; }
+  #list { overflow: auto; flex: 1; min-height: 120px; padding: 0 8px 8px; }
+  .piece {
+    display: grid; grid-template-columns: 18px 72px 1fr auto; gap: 8px; align-items: center;
+    padding: 6px; border-radius: 8px; margin-bottom: 4px;
+  }
+  .piece.selected { background: var(--panel-2); }
+  .piece.hidden-piece { opacity: 0.45; }
+  .grip { color: var(--faint); cursor: grab; display: grid; place-items: center; }
+  .piece img { width: 72px; height: 54px; object-fit: cover; border-radius: 4px; background: #3a3631; }
+  .piece .name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .piece input.label {
+    width: 100%; background: transparent; border: 0; padding: 0; outline: none; font-weight: 600;
+  }
+  .piece .file, .piece .warn, .hint { color: var(--faint); font-size: 11px; }
+  .piece .warn { color: var(--danger); }
+  .iconbtn {
+    border: 0; background: transparent; color: var(--muted); width: 28px; height: 28px; border-radius: 6px;
+  }
+  .iconbtn:hover { color: var(--text); background: var(--bg); }
+  .empty-list { color: var(--muted); font-size: 13px; line-height: 1.45; padding: 8px 8px 16px; }
+  .meta { border-top: 1px solid var(--line); overflow: auto; max-height: 46%; padding: 0 12px 14px; }
+  label.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+  label.field input, label.field textarea, label.field select {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color: var(--text);
+  }
+  label.field textarea { resize: vertical; min-height: 52px; }
+  #facts, #trails, #command, .helptext { font-size: 12px; color: var(--muted); line-height: 1.45; }
+  #facts { padding: 0 12px 4px; }
+  .nextstep { padding: 0 12px 10px; border-bottom: 1px solid var(--line); }
+  #trails { margin: 0 0 8px; }
+  #moods { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .mood {
+    border: 1px solid var(--line); background: var(--bg); color: var(--muted);
+    border-radius: 99px; padding: 3px 8px; font-size: 12px;
+  }
+  .mood[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .mood.add { padding: 0; }
+  .mood.add input { border: 0; background: transparent; padding: 3px 8px; width: 96px; outline: none; }
+  pre.cmd {
+    margin: 0 0 8px; padding: 8px; background: var(--bg); border-radius: 6px;
+    font-size: 11px; white-space: pre-wrap; color: var(--text);
+  }
+  footer {
+    flex: none; display: flex; justify-content: space-between; gap: 16px;
+    padding: 6px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px;
+    background: var(--panel);
+  }
+  #status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #status.error { color: var(--danger); }
+  dialog { border: 0; padding: 0; background: transparent; color: inherit; }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+  .help {
+    width: min(720px, calc(100vw - 32px)); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 20px 12px; box-shadow: var(--shadow);
+  }
+  .help h2 { margin: 0 0 4px; font-size: 16px; }
+  .help .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; }
+  .help h3 { margin: 12px 0 6px; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); }
+  .help p { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+  .help .rowline { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 2px 0; }
+  @media (max-width: 980px) {
+    .side { width: 280px; }
+    .smoothbox span { display: none; }
+    .help .cols { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Trace pieces <span id="sceneTitle"></span></h1>
+    <div class="modes" role="toolbar" aria-label="View">
+      <button type="button" data-mode="edit" aria-pressed="true">Edit</button>
+      <button type="button" data-mode="solo">Solo</button>
+      <button type="button" data-mode="stack">Stack</button>
+      <button type="button" data-mode="plate">Plate</button>
+    </div>
+    <div class="smoothbox" title="How hard the next lasso, or the selected outline, is rounded">
+      <span>Smooth</span>
+      <input id="smooth" type="range" min="0" max="100" value="55">
+    </div>
+    <button type="button" id="zoomLabel" title="Click to toggle fit and 100%. Ctrl+0 fit, Ctrl+1 actual pixels.">Fit</button>
+    <div class="spacer"></div>
+    <div class="filebox">
+      <button type="button" id="folderBtn">Open folder</button>
+      <button type="button" id="photoBtn">Open photo</button>
+      <button type="button" id="saveBtn" class="primary" disabled>Download zip</button>
+    </div>
+  </header>
+  <main>
+    <div class="toolbar" role="toolbar" aria-label="Tools">
+      <button type="button" class="tool" data-tool="select" title="Select points (A or V)">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 2.5l5.2 12.2 1.7-4.6 4.6-1.6L3 2.5z"/></svg>
+      </button>
+      <button type="button" class="tool" data-tool="lasso" aria-pressed="true" title="Lasso (L)">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 11c0-4 2-7 6-7 3 0 4 2 4 3.5 0 2-1.5 2.5-2.5 2.5S9 9 9.2 7.2"/><path d="M9 11.2c.4 2.4 2 3.3 3.4 3.3 2.2 0 3.1-2 2.2-3.6"/></svg>
+      </button>
+      <button type="button" class="tool" data-tool="pen" title="Pen (P)">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 15l1.2-4.2L12.4 2.6l3 3L7.2 13.8 3 15z"/><path d="M10.6 4.4l3 3"/></svg>
+      </button>
+      <button type="button" class="tool" data-tool="hand" title="Hand (H). Hold Space anywhere.">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7 8V3.8a1.2 1.2 0 0 1 2.4 0V8M9.4 7.2V3.2a1.2 1.2 0 0 1 2.4 0V9M11.8 8.2V5a1.2 1.2 0 0 1 2.4 0v6.2c0 2.6-1.6 4.3-4.2 4.3-2 0-3.2-.7-4.2-2L5 10.2a1.3 1.3 0 0 1 2.2-1.3"/></svg>
+      </button>
+      <button type="button" class="tool" data-tool="zoom" title="Zoom (Z). Double-click the button for 100%.">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="4.2"/><path d="M11.2 11.2L15 15M8 6.2v3.6M6.2 8h3.6"/></svg>
+      </button>
+    </div>
+    <div class="stage">
+      <canvas id="view"></canvas>
+      <div id="empty">
+        <div class="card">
+          <h2>Trace a photo into pieces</h2>
+          <p>Draw around each part of the picture. The outline smooths when you let go, and you can drag the points if it needs a correction. Saving writes full-frame transparent PNGs, the same files prep_reveal already reads.</p>
+          <p>Scroll zooms toward the cursor. Hold Space and drag to pan. Right-drag cuts a piece back.</p>
+          <div class="row">
+            <button type="button" class="primary" id="emptyFolder" style="background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:8px 12px;font-weight:600;">Open scene folder</button>
+            <button type="button" id="emptyPhoto" style="background:var(--panel-2);color:var(--text);border:0;border-radius:6px;padding:8px 12px;">Open a photo</button>
+          </div>
+          <p class="hint" id="folderNote" style="margin-top:12px;"></p>
+        </div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="pieces-head">
+        <h2>Pieces</h2>
+        <span id="coverage"></span>
+        <button type="button" class="textbtn" id="newPieceBtn">New</button>
+      </div>
+      <div id="list"></div>
+      <div id="facts"></div>
+      <div class="nextstep">
+        <div class="helptext">Then, from the repo:</div>
+        <pre class="cmd" id="command"></pre>
+        <button type="button" class="textbtn" id="copyCmd">Copy command</button>
+      </div>
+      <div class="meta">
+        <div class="meta-head"><h2>Photo</h2></div>
+        <div id="trails"></div>
+        <label class="field">Scene id
+          <input id="photoId" data-field="photoId" autocomplete="off" spellcheck="false" placeholder="multnomah">
+        </label>
+        <label class="field">Title
+          <input id="title" data-field="title" placeholder="Multnomah Falls">
+        </label>
+        <label class="field">Scenery
+          <select id="scenery"></select>
+        </label>
+        <label class="field" id="sceneryCustomWrap" hidden>Scenery id
+          <input id="sceneryCustom" autocomplete="off" spellcheck="false" placeholder="meadow">
+        </label>
+        <div id="sceneryHelp" class="helptext"></div>
+        <div class="field" style="margin-bottom:4px;">Moods</div>
+        <div id="moods"></div>
+        <label class="field">Blurb
+          <textarea id="blurb" data-field="blurb" rows="2" placeholder="One line on the trail card."></textarea>
+        </label>
+        <label class="field">Story
+          <textarea id="story" data-field="story" rows="4" placeholder="Shown after the photo is finished. Optional."></textarea>
+        </label>
+        <label class="field">Asset folder, if it differs from the scene id
+          <input id="revealId" data-field="revealId" autocomplete="off" spellcheck="false" placeholder="same as scene id">
+        </label>
+      </div>
+    </aside>
+  </main>
+  <footer>
+    <div id="status">Drop a photo, or open a scene folder.</div>
+    <div id="coord"></div>
+  </footer>
+</div>
+<input id="photoInput" type="file" accept="image/*" hidden>
+<dialog id="help">
+  <div class="help">
+    <h2>Shortcuts</h2>
+    <p>Same ideas as Photoshop. Scroll zooms. Space pans without changing tools.</p>
+    <div class="cols">
+      <div>
+        <h3>View</h3>
+        <div class="rowline"><span>Zoom toward cursor</span><span>Scroll</span></div>
+        <div class="rowline"><span>Pan</span><span><kbd>Space</kbd> drag, or middle mouse</span></div>
+        <div class="rowline"><span>Zoom in / out</span><span><kbd>Z</kbd> click / <kbd>Alt</kbd> click</span></div>
+        <div class="rowline"><span>Zoom to a rectangle</span><span><kbd>Z</kbd> drag</span></div>
+        <div class="rowline"><span>Fit / 100%</span><span><kbd>Ctrl</kbd>+<kbd>0</kbd> / <kbd>Ctrl</kbd>+<kbd>1</kbd></span></div>
+        <div class="rowline"><span>Frame the piece</span><span><kbd>F</kbd></span></div>
+        <div class="rowline"><span>Edit, solo, stack, plate</span><span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></span></div>
+        <h3>Draw</h3>
+        <div class="rowline"><span>Lasso</span><span><kbd>L</kbd></span></div>
+        <div class="rowline"><span>Pen</span><span><kbd>P</kbd></span></div>
+        <div class="rowline"><span>Select points</span><span><kbd>A</kbd> or <kbd>V</kbd></span></div>
+        <div class="rowline"><span>Add to the piece</span><span><kbd>Shift</kbd> draw</span></div>
+        <div class="rowline"><span>Cut away</span><span><kbd>Alt</kbd> or right-drag</span></div>
+        <div class="rowline"><span>Close the pen</span><span><kbd>Enter</kbd></span></div>
+        <div class="rowline"><span>Cancel the stroke</span><span><kbd>Esc</kbd></span></div>
+        <div class="rowline"><span>Less / more smoothing</span><span><kbd>[</kbd> <kbd>]</kbd></span></div>
+      </div>
+      <div>
+        <h3>Points</h3>
+        <div class="rowline"><span>Add a point</span><span>Double-click the edge</span></div>
+        <div class="rowline"><span>Delete point or piece</span><span><kbd>Delete</kbd></span></div>
+        <div class="rowline"><span>Nudge</span><span>Arrow keys, <kbd>Shift</kbd> for 10px</span></div>
+        <div class="rowline"><span>Constrain to 45°</span><span><kbd>Shift</kbd> while placing</span></div>
+        <div class="rowline"><span>Break a curve handle</span><span><kbd>Alt</kbd> drag the handle</span></div>
+        <h3>Pieces and file</h3>
+        <div class="rowline"><span>New piece</span><span><kbd>N</kbd></span></div>
+        <div class="rowline"><span>Next / previous</span><span><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd></span></div>
+        <div class="rowline"><span>Undo / redo</span><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></span></div>
+        <div class="rowline"><span>Save</span><span><kbd>Ctrl</kbd>+<kbd>S</kbd></span></div>
+        <div class="rowline"><span>This list</span><span><kbd>?</kbd></span></div>
+      </div>
+    </div>
+    <p style="margin-top:14px;">A plain lasso starts a new piece. Shift adds to the selected one. The file is named <kbd>01-bridge.png</kbd>, a full-frame PNG the size of the photo, transparent outside the outline. Play order is the list order, top first. <kbd>pieces/paths.json</kbd> is only so this page can reopen the outlines.</p>
+    <form method="dialog" style="text-align:right;"><button type="submit" class="textbtn">Close</button></form>
+  </div>
+</dialog>
+<script>
+(() => {
+  "use strict";
+
+  const HUES = [24, 198, 132, 332, 48, 262, 168, 12, 220, 88, 300, 150];
+  const IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
+  const PIECE_STEM = /^(\d+)(?:-(.+))?$/;
+  const PIECE_FILE = /^\d+(?:-.+)?\.(png|jpe?g|webp)$/i;
+  const MAX_ZOOM = 64;
+  const SELFTEST = new URLSearchParams(location.search).has("selftest");
+
+  const embedded = {
+    sceneries: [
+      { id: "meadow", title: "Meadow", summary: "Open grass and wildflowers.", story: "Open grass, often where the trees break." },
+      { id: "forest", title: "Forest", summary: "Trees, moss, and shade.", story: "Shade, moss, and a close view of the trunks." },
+      { id: "alpine", title: "Alpine", summary: "High rock and a far ridge.", story: "High rock and a long view." },
+      { id: "waterfall", title: "Waterfall", summary: "Falling water, mist, and wet stone.", story: "A stream falling over a cliff, sometimes in more than one step." },
+    ],
+    moods: [
+      { id: "quiet", title: "Quiet", summary: "Still air and soft ground." },
+      { id: "open", title: "Open", summary: "Wide light and a long view." },
+      { id: "wild", title: "Wild", summary: "Moving water and weather." },
+    ],
+    trails: [
+      { id: "obsidian", title: "Obsidian", summary: "A short high-country walk. Two stops so far.", photoIds: ["mossyrock", "mountain"] },
+      { id: "mckenzie", title: "McKenzie River", summary: "Down the river, starting at the falls.", photoIds: ["sahalie"] },
+      { id: "columbia", title: "Columbia Gorge", summary: "Waterfalls along the gorge.", photoIds: ["multnomah"] },
+    ],
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("view");
+  const ctx = canvas.getContext("2d");
+  const smoothInput = $("smooth");
+  const listEl = $("list");
+  const helpDialog = $("help");
+
+  const registries = structuredClone(embedded);
+  let sceneHandle = null;
+  let existingPieceNames = new Set();
+  let pngsByIndex = new Map();
+  let canRevertToPng = false;
+  let fullImage = null;
+  let preview = null;
+  let plateImage = null;
+  let platePreview = null;
+  let photoName = "";
+  let fullW = 0;
+  let fullH = 0;
+  let pieces = [];
+  let nextId = 1;
+  let rasters = new Map();
+  let selectedId = null;
+  let selectedPoints = [];
+  let tool = "lasso";
+  let mode = "edit";
+  let cam = { x: 0, y: 0, zoom: 1 };
+  let space = false;
+  let drag = null;
+  let pen = null;
+  let undo = [];
+  let redo = [];
+  let dirty = false;
+  let geomRev = 0;
+  let composite = null;
+  let compositeKey = "";
+  let heavyTimer = 0;
+  let nudgeOpen = false;
+  let saving = false;
+  const analysis = { w: 360, h: 1 };
+
+  const meta = {
+    title: "",
+    sceneryId: "",
+    moodIds: [],
+    blurb: "",
+    story: "",
+    revealId: "",
+  };
+
+  const HINTS = {
+    lasso: "Drag around a piece. It closes and smooths on release. Shift adds. Alt or right-drag cuts away.",
+    pen: "Click corners, drag curves. Enter closes. Shift locks the segment to 45°.",
+    select: "Drag points. Double-click an edge to add one. Delete removes the point, or the piece if none is selected.",
+    hand: "Drag to pan. Scrolling zooms toward the cursor.",
+    zoom: "Click zooms in. Alt-click zooms out. Drag a rectangle to fill the view.",
+  };
+
+  function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function cssSize() { return { w: canvas.clientWidth, h: canvas.clientHeight }; }
+  function pieceColor(index) { return `hsl(${HUES[index % HUES.length]} 68% 58%)`; }
+  function slugify(value) {
+    return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 48);
+  }
+  function fileName(piece, index) {
+    const slug = slugify(piece.label);
+    const num = String(index + 1).padStart(2, "0");
+    return slug ? `${num}-${slug}.png` : `${num}.png`;
+  }
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[ch]));
+  }
+  function isTyping(target) {
+    if (!target || target === document.body) return false;
+    const tag = target.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+  }
+  function setStatus(text, isError) {
+    const el = $("status");
+    el.textContent = text;
+    el.classList.toggle("error", !!isError);
+  }
+  function selectedPiece() { return pieces.find((piece) => piece.id === selectedId) || null; }
+  function pieceIndex(piece) { return pieces.indexOf(piece); }
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const { w, h } = cssSize();
+    const bw = Math.max(1, Math.round(w * dpr));
+    const bh = Math.max(1, Math.round(h * dpr));
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
+    }
+    scheduleDraw();
+  }
+
+  function minZoom() {
+    if (!fullW) return 0.05;
+    const { w, h } = cssSize();
+    if (!w || !h) return 0.05;
+    return Math.min(w / fullW, h / fullH) * 0.25;
+  }
+  function fitZoom() {
+    const { w, h } = cssSize();
+    if (!w || !h || !fullW || !fullH) return 1;
+    return Math.min(w / fullW, h / fullH) * 0.96;
+  }
+  function zoomAt(cssX, cssY, nextZoom) {
+    const before = toImage(cssX, cssY);
+    cam.zoom = clamp(nextZoom, minZoom(), MAX_ZOOM);
+    const after = toImage(cssX, cssY);
+    cam.x += before.x - after.x;
+    cam.y += before.y - after.y;
+    updateZoomLabel();
+    scheduleDraw();
+  }
+  function toImage(cssX, cssY) {
+    const { w, h } = cssSize();
+    return {
+      x: (cssX - w / 2) / cam.zoom + cam.x,
+      y: (cssY - h / 2) / cam.zoom + cam.y,
+    };
+  }
+  function toScreen(x, y) {
+    const { w, h } = cssSize();
+    return {
+      x: (x - cam.x) * cam.zoom + w / 2,
+      y: (y - cam.y) * cam.zoom + h / 2,
+    };
+  }
+  function fitView() {
+    if (!fullW) return;
+    cam.zoom = fitZoom();
+    cam.x = fullW / 2;
+    cam.y = fullH / 2;
+    updateZoomLabel();
+    scheduleDraw();
+  }
+  function actualPixels() {
+    const { w, h } = cssSize();
+    zoomAt(w / 2, h / 2, 1);
+  }
+  function updateZoomLabel() {
+    $("zoomLabel").textContent = fullW ? `${Math.round(cam.zoom * 100)}%` : "Fit";
+  }
+  function framePiece(piece) {
+    const box = bounds(piece);
+    if (!box) return;
+    const { w, h } = cssSize();
+    const iw = Math.max(8, box.right - box.left);
+    const ih = Math.max(8, box.bottom - box.top);
+    cam.zoom = clamp(Math.min((w - 48) / iw, (h - 48) / ih), minZoom(), MAX_ZOOM);
+    cam.x = (box.left + box.right) / 2;
+    cam.y = (box.top + box.bottom) / 2;
+    updateZoomLabel();
+    scheduleDraw();
+  }
+
+  function remember() {
+    undo.push(capture());
+    if (undo.length > 80) undo.shift();
+    redo = [];
+  }
+  function capture() {
+    return {
+      pieces: pieces.map(clonePiece),
+      selectedId,
+      photoId: $("photoId").value,
+      meta: structuredClone(meta),
+    };
+  }
+  function ensureUndo(gesture) {
+    if (!gesture || gesture.pushed || !gesture.before) return;
+    undo.push(gesture.before);
+    if (undo.length > 80) undo.shift();
+    redo = [];
+    gesture.pushed = true;
+  }
+  function restoreQuiet(snap) {
+    if (!snap) return;
+    pieces = snap.pieces.map(clonePiece);
+    selectedId = snap.selectedId;
+    if (snap.photoId != null) $("photoId").value = snap.photoId;
+    selectedPoints = [];
+    renderList();
+    renderFacts();
+    scheduleDraw();
+  }
+  function clonePiece(piece) {
+    return {
+      id: piece.id,
+      label: piece.label,
+      hidden: piece.hidden,
+      rasterId: piece.rasterId,
+      rev: piece.rev,
+      subpaths: piece.subpaths.map((sub) => ({
+        op: sub.op,
+        bezier: !!sub.bezier,
+        smooth: sub.smooth ?? null,
+        points: sub.points.map((point) => ({ ...point })),
+        raw: sub.raw ? sub.raw.map((point) => ({ x: point.x, y: point.y })) : null,
+      })),
+    };
+  }
+  function applySnap(snap) {
+    pieces = snap.pieces.map(clonePiece);
+    selectedId = snap.selectedId;
+    selectedPoints = [];
+    Object.assign(meta, structuredClone(snap.meta));
+    if (snap.photoId != null) $("photoId").value = snap.photoId;
+    pen = null;
+    fillMetaForm();
+    renderFacts();
+    renderMoods();
+    renderList();
+    renderTrails();
+    bump(true);
+  }
+  function doUndo() {
+    if (!undo.length) return;
+    redo.push(capture());
+    applySnap(undo.pop());
+    dirty = true;
+    updateSave();
+  }
+  function doRedo() {
+    if (!redo.length) return;
+    undo.push(capture());
+    applySnap(redo.pop());
+    dirty = true;
+    updateSave();
+  }
+  function bump(structure) {
+    geomRev += 1;
+    composite = null;
+    dirty = true;
+    if (structure) renderList();
+    scheduleDraw();
+    scheduleHeavy();
+    updateSave();
+  }
+
+  function emptyPiece(label) {
+    return {
+      id: nextId++,
+      label: label || "",
+      hidden: false,
+      rasterId: null,
+      rev: 1,
+      subpaths: [],
+    };
+  }
+  function isEmpty(piece) {
+    return !piece.rasterId && !piece.subpaths.some((sub) => sub.points.length >= 3);
+  }
+  function touch(piece) { piece.rev = geomRev + 1; }
+
+  function newPiece() {
+    const current = selectedPiece();
+    if (current && isEmpty(current)) {
+      setStatus("This piece is still empty. Draw into it, or press Esc to leave it.");
+      return current;
+    }
+    remember();
+    const piece = emptyPiece("");
+    pieces.push(piece);
+    selectedId = piece.id;
+    selectedPoints = [];
+    bump(true);
+    return piece;
+  }
+
+  function selectPiece(id, options = {}) {
+    selectedId = id;
+    if (!options.keepPoints) selectedPoints = [];
+    for (const row of listEl.querySelectorAll(".piece")) {
+      row.classList.toggle("selected", Number(row.dataset.id) === id);
+    }
+    scheduleDraw();
+  }
+
+  function cyclePiece(step) {
+    if (!pieces.length) return;
+    const index = Math.max(0, pieceIndex(selectedPiece()));
+    const next = pieces[(index + step + pieces.length) % pieces.length];
+    selectPiece(next.id);
+    listEl.querySelector(`.piece[data-id="${next.id}"]`)?.scrollIntoView({ block: "nearest" });
+  }
+
+  function deleteSelection() {
+    const piece = selectedPiece();
+    if (!piece) return;
+    if (selectedPoints.length && tool === "select") {
+      remember();
+      const grouped = new Map();
+      for (const hit of selectedPoints) {
+        if (!grouped.has(hit.sub)) grouped.set(hit.sub, new Set());
+        grouped.get(hit.sub).add(hit.index);
+      }
+      const removeSubs = [];
+      for (const [subIndex, indexes] of grouped) {
+        const sub = piece.subpaths[subIndex];
+        if (!sub) continue;
+        sub.points = sub.points.filter((_, index) => !indexes.has(index));
+        sub.raw = null;
+        if (sub.points.length < 3) removeSubs.push(subIndex);
+      }
+      piece.subpaths = piece.subpaths.filter((_, index) => !removeSubs.includes(index));
+      if (!piece.subpaths.length) piece.rasterId = piece.rasterId;
+      selectedPoints = [];
+      touch(piece);
+      bump(true);
+      setStatus("Deleted the selected points.");
+      return;
+    }
+    remember();
+    const name = piece.label || fileName(piece, pieceIndex(piece));
+    pieces = pieces.filter((item) => item !== piece);
+    selectedId = pieces[0]?.id ?? null;
+    selectedPoints = [];
+    bump(true);
+    setStatus(`Removed ${name}. Ctrl+Z puts it back.`);
+  }
+
+  function smoothAmount() { return Number(smoothInput.value) / 100; }
+
+  function distToSeg(point, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    if (!len2) return Math.hypot(point.x - a.x, point.y - a.y);
+    const t = clamp(((point.x - a.x) * dx + (point.y - a.y) * dy) / len2, 0, 1);
+    return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+  }
+  function rdpOpen(points, epsilon) {
+    if (points.length < 3) return points.map((point) => ({ x: point.x, y: point.y }));
+    const keep = new Array(points.length).fill(false);
+    keep[0] = keep[points.length - 1] = true;
+    const stack = [[0, points.length - 1]];
+    while (stack.length) {
+      const [start, end] = stack.pop();
+      let maxDist = 0;
+      let index = -1;
+      for (let i = start + 1; i < end; i++) {
+        const dist = distToSeg(points[i], points[start], points[end]);
+        if (dist > maxDist) {
+          maxDist = dist;
+          index = i;
+        }
+      }
+      if (index !== -1 && maxDist > epsilon) {
+        keep[index] = true;
+        stack.push([start, index], [index, end]);
+      }
+    }
+    return points.filter((_, index) => keep[index]).map((point) => ({ x: point.x, y: point.y }));
+  }
+  function rdpClosed(points, epsilon) {
+    if (points.length < 4) return points.map((point) => ({ x: point.x, y: point.y }));
+    let start = 0;
+    for (let i = 1; i < points.length; i++) {
+      if (points[i].x < points[start].x || (points[i].x === points[start].x && points[i].y < points[start].y)) start = i;
+    }
+    const rotated = points.slice(start).concat(points.slice(0, start));
+    const open = rdpOpen(rotated.concat([rotated[0]]), epsilon);
+    if (open.length > 1) open.pop();
+    return open.length >= 3 ? open : rotated.slice(0, 3);
+  }
+  function decimate(points, max) {
+    if (points.length <= max) return points.map((point) => ({ x: point.x, y: point.y }));
+    const step = points.length / max;
+    const out = [];
+    for (let i = 0; i < max; i++) out.push({ ...points[Math.floor(i * step)] });
+    return out;
+  }
+  function movingAverageClosed(points, radius) {
+    const count = points.length;
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      let x = 0;
+      let y = 0;
+      let weight = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const point = points[(i + k + count) % count];
+        const w = radius + 1 - Math.abs(k);
+        x += point.x * w;
+        y += point.y * w;
+        weight += w;
+      }
+      out.push({ x: x / weight, y: y / weight });
+    }
+    return out;
+  }
+  function cleanRing(points) {
+    const out = [];
+    for (const point of points) {
+      const prev = out[out.length - 1];
+      if (!prev || Math.hypot(point.x - prev.x, point.y - prev.y) > 0.4) out.push({ x: point.x, y: point.y });
+    }
+    if (out.length > 2 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) < 0.8) out.pop();
+    return out;
+  }
+  function simplifyClosed(points, maxCount) {
+    if (points.length <= maxCount) return cleanRing(points);
+    const diag = Math.hypot(fullW || 1000, fullH || 1000);
+    let lo = 0;
+    let hi = diag * 0.08;
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      const next = rdpClosed(points, Math.max(mid, 0.2));
+      if (next.length > maxCount) lo = mid;
+      else hi = mid;
+    }
+    const simplified = cleanRing(rdpClosed(points, Math.max(hi, 0.2)));
+    return simplified.length >= 3 ? simplified : cleanRing(points).slice(0, Math.max(3, maxCount));
+  }
+  function smoothStroke(raw, amount) {
+    const samples = decimate(raw, 2500);
+    if (samples.length < 3) return null;
+    const radius = Math.round(amount * amount * 28);
+    const averaged = radius ? movingAverageClosed(samples, radius) : samples;
+    const maxCount = Math.round(lerp(Math.min(180, Math.max(12, averaged.length / 4)), 10, amount));
+    const points = simplifyClosed(averaged, Math.max(8, maxCount));
+    if (points.length < 3) return null;
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i];
+      const b = points[(i + 1) % points.length];
+      area += a.x * b.y - b.x * a.y;
+    }
+    if (Math.abs(area) < 12) return null;
+    return points.map((point) => ({
+      x: point.x, y: point.y, inX: null, inY: null, outX: null, outY: null, corner: true,
+    }));
+  }
+
+  function handleOf(point, which) {
+    if (which === "out") return point.outX == null ? { x: point.x, y: point.y } : { x: point.outX, y: point.outY };
+    return point.inX == null ? { x: point.x, y: point.y } : { x: point.inX, y: point.inY };
+  }
+  function mirrorHandle(anchor, handle) {
+    return { x: anchor.x * 2 - handle.x, y: anchor.y * 2 - handle.y };
+  }
+  function cubic(p0, p1, p2, p3, t) {
+    const u = 1 - t;
+    return {
+      x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+      y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+    };
+  }
+  function sampleSub(sub) {
+    if (!sub.bezier) return sub.points;
+    const out = [];
+    const count = sub.points.length;
+    for (let i = 0; i < count; i++) {
+      const a = sub.points[i];
+      const b = sub.points[(i + 1) % count];
+      for (let step = 0; step < 10; step++) {
+        out.push(cubic(a, handleOf(a, "out"), handleOf(b, "in"), b, step / 10));
+      }
+    }
+    return out;
+  }
+  function traceSub(context, sub, project) {
+    const pts = sub.points;
+    if (pts.length < 2) return;
+    const first = project(pts[0]);
+    context.moveTo(first.x, first.y);
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      const bp = project(b);
+      if (sub.bezier) {
+        const out = project(handleOf(a, "out"));
+        const inn = project(handleOf(b, "in"));
+        context.bezierCurveTo(out.x, out.y, inn.x, inn.y, bp.x, bp.y);
+      } else {
+        context.lineTo(bp.x, bp.y);
+      }
+    }
+    context.closePath();
+  }
+  const identity = (point) => ({ x: point.x, y: point.y });
+  function projectPreview(point) {
+    return {
+      x: point.x * preview.width / fullW,
+      y: point.y * preview.height / fullH,
+    };
+  }
+  function fillAdds(context, piece, project) {
+    context.beginPath();
+    let any = false;
+    for (const sub of piece.subpaths) {
+      if (sub.op !== "add" || sub.points.length < 3) continue;
+      traceSub(context, sub, project);
+      any = true;
+    }
+    if (any) context.fill("evenodd");
+    return any;
+  }
+  function punchSubs(context, piece, project) {
+    const subs = piece.subpaths.filter((sub) => sub.op === "sub" && sub.points.length >= 3);
+    if (!subs.length) return;
+    context.save();
+    context.globalCompositeOperation = "destination-out";
+    context.fillStyle = "#fff";
+    for (const sub of subs) {
+      context.beginPath();
+      traceSub(context, sub, project);
+      context.fill();
+    }
+    context.restore();
+  }
+
+  function bounds(piece) {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let count = 0;
+    const visit = (point) => {
+      if (!point) return;
+      count += 1;
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    };
+    for (const sub of piece.subpaths) {
+      if (sub.op !== "add") continue;
+      for (const point of sub.points) {
+        visit(point);
+        if (point.inX != null) visit({ x: point.inX, y: point.inY });
+        if (point.outX != null) visit({ x: point.outX, y: point.outY });
+      }
+    }
+    if (!count && piece.rasterId) return rasters.get(piece.rasterId)?.bbox || null;
+    if (!count) return null;
+    return { left: minX, top: minY, right: maxX, bottom: maxY };
+  }
+  function insideRing(points, x, y) {
+    let hit = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const pi = points[i];
+      const pj = points[j];
+      const cross = (pi.y > y) !== (pj.y > y)
+        && x < ((pj.x - pi.x) * (y - pi.y)) / (pj.y - pi.y + 0.0000001) + pi.x;
+      if (cross) hit = !hit;
+    }
+    return hit;
+  }
+  function pointInPiece(piece, x, y) {
+    if (piece.rasterId && !piece.subpaths.length) {
+      const raster = rasters.get(piece.rasterId);
+      if (!raster?.mask) return false;
+      const mx = clamp(Math.floor(x / fullW * raster.maskW), 0, raster.maskW - 1);
+      const my = clamp(Math.floor(y / fullH * raster.maskH), 0, raster.maskH - 1);
+      return !!raster.mask[my * raster.maskW + mx];
+    }
+    let depth = 0;
+    for (const sub of piece.subpaths) {
+      if (sub.op !== "add" || sub.points.length < 3) continue;
+      if (insideRing(sampleSub(sub), x, y)) depth += 1;
+    }
+    if (depth % 2 === 0) return false;
+    for (const sub of piece.subpaths) {
+      if (sub.op !== "sub" || sub.points.length < 3) continue;
+      if (insideRing(sampleSub(sub), x, y)) return false;
+    }
+    return true;
+  }
+
+  function hitTest(imagePoint, cssPoint) {
+    const piece = selectedPiece();
+    if (piece && selectedPoints.length === 1 && tool === "select") {
+      const hit = selectedPoints[0];
+      const point = piece.subpaths[hit.sub]?.points[hit.index];
+      if (point) {
+        for (const which of ["in", "out"]) {
+          const knob = handleOf(point, which);
+          if (Math.hypot(knob.x - point.x, knob.y - point.y) < 0.5) continue;
+          const screen = toScreen(knob.x, knob.y);
+          if (Math.hypot(screen.x - cssPoint.x, screen.y - cssPoint.y) <= 8) {
+            return { type: "handle", piece, sub: hit.sub, index: hit.index, which };
+          }
+        }
+      }
+    }
+    if (piece && tool === "select") {
+      for (let s = 0; s < piece.subpaths.length; s++) {
+        const sub = piece.subpaths[s];
+        for (let i = 0; i < sub.points.length; i++) {
+          const screen = toScreen(sub.points[i].x, sub.points[i].y);
+          if (Math.hypot(screen.x - cssPoint.x, screen.y - cssPoint.y) <= 8) {
+            return { type: "point", piece, sub: s, index: i };
+          }
+        }
+      }
+      let best = null;
+      for (let s = 0; s < piece.subpaths.length; s++) {
+        const samples = sampleSub(piece.subpaths[s]);
+        for (let i = 0; i < samples.length; i++) {
+          const a = samples[i];
+          const b = samples[(i + 1) % samples.length];
+          const screenA = toScreen(a.x, a.y);
+          const screenB = toScreen(b.x, b.y);
+          const dist = distToSeg(cssPoint, screenA, screenB);
+          if (dist < 8 && (!best || dist < best.dist)) best = { type: "segment", piece, sub: s, dist, a, b };
+        }
+      }
+      if (best) return best;
+    }
+    const order = [];
+    if (piece) order.push(piece);
+    for (let i = pieces.length - 1; i >= 0; i--) if (pieces[i] !== piece) order.push(pieces[i]);
+    for (const candidate of order) {
+      if (candidate.hidden) continue;
+      if (pointInPiece(candidate, imagePoint.x, imagePoint.y)) return { type: "fill", piece: candidate };
+    }
+    return { type: "empty" };
+  }
+
+  function closestSegment(sub, cssPoint) {
+    const steps = sub.bezier ? 12 : 1;
+    let best = null;
+    for (let i = 0; i < sub.points.length; i++) {
+      const a = sub.points[i];
+      const b = sub.points[(i + 1) % sub.points.length];
+      for (let step = 1; step < steps; step++) {
+        const t = step / steps;
+        const point = sub.bezier
+          ? cubic(a, handleOf(a, "out"), handleOf(b, "in"), b, t)
+          : { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+        const screen = toScreen(point.x, point.y);
+        const dist = Math.hypot(screen.x - cssPoint.x, screen.y - cssPoint.y);
+        if (dist <= 10 && (!best || dist < best.dist)) best = { dist, index: i, t, point };
+      }
+      if (!sub.bezier) {
+        const screenA = toScreen(a.x, a.y);
+        const screenB = toScreen(b.x, b.y);
+        const dist = distToSeg(cssPoint, screenA, screenB);
+        if (dist <= 10 && (!best || dist < best.dist)) best = { dist, index: i, t: 0.5, point: null };
+      }
+    }
+    return best;
+  }
+  function insertPoint(piece, subIndex, cssPoint) {
+    const sub = piece.subpaths[subIndex];
+    const hit = closestSegment(sub, cssPoint);
+    if (!hit || hit.t < 0.02 || hit.t > 0.98) return false;
+    remember();
+    const a = sub.points[hit.index];
+    const b = sub.points[(hit.index + 1) % sub.points.length];
+    if (!sub.bezier) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      sub.points.splice(hit.index + 1, 0, {
+        x: a.x + dx * hit.t, y: a.y + dy * hit.t,
+        inX: null, inY: null, outX: null, outY: null, corner: true,
+      });
+    } else {
+      const split = splitCubic(a, handleOf(a, "out"), handleOf(b, "in"), b, hit.t);
+      a.outX = split.left1.x; a.outY = split.left1.y;
+      b.inX = split.right2.x; b.inY = split.right2.y;
+      sub.points.splice(hit.index + 1, 0, {
+        x: split.mid.x, y: split.mid.y,
+        inX: split.left2.x, inY: split.left2.y,
+        outX: split.right1.x, outY: split.right1.y,
+        corner: false,
+      });
+    }
+    sub.raw = null;
+    selectedPoints = [{ sub: subIndex, index: hit.index + 1 }];
+    touch(piece);
+    bump(false);
+    return true;
+  }
+  function splitCubic(p0, p1, p2, p3, t) {
+    const mix = (a, b) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    const a = mix(p0, p1);
+    const b = mix(p1, p2);
+    const c = mix(p2, p3);
+    const d = mix(a, b);
+    const e = mix(b, c);
+    const mid = mix(d, e);
+    return { left1: a, left2: d, mid, right1: e, right2: c };
+  }
+
+  function prepareExistingPiece(op) {
+    const piece = selectedPiece();
+    if (!piece || isEmpty(piece)) {
+      setStatus(op === "sub" ? "Select a piece before cutting into it." : "Select a piece before adding to it.", true);
+      return false;
+    }
+    if (piece.rasterId && !piece.subpaths.length) {
+      if (!rasters.get(piece.rasterId)?.guide?.length) {
+        setStatus("Could not trace that mask into points.", true);
+        return false;
+      }
+      convertRaster(piece, true);
+    }
+    return true;
+  }
+  function startLasso(op, pointerId, image, css) {
+    let created = false;
+    let before;
+    if (op === "add") {
+      before = capture();
+      const current = selectedPiece();
+      if (!current || !isEmpty(current)) {
+        const piece = emptyPiece("");
+        pieces.push(piece);
+        selectedId = piece.id;
+        created = true;
+        renderList();
+      }
+    } else if (!prepareExistingPiece(op)) {
+      return;
+    } else {
+      before = capture();
+    }
+    drag = { kind: "lasso", pointerId, op, points: [image], css, created, before };
+  }
+  function commitStroke(gesture) {
+    const amount = smoothAmount();
+    const points = smoothStroke(gesture.points, amount);
+    if (!points) {
+      if (gesture.created) restoreQuiet(gesture.before);
+      setStatus("That stroke was too small to become a piece.");
+      scheduleDraw();
+      return;
+    }
+    const piece = selectedPiece();
+    if (!piece || !gesture.before) {
+      scheduleDraw();
+      return;
+    }
+    undo.push(gesture.before);
+    if (undo.length > 80) undo.shift();
+    redo = [];
+    piece.subpaths.push({
+      op: gesture.op === "sub" ? "sub" : "add",
+      bezier: false,
+      smooth: amount,
+      points,
+      raw: gesture.points.map((point) => ({ x: point.x, y: point.y })),
+    });
+    piece.rasterId = null;
+    touch(piece);
+    selectedPoints = [];
+    bump(true);
+    const row = listEl.querySelector(`.piece[data-id="${piece.id}"]`);
+    row?.scrollIntoView({ block: "nearest" });
+    if (gesture.op !== "sub" && piece.subpaths.filter((sub) => sub.op === "add").length === 1) {
+      row?.querySelector(".label")?.focus();
+    }
+    setStatus(`${fileName(piece, pieceIndex(piece))} · drag the smooth slider if the edge is too tight or too round.`);
+  }
+
+  function applySmoothToSelection() {
+    const piece = selectedPiece();
+    if (!piece) return;
+    let sub = null;
+    if (selectedPoints.length) {
+      const candidate = piece.subpaths[selectedPoints[0].sub];
+      if (candidate?.raw) sub = candidate;
+    }
+    if (!sub) {
+      for (let i = piece.subpaths.length - 1; i >= 0; i--) {
+        if (piece.subpaths[i].raw) { sub = piece.subpaths[i]; break; }
+      }
+    }
+    if (!sub) return false;
+    const amount = smoothAmount();
+    const points = smoothStroke(sub.raw, amount);
+    if (!points) return false;
+    sub.smooth = amount;
+    sub.points = points;
+    sub.bezier = false;
+    touch(piece);
+    composite = null;
+    geomRev += 1;
+    scheduleDraw();
+    scheduleHeavy();
+    return true;
+  }
+  function hasSmoothTarget() {
+    const piece = selectedPiece();
+    return !!piece && piece.subpaths.some((sub) => sub.raw && sub.raw.length);
+  }
+
+  function convertRaster(piece, silent) {
+    const raster = piece.rasterId ? rasters.get(piece.rasterId) : null;
+    if (!raster?.guide?.length) {
+      setStatus("Could not trace that mask into points.", true);
+      return;
+    }
+    remember();
+    piece.subpaths = raster.guide.map((points) => ({
+      op: "add",
+      bezier: false,
+      smooth: 0.35,
+      points: points.map((point) => ({
+        x: point.x, y: point.y, inX: null, inY: null, outX: null, outY: null, corner: true,
+      })),
+      raw: points.map((point) => ({ x: point.x, y: point.y })),
+    }));
+    piece.rasterId = null;
+    touch(piece);
+    bump(true);
+    if (!silent) {
+      setStatus("The painted mask is now points. Smooth it, or drag a point.");
+      setTool("select");
+    }
+  }
+
+  function constrain45(from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const angle = Math.atan2(dy, dx);
+    const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+    const len = Math.hypot(dx, dy);
+    return { x: from.x + Math.cos(snapped) * len, y: from.y + Math.sin(snapped) * len };
+  }
+
+  function shiftPoint(point, dx, dy) {
+    point.x += dx;
+    point.y += dy;
+    if (point.inX != null) { point.inX += dx; point.inY += dy; }
+    if (point.outX != null) { point.outX += dx; point.outY += dy; }
+  }
+  function translatePiece(piece, dx, dy) {
+    for (const sub of piece.subpaths) {
+      for (const point of sub.points) shiftPoint(point, dx, dy);
+      if (sub.raw) for (const point of sub.raw) { point.x += dx; point.y += dy; }
+    }
+  }
+
+  function setTool(next) {
+    tool = next;
+    pen = null;
+    for (const button of document.querySelectorAll(".tool")) {
+      button.setAttribute("aria-pressed", button.dataset.tool === tool ? "true" : "false");
+    }
+    updateCursor();
+    setStatus(HINTS[tool]);
+    scheduleDraw();
+  }
+  function setMode(next) {
+    mode = next;
+    composite = null;
+    for (const button of document.querySelectorAll("[data-mode]")) {
+      button.setAttribute("aria-pressed", button.dataset.mode === mode ? "true" : "false");
+    }
+    if (mode === "plate" && !plateImage) {
+      setStatus("No photo-bw in this folder. Plate view darkens the color photo instead.");
+    }
+    scheduleDraw();
+  }
+  function updateCursor() {
+    if (space || tool === "hand" || drag?.kind === "pan") {
+      canvas.style.cursor = drag?.kind === "pan" ? "grabbing" : "grab";
+      return;
+    }
+    if (tool === "zoom") {
+      canvas.style.cursor = "zoom-in";
+      return;
+    }
+    if (tool === "select") {
+      canvas.style.cursor = "default";
+      return;
+    }
+    canvas.style.cursor = "crosshair";
+  }
+
+  function scheduleDraw() {
+    if (scheduleDraw.queued) return;
+    scheduleDraw.queued = true;
+    requestAnimationFrame(() => {
+      scheduleDraw.queued = false;
+      draw();
+    });
+  }
+  function scheduleHeavy() {
+    clearTimeout(heavyTimer);
+    heavyTimer = setTimeout(runHeavy, 60);
+  }
+
+  function drawChecker(context, width, height, size) {
+    context.fillStyle = "#cfc8bb";
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = "#8f887c";
+    for (let y = 0; y < height; y += size) {
+      for (let x = (Math.floor(y / size) % 2) * size; x < width; x += size * 2) {
+        context.fillRect(x, y, size, size);
+      }
+    }
+  }
+  function paintPiece(context, piece, width, height) {
+    if (piece.rasterId && !piece.subpaths.length) {
+      const raster = rasters.get(piece.rasterId);
+      if (raster) context.drawImage(raster.image, 0, 0, width, height);
+      return;
+    }
+    context.drawImage(preview, 0, 0, width, height);
+    context.globalCompositeOperation = "destination-in";
+    context.fillStyle = "#fff";
+    fillAdds(context, piece, projectPreview);
+    punchSubs(context, piece, projectPreview);
+  }
+  function ensureComposite() {
+    const key = `${mode}|${geomRev}|${selectedId}|${platePreview ? 1 : 0}`;
+    if (composite && compositeKey === key) return composite;
+    const surface = document.createElement("canvas");
+    surface.width = preview.width;
+    surface.height = preview.height;
+    const g = surface.getContext("2d");
+    if (mode === "solo") {
+      drawChecker(g, surface.width, surface.height, 18);
+      const piece = selectedPiece();
+      if (piece && !isEmpty(piece)) {
+        const layer = document.createElement("canvas");
+        layer.width = surface.width;
+        layer.height = surface.height;
+        paintPiece(layer.getContext("2d"), piece, layer.width, layer.height);
+        g.drawImage(layer, 0, 0);
+      }
+    } else {
+      g.drawImage(mode === "plate" && platePreview ? platePreview : preview, 0, 0);
+      if (!(mode === "plate" && platePreview)) {
+        g.fillStyle = "rgba(8, 7, 6, 0.78)";
+        g.fillRect(0, 0, surface.width, surface.height);
+      }
+      for (const piece of pieces) {
+        if (piece.hidden || isEmpty(piece)) continue;
+        const layer = document.createElement("canvas");
+        layer.width = surface.width;
+        layer.height = surface.height;
+        paintPiece(layer.getContext("2d"), piece, layer.width, layer.height);
+        g.drawImage(layer, 0, 0);
+      }
+    }
+    composite = surface;
+    compositeKey = key;
+    return composite;
+  }
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const { w, h } = cssSize();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = cam.zoom < 2.5;
+    ctx.imageSmoothingQuality = "high";
+    if (!fullImage || !preview) return;
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(cam.zoom, cam.zoom);
+    ctx.translate(-cam.x, -cam.y);
+    if (mode === "edit") {
+      ctx.drawImage(preview, 0, 0, fullW, fullH);
+      for (let i = 0; i < pieces.length; i++) {
+        const piece = pieces[i];
+        if (piece.hidden || !piece.rasterId || piece.subpaths.length) continue;
+        const raster = rasters.get(piece.rasterId);
+        if (raster?.tint) ctx.drawImage(raster.tint, 0, 0, fullW, fullH);
+      }
+    } else {
+      ctx.drawImage(ensureComposite(), 0, 0, fullW, fullH);
+    }
+    ctx.restore();
+    drawOverlays();
+    drawDraft();
+    drawPen();
+    drawMarquee();
+  }
+  function drawOverlays() {
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    pieces.forEach((piece, index) => {
+      if (piece.hidden || mode === "solo" && piece.id !== selectedId) return;
+      const color = pieceColor(index);
+      const selected = piece.id === selectedId;
+      if (piece.subpaths.length && (mode === "edit" || selected)) {
+        ctx.beginPath();
+        for (const sub of piece.subpaths) {
+          if (sub.op !== "add") continue;
+          traceSub(ctx, sub, (point) => toScreen(point.x, point.y));
+        }
+        if (selected && mode === "edit") {
+          ctx.globalAlpha = 0.18;
+          ctx.fillStyle = color;
+          ctx.fill("evenodd");
+          ctx.globalAlpha = 1;
+        }
+        strokeStyled(color, selected ? 1.7 : 1.15);
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        for (const sub of piece.subpaths) {
+          if (sub.op !== "sub") continue;
+          traceSub(ctx, sub, (point) => toScreen(point.x, point.y));
+        }
+        ctx.strokeStyle = "#e39480";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      const raster = piece.rasterId ? rasters.get(piece.rasterId) : null;
+      if (raster?.guide && !piece.subpaths.length && mode === "edit") {
+        ctx.beginPath();
+        for (const ring of raster.guide) {
+          const first = toScreen(ring[0].x, ring[0].y);
+          ctx.moveTo(first.x, first.y);
+          for (const point of ring) {
+            const screen = toScreen(point.x, point.y);
+            ctx.lineTo(screen.x, screen.y);
+          }
+          ctx.closePath();
+        }
+        strokeStyled(color, selected ? 1.7 : 1.15);
+      }
+    });
+    if (tool === "select") drawPoints();
+    ctx.restore();
+  }
+  function strokeStyled(color, width) {
+    ctx.strokeStyle = "rgba(12, 10, 8, 0.72)";
+    ctx.lineWidth = width + 2.2;
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+  function drawPoints() {
+    const piece = selectedPiece();
+    if (!piece) return;
+    for (let s = 0; s < piece.subpaths.length; s++) {
+      const sub = piece.subpaths[s];
+      sub.points.forEach((point, index) => {
+        const screen = toScreen(point.x, point.y);
+        const on = selectedPoints.some((hit) => hit.sub === s && hit.index === index);
+        if (on && sub.bezier) {
+          for (const which of ["in", "out"]) {
+            const knob = handleOf(point, which);
+            if (Math.hypot(knob.x - point.x, knob.y - point.y) < 0.5) continue;
+            const hs = toScreen(knob.x, knob.y);
+            ctx.beginPath();
+            ctx.moveTo(screen.x, screen.y);
+            ctx.lineTo(hs.x, hs.y);
+            ctx.strokeStyle = "#d7d1c6";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(hs.x, hs.y, 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = "#f4f0e8";
+            ctx.fill();
+          }
+        }
+        ctx.beginPath();
+        ctx.rect(screen.x - 3.5, screen.y - 3.5, 7, 7);
+        ctx.fillStyle = on ? "#e4c27a" : "#f4f0e8";
+        ctx.fill();
+        ctx.strokeStyle = "#1a1816";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+    }
+  }
+  function drawDraft() {
+    if (!drag || drag.kind !== "lasso" || drag.points.length < 2) return;
+    ctx.beginPath();
+    const first = toScreen(drag.points[0].x, drag.points[0].y);
+    ctx.moveTo(first.x, first.y);
+    for (const point of drag.points) {
+      const screen = toScreen(point.x, point.y);
+      ctx.lineTo(screen.x, screen.y);
+    }
+    ctx.lineTo(first.x, first.y);
+    ctx.strokeStyle = drag.op === "sub" ? "#e39480" : "#f4f0e8";
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  function drawPen() {
+    if (!pen?.points.length) return;
+    ctx.beginPath();
+    const pts = pen.points;
+    const first = toScreen(pts[0].x, pts[0].y);
+    ctx.moveTo(first.x, first.y);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      const bp = toScreen(b.x, b.y);
+      const out = toScreen(handleOf(a, "out").x, handleOf(a, "out").y);
+      const inn = toScreen(handleOf(b, "in").x, handleOf(b, "in").y);
+      ctx.bezierCurveTo(out.x, out.y, inn.x, inn.y, bp.x, bp.y);
+    }
+    ctx.strokeStyle = "#f4f0e8";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    const last = pts[pts.length - 1];
+    if (!pen.placing && pen.cursor) {
+      const a = toScreen(last.x, last.y);
+      const out = toScreen(handleOf(last, "out").x, handleOf(last, "out").y);
+      const b = toScreen(pen.cursor.x, pen.cursor.y);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.bezierCurveTo(out.x, out.y, b.x, b.y, b.x, b.y);
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (const point of pts) {
+      const screen = toScreen(point.x, point.y);
+      ctx.beginPath();
+      ctx.rect(screen.x - 3, screen.y - 3, 6, 6);
+      ctx.fillStyle = "#e4c27a";
+      ctx.fill();
+    }
+  }
+  function drawMarquee() {
+    if (!drag?.marquee) return;
+    const a = toScreen(drag.marquee.x0, drag.marquee.y0);
+    const b = toScreen(drag.marquee.x1, drag.marquee.y1);
+    ctx.save();
+    ctx.strokeStyle = "#e4c27a";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+    ctx.restore();
+  }
+
+  function onPointerDown(event) {
+    if (!fullImage) return;
+    if (isTyping(document.activeElement)) document.activeElement.blur();
+    canvas.setPointerCapture(event.pointerId);
+    const css = { x: event.offsetX, y: event.offsetY };
+    const image = toImage(css.x, css.y);
+    if (event.button === 1 || space || tool === "hand") {
+      drag = { kind: "pan", pointerId: event.pointerId, css, camX: cam.x, camY: cam.y };
+      updateCursor();
+      return;
+    }
+    if (event.button === 2 || (event.button === 0 && event.altKey && (tool === "lasso" || tool === "pen" || tool === "select"))) {
+      startLasso("sub", event.pointerId, image, css);
+      return;
+    }
+    if (event.button !== 0) return;
+    if (tool === "zoom") {
+      drag = { kind: "zoom", pointerId: event.pointerId, css, image, moved: false, alt: event.altKey };
+      return;
+    }
+    if (tool === "lasso") {
+      const op = event.shiftKey ? "add-existing" : "add";
+      startLasso(op, event.pointerId, image, css);
+      return;
+    }
+    if (tool === "pen") {
+      beginPen(image, event.shiftKey);
+      drag = { kind: "pen", pointerId: event.pointerId, css, image, moved: false };
+      return;
+    }
+    const hit = hitTest(image, css);
+    if (hit.type === "handle") {
+      selectedPoints = [{ sub: hit.sub, index: hit.index }];
+      drag = {
+        kind: "handle", pointerId: event.pointerId, which: hit.which,
+        sub: hit.sub, index: hit.index, pieceId: hit.piece.id,
+        before: capture(), pushed: false,
+      };
+      return;
+    }
+    if (hit.type === "point") {
+      if (!event.shiftKey && !selectedPoints.some((item) => item.sub === hit.sub && item.index === hit.index)) {
+        selectedPoints = [{ sub: hit.sub, index: hit.index }];
+      } else if (event.shiftKey) {
+        const exists = selectedPoints.findIndex((item) => item.sub === hit.sub && item.index === hit.index);
+        if (exists >= 0) selectedPoints.splice(exists, 1);
+        else selectedPoints.push({ sub: hit.sub, index: hit.index });
+      }
+      drag = {
+        kind: "points", pointerId: event.pointerId, pieceId: hit.piece.id,
+        start: image, originals: snapshotPoints(hit.piece), raws: snapshotRaws(hit.piece),
+        before: capture(), pushed: false,
+      };
+      scheduleDraw();
+      return;
+    }
+    if (hit.type === "fill" || hit.type === "segment") {
+      selectPiece(hit.piece.id);
+      if (hit.type === "segment" || hit.piece.subpaths.length) {
+        drag = {
+          kind: "shape", pointerId: event.pointerId, pieceId: hit.piece.id,
+          sub: hit.type === "segment" ? hit.sub : -1,
+          start: image, originals: snapshotPoints(hit.piece), raws: snapshotRaws(hit.piece),
+          before: capture(), pushed: false,
+        };
+      }
+      scheduleDraw();
+      return;
+    }
+    selectedPoints = [];
+    drag = { kind: "marquee", pointerId: event.pointerId, pieceId: selectedId, start: image, css, moved: false };
+    scheduleDraw();
+  }
+  function snapshotPoints(piece) {
+    return piece.subpaths.map((sub) => sub.points.map((point) => ({ ...point })));
+  }
+  function snapshotRaws(piece) {
+    return piece.subpaths.map((sub) => (sub.raw ? sub.raw.map((point) => ({ ...point })) : null));
+  }
+  function beginPen(image, shift) {
+    if (!pen) {
+      const before = capture();
+      let created = false;
+      if (shift) {
+        if (!prepareExistingPiece("add-existing")) return;
+      } else {
+        const piece = selectedPiece();
+        if (!piece || !isEmpty(piece)) {
+          const next = emptyPiece("");
+          pieces.push(next);
+          selectedId = next.id;
+          created = true;
+          renderList();
+        }
+      }
+      pen = {
+        points: [], cursor: image, placing: false, created,
+        before: shift ? capture() : before,
+        op: shift ? "add-existing" : "add",
+      };
+    }
+    if (pen.points.length >= 3) {
+      const start = toScreen(pen.points[0].x, pen.points[0].y);
+      const here = toScreen(image.x, image.y);
+      if (Math.hypot(start.x - here.x, start.y - here.y) < 10) {
+        pen.closing = true;
+        pen.placing = false;
+        return;
+      }
+    }
+    let at = image;
+    if (shift && pen.points.length) at = constrain45(pen.points[pen.points.length - 1], image);
+    pen.points.push({ x: at.x, y: at.y, inX: null, inY: null, outX: null, outY: null, corner: true });
+    pen.placing = true;
+    pen.closing = false;
+    scheduleDraw();
+  }
+  function onPointerMove(event) {
+    const css = { x: event.offsetX, y: event.offsetY };
+    const image = toImage(css.x, css.y);
+    if (fullImage) {
+      const x = clamp(Math.round(image.x), 0, fullW);
+      const y = clamp(Math.round(image.y), 0, fullH);
+      $("coord").textContent = `${x}, ${y}`;
+    }
+    if (!drag || drag.pointerId !== event.pointerId) {
+      if (pen && tool === "pen") {
+        pen.cursor = event.shiftKey && pen.points.length ? constrain45(pen.points[pen.points.length - 1], image) : image;
+        scheduleDraw();
+      }
+      return;
+    }
+    if (drag.kind === "pan") {
+      cam.x = drag.camX - (css.x - drag.css.x) / cam.zoom;
+      cam.y = drag.camY - (css.y - drag.css.y) / cam.zoom;
+      scheduleDraw();
+      return;
+    }
+    if (drag.kind === "lasso") {
+      const prev = drag.points[drag.points.length - 1];
+      if (Math.hypot(image.x - prev.x, image.y - prev.y) >= 0.6) drag.points.push(image);
+      scheduleDraw();
+      return;
+    }
+    if (drag.kind === "pen") {
+      const moved = Math.hypot(css.x - drag.css.x, css.y - drag.css.y) > 3;
+      drag.moved = drag.moved || moved;
+      const last = pen.points[pen.points.length - 1];
+      if (pen.closing) {
+        const first = pen.points[0];
+        let at = image;
+        if (event.shiftKey) at = constrain45(first, image);
+        first.inX = at.x;
+        first.inY = at.y;
+        if (first.corner || first.outX == null) {
+          const mirrored = mirrorHandle(first, at);
+          first.outX = mirrored.x;
+          first.outY = mirrored.y;
+          first.corner = false;
+        }
+      } else if (pen.placing && last && drag.moved) {
+        let at = image;
+        if (event.shiftKey) at = constrain45(last, image);
+        last.outX = at.x;
+        last.outY = at.y;
+        const mirrored = mirrorHandle(last, at);
+        last.inX = mirrored.x;
+        last.inY = mirrored.y;
+        last.corner = false;
+      }
+      scheduleDraw();
+      return;
+    }
+    if (drag.kind === "zoom") {
+      if (Math.hypot(css.x - drag.css.x, css.y - drag.css.y) > 4) {
+        drag.moved = true;
+        drag.marquee = { x0: drag.image.x, y0: drag.image.y, x1: image.x, y1: image.y };
+        scheduleDraw();
+      }
+      return;
+    }
+    if (drag.kind === "points" || drag.kind === "shape") {
+      ensureUndo(drag);
+      const piece = pieces.find((item) => item.id === drag.pieceId);
+      if (!piece) return;
+      let dx = image.x - drag.start.x;
+      let dy = image.y - drag.start.y;
+      if (event.shiftKey) {
+        if (Math.abs(dx) > Math.abs(dy)) dy = 0;
+        else dx = 0;
+      }
+      piece.subpaths.forEach((sub, index) => {
+        if (drag.kind === "shape" && drag.sub >= 0 && index !== drag.sub) return;
+        const moveAll = drag.kind === "shape";
+        sub.points = drag.originals[index].map((point, pointIndex) => {
+          const chosen = moveAll || selectedPoints.some((hit) => hit.sub === index && hit.index === pointIndex);
+          if (!chosen) return { ...point };
+          return shiftCopy(point, dx, dy);
+        });
+        if (sub.raw && drag.raws[index] && (moveAll || selectedPoints.some((hit) => hit.sub === index))) {
+          sub.raw = drag.raws[index].map((point) => ({ x: point.x + dx, y: point.y + dy }));
+        }
+      });
+      touch(piece);
+      geomRev += 1;
+      composite = null;
+      dirty = true;
+      scheduleDraw();
+      return;
+    }
+    if (drag.kind === "handle") {
+      ensureUndo(drag);
+      const piece = pieces.find((item) => item.id === drag.pieceId);
+      const point = piece?.subpaths[drag.sub]?.points[drag.index];
+      if (!point) return;
+      let at = image;
+      if (event.shiftKey) at = constrain45(point, image);
+      if (drag.which === "out") {
+        point.outX = at.x;
+        point.outY = at.y;
+        if (!event.altKey) {
+          const mirrored = mirrorHandle(point, at);
+          point.inX = mirrored.x;
+          point.inY = mirrored.y;
+        }
+      } else {
+        point.inX = at.x;
+        point.inY = at.y;
+        if (!event.altKey) {
+          const mirrored = mirrorHandle(point, at);
+          point.outX = mirrored.x;
+          point.outY = mirrored.y;
+        }
+      }
+      point.corner = false;
+      piece.subpaths[drag.sub].bezier = true;
+      piece.subpaths[drag.sub].raw = null;
+      touch(piece);
+      geomRev += 1;
+      composite = null;
+      dirty = true;
+      scheduleDraw();
+      return;
+    }
+    if (drag.kind === "marquee") {
+      drag.moved = true;
+      drag.marquee = { x0: drag.start.x, y0: drag.start.y, x1: image.x, y1: image.y };
+      scheduleDraw();
+    }
+  }
+  function shiftCopy(point, dx, dy) {
+    const copy = { ...point };
+    shiftPoint(copy, dx, dy);
+    return copy;
+  }
+  function onPointerUp(event) {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const css = { x: event.offsetX, y: event.offsetY };
+    const image = toImage(css.x, css.y);
+    const finished = drag;
+    drag = null;
+    updateCursor();
+    if (finished.kind === "lasso") {
+      commitStroke(finished);
+      return;
+    }
+    if (finished.kind === "pen") {
+      if (pen?.placing && !finished.moved) {
+        const last = pen.points[pen.points.length - 1];
+        last.inX = last.inY = last.outX = last.outY = null;
+        last.corner = true;
+      }
+      if (pen) pen.placing = false;
+      if (pen?.closing) finishPen();
+      scheduleDraw();
+      return;
+    }
+    if (finished.kind === "zoom") {
+      if (finished.moved && finished.marquee) {
+        const box = finished.marquee;
+        const iw = Math.abs(box.x1 - box.x0);
+        const ih = Math.abs(box.y1 - box.y0);
+        if (iw > 4 && ih > 4) {
+          const { w, h } = cssSize();
+          cam.zoom = clamp(Math.min(w / iw, h / ih), minZoom(), MAX_ZOOM);
+          cam.x = (box.x0 + box.x1) / 2;
+          cam.y = (box.y0 + box.y1) / 2;
+          updateZoomLabel();
+        }
+      } else {
+        zoomAt(css.x, css.y, cam.zoom * (finished.alt || event.altKey ? 1 / 1.35 : 1.35));
+      }
+      scheduleDraw();
+      return;
+    }
+    if (finished.kind === "marquee" && finished.moved && selectedPiece()) {
+      const box = finished.marquee;
+      const left = Math.min(box.x0, box.x1);
+      const right = Math.max(box.x0, box.x1);
+      const top = Math.min(box.y0, box.y1);
+      const bottom = Math.max(box.y0, box.y1);
+      const piece = selectedPiece();
+      selectedPoints = [];
+      piece.subpaths.forEach((sub, subIndex) => {
+        sub.points.forEach((point, index) => {
+          if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) {
+            selectedPoints.push({ sub: subIndex, index });
+          }
+        });
+      });
+      scheduleDraw();
+      return;
+    }
+    if (finished.kind === "marquee" || finished.kind === "pan") {
+      scheduleDraw();
+      return;
+    }
+    if ((finished.kind === "points" || finished.kind === "shape" || finished.kind === "handle") && finished.pushed) {
+      const piece = pieces.find((item) => item.id === finished.pieceId);
+      if (piece) touch(piece);
+      bump(false);
+    }
+  }
+  function finishPen() {
+    if (!pen || pen.points.length < 3) {
+      setStatus("A pen piece needs at least three points.");
+      return;
+    }
+    const created = pen.created;
+    const piece = selectedPiece();
+    if (!piece) { pen = null; return; }
+    if (pen.before) {
+      undo.push(pen.before);
+      if (undo.length > 80) undo.shift();
+      redo = [];
+    }
+    piece.subpaths.push({
+      op: "add",
+      bezier: pen.points.some((point) => point.outX != null || point.inX != null),
+      smooth: null,
+      points: pen.points.map((point) => ({ ...point })),
+      raw: null,
+    });
+    piece.rasterId = null;
+    touch(piece);
+    pen = null;
+    selectedPoints = [];
+    bump(true);
+    if (created) listEl.querySelector(`.piece[data-id="${piece.id}"] .label`)?.focus();
+    setStatus(`${fileName(piece, pieceIndex(piece))} closed.`);
+  }
+
+  function renderList() {
+    if (!pieces.length) {
+      listEl.innerHTML = `<div class="empty-list">No pieces yet. Lasso around the first part you want the player to place. The top of this list is offered first.</div>`;
+      return;
+    }
+    listEl.innerHTML = pieces.map((piece, index) => {
+      const warn = (piece.overlaps || []).length
+        ? `<div class="warn">Overlaps ${esc(piece.overlaps.join(", "))}</div>`
+        : "";
+      const share = piece.fraction ? `${Math.round(piece.fraction * 1000) / 10}% of the frame` : (piece.rasterId && !piece.subpaths.length ? "Painted mask" : "Outline");
+      return `<article class="piece${piece.id === selectedId ? " selected" : ""}${piece.hidden ? " hidden-piece" : ""}" data-id="${piece.id}">
+        <div class="grip" draggable="true" title="Drag to set play order">${gripIcon()}</div>
+        <img alt="" width="72" height="54" src="${piece.thumbURL || ""}">
+        <div class="name">
+          <input class="label" value="${esc(piece.label)}" placeholder="bridge" spellcheck="false" autocomplete="off" aria-label="Piece name">
+          <div class="file">${esc(fileName(piece, index))} · ${share}</div>
+          ${warn}
+          ${piece.rasterId && !piece.subpaths.length ? `<button type="button" class="textbtn edit-points">Edit points</button>` : ""}
+        </div>
+        <div>
+          <button type="button" class="iconbtn eye" title="Hide on the photo">${piece.hidden ? eyeOff() : eyeOn()}</button>
+          <button type="button" class="iconbtn del" title="Delete piece">${trashIcon()}</button>
+        </div>
+      </article>`;
+    }).join("");
+    const revert = canRevertToPng
+      ? `<button type="button" class="textbtn" id="revertPng">Use the PNG masks instead of the saved outlines</button>`
+      : "";
+    if (revert) listEl.insertAdjacentHTML("beforeend", revert);
+  }
+  function gripIcon() { return `<svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor"><circle cx="3" cy="3" r="1.2"/><circle cx="7" cy="3" r="1.2"/><circle cx="3" cy="8" r="1.2"/><circle cx="7" cy="8" r="1.2"/><circle cx="3" cy="13" r="1.2"/><circle cx="7" cy="13" r="1.2"/></svg>`; }
+  function eyeOn() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="1.8"/></svg>`; }
+  function eyeOff() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3l12 10"/><path d="M1.5 8s2.4-4 6.5-4c1.2 0 2.3.3 3.2.8M14.5 8s-1 1.7-2.8 2.9"/><path d="M6.2 6.3A1.8 1.8 0 0 0 8 9.8"/></svg>`; }
+  function trashIcon() { return `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 4h9M5 4V2.8h4V4M3.5 4l.6 8h5.8l.6-8"/></svg>`; }
+
+  function makeThumb(piece) {
+    const width = 144;
+    const height = 108;
+    const surface = document.createElement("canvas");
+    surface.width = width;
+    surface.height = height;
+    const g = surface.getContext("2d");
+    drawChecker(g, width, height, 8);
+    const box = bounds(piece);
+    if (!box || !fullImage) return surface.toDataURL("image/png");
+    const bw = Math.max(1, box.right - box.left);
+    const bh = Math.max(1, box.bottom - box.top);
+    const scale = Math.min((width - 10) / bw, (height - 10) / bh);
+    const layer = document.createElement("canvas");
+    layer.width = width;
+    layer.height = height;
+    const lg = layer.getContext("2d");
+    lg.translate((width - bw * scale) / 2, (height - bh * scale) / 2);
+    lg.scale(scale, scale);
+    lg.translate(-box.left, -box.top);
+    if (piece.rasterId && !piece.subpaths.length) {
+      const raster = rasters.get(piece.rasterId);
+      if (raster) lg.drawImage(raster.image, 0, 0, fullW, fullH);
+    } else {
+      lg.drawImage(fullImage, 0, 0, fullW, fullH);
+      lg.globalCompositeOperation = "destination-in";
+      lg.fillStyle = "#fff";
+      fillAdds(lg, piece, identity);
+      punchSubs(lg, piece, identity);
+    }
+    g.drawImage(layer, 0, 0);
+    return surface.toDataURL("image/png");
+  }
+
+  function runHeavy() {
+    if (!fullImage) return;
+    analysis.h = Math.max(1, Math.round(fullH * (analysis.w / fullW)));
+    const masks = [];
+    let covered = 0;
+    const total = analysis.w * analysis.h;
+    const union = new Uint8Array(total);
+    pieces.forEach((piece, index) => {
+      if (piece.maskRev !== piece.rev) {
+        piece.mask = rasterizeMask(piece);
+        piece.maskRev = piece.rev;
+        let count = 0;
+        for (let i = 0; i < piece.mask.length; i++) if (piece.mask[i]) count += 1;
+        piece.fraction = count / total;
+      }
+      masks.push(piece.mask);
+      if (!piece.hidden && piece.mask) {
+        for (let i = 0; i < union.length; i++) if (piece.mask[i]) union[i] = 1;
+      }
+      if (piece.rasterId && !piece.subpaths.length) {
+        const raster = rasters.get(piece.rasterId);
+        if (raster && raster.tintIndex !== index) {
+          raster.tint = tintOf(raster.image, pieceColor(index));
+          raster.tintIndex = index;
+        }
+      }
+      if (piece.thumbRev !== piece.rev) {
+        piece.thumbURL = makeThumb(piece);
+        piece.thumbRev = piece.rev;
+        const img = listEl.querySelector(`.piece[data-id="${piece.id}"] img`);
+        if (img) img.src = piece.thumbURL;
+      }
+    });
+    for (let i = 0; i < union.length; i++) if (union[i]) covered += 1;
+    pieces.forEach((piece, index) => {
+      const names = [];
+      for (let other = 0; other < pieces.length; other++) {
+        if (other === index || !piece.mask || !masks[other]) continue;
+        let shared = 0;
+        let mine = 0;
+        const a = piece.mask;
+        const b = masks[other];
+        for (let p = 0; p < a.length; p++) {
+          if (a[p]) mine += 1;
+          if (a[p] && b[p]) shared += 1;
+        }
+        if (mine && shared / mine > 0.02) names.push(pieces[other].label || fileName(pieces[other], other));
+      }
+      piece.overlaps = names;
+      const row = listEl.querySelector(`.piece[data-id="${piece.id}"]`);
+      if (!row) return;
+      const file = row.querySelector(".file");
+      if (file) {
+        const share = piece.fraction ? `${Math.round(piece.fraction * 1000) / 10}% of the frame` : "Outline";
+        file.textContent = `${fileName(piece, index)} · ${share}`;
+      }
+      let warn = row.querySelector(".warn");
+      if (names.length) {
+        if (!warn) {
+          warn = document.createElement("div");
+          warn.className = "warn";
+          row.querySelector(".name")?.appendChild(warn);
+        }
+        warn.textContent = `Overlaps ${names.join(", ")}`;
+      } else if (warn) warn.remove();
+    });
+    const visible = pieces.filter((piece) => !isEmpty(piece)).length;
+    $("coverage").textContent = visible
+      ? `${visible} · ${Math.round(covered / total * 100)}% covered`
+      : "";
+    scheduleDraw();
+  }
+  function rasterizeMask(piece) {
+    const surface = document.createElement("canvas");
+    surface.width = analysis.w;
+    surface.height = analysis.h;
+    const g = surface.getContext("2d", { willReadFrequently: true });
+    g.scale(analysis.w / fullW, analysis.h / fullH);
+    if (piece.subpaths.length) {
+      g.fillStyle = "#fff";
+      fillAdds(g, piece, identity);
+      punchSubs(g, piece, identity);
+    } else if (piece.rasterId && rasters.get(piece.rasterId)) {
+      g.drawImage(rasters.get(piece.rasterId).image, 0, 0, fullW, fullH);
+    }
+    const data = g.getImageData(0, 0, analysis.w, analysis.h).data;
+    const mask = new Uint8Array(analysis.w * analysis.h);
+    for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4 + 3] > 16 ? 1 : 0;
+    return mask;
+  }
+  function tintOf(image, color) {
+    const surface = document.createElement("canvas");
+    surface.width = preview.width;
+    surface.height = preview.height;
+    const g = surface.getContext("2d");
+    g.drawImage(image, 0, 0, surface.width, surface.height);
+    g.globalCompositeOperation = "source-atop";
+    g.fillStyle = color;
+    g.globalAlpha = 0.38;
+    g.fillRect(0, 0, surface.width, surface.height);
+    return surface;
+  }
+
+  function traceContours(mask, width, height) {
+    const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+    const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+    const used = new Uint8Array(mask.length);
+    const contours = [];
+    const at = (x, y) => x >= 0 && y >= 0 && x < width && y < height && mask[y * width + x] ? 1 : 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!at(x, y) || at(x - 1, y) || used[y * width + x]) continue;
+        const contour = [];
+        let cx = x;
+        let cy = y;
+        let prev = 4;
+        for (let step = 0; step < width * height; step++) {
+          contour.push({ x: cx, y: cy });
+          used[cy * width + cx] = 1;
+          let found = -1;
+          for (let k = 0; k < 8; k++) {
+            const dir = (prev + 1 + k) % 8;
+            const nx = cx + dx[dir];
+            const ny = cy + dy[dir];
+            if (at(nx, ny)) {
+              found = dir;
+              cx = nx;
+              cy = ny;
+              break;
+            }
+          }
+          if (found < 0 || (cx === x && cy === y)) break;
+          prev = (found + 4) % 8;
+        }
+        if (contour.length >= 8) contours.push(contour);
+      }
+    }
+    return contours;
+  }
+  async function guideFromImage(image) {
+    const maxEdge = 560;
+    const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height));
+    const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale));
+    const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale));
+    const surface = document.createElement("canvas");
+    surface.width = width;
+    surface.height = height;
+    const g = surface.getContext("2d", { willReadFrequently: true });
+    g.drawImage(image, 0, 0, width, height);
+    const pixels = g.getImageData(0, 0, width, height).data;
+    const mask = new Uint8Array(width * height);
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+    let count = 0;
+    for (let i = 0; i < mask.length; i++) {
+      if (pixels[i * 4 + 3] > 16) {
+        mask[i] = 1;
+        const x = i % width;
+        const y = Math.floor(i / width);
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        count += 1;
+      }
+    }
+    const sx = fullW / width;
+    const sy = fullH / height;
+    const contours = traceContours(mask, width, height).map((ring) => {
+      const scaled = ring.map((point) => ({ x: (point.x + 0.5) * sx, y: (point.y + 0.5) * sy }));
+      return simplifyClosed(decimate(scaled, 700), 120);
+    }).filter((ring) => ring.length >= 3);
+    return {
+      mask, maskW: width, maskH: height, count,
+      bbox: count ? { left: minX * sx, top: minY * sy, right: (maxX + 1) * sx, bottom: (maxY + 1) * sy } : null,
+      guide: contours,
+      flat: count === mask.length,
+    };
+  }
+
+  async function loadImage(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return image;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  function makePreview(image) {
+    const maxEdge = 2200;
+    const scale = Math.min(1, maxEdge / Math.max(image.naturalWidth, image.naturalHeight));
+    const surface = document.createElement("canvas");
+    surface.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    surface.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    surface.getContext("2d").drawImage(image, 0, 0, surface.width, surface.height);
+    return surface;
+  }
+  function resetDocument() {
+    pieces = [];
+    rasters = new Map();
+    pngsByIndex = new Map();
+    selectedId = null;
+    selectedPoints = [];
+    pen = null;
+    undo = [];
+    redo = [];
+    plateImage = null;
+    platePreview = null;
+    canRevertToPng = false;
+    Object.assign(meta, { title: "", sceneryId: "", moodIds: [], blurb: "", story: "", revealId: "" });
+  }
+  async function loadPhotoFile(file) {
+    setStatus("Opening photo…");
+    const image = await loadImage(file);
+    fullImage = image;
+    fullW = image.naturalWidth;
+    fullH = image.naturalHeight;
+    preview = makePreview(image);
+    photoName = file.name;
+    $("empty").hidden = true;
+    fitView();
+    renderFacts();
+    scheduleDraw();
+    setStatus(`${fullW} × ${fullH}. Lasso around the first piece.`);
+  }
+  async function loadFileSet(files, info = {}) {
+    const groups = classify(files);
+    if (!groups.photo && !fullImage) {
+      setStatus("That drop has no photo. Expected photo.jpg, or one picture that is not a numbered piece.", true);
+      return;
+    }
+    resetDocument();
+    sceneHandle = info.handle || null;
+    existingPieceNames = new Set(groups.pieceNames);
+    if (info.folderName) $("photoId").value = info.folderName;
+    else if (!$("photoId").value && groups.photo) $("photoId").value = slugify(groups.photo.name.replace(/\.[^.]+$/, "")) || "scene";
+    $("photoId").readOnly = !!info.handle;
+    if (groups.photo) await loadPhotoFile(groups.photo);
+    if (groups.plate && fullImage) {
+      const plate = await loadImage(groups.plate);
+      if (plate.naturalWidth === fullW && plate.naturalHeight === fullH) {
+        plateImage = plate;
+        platePreview = makePreview(plate);
+      } else setStatus("The dark plate is a different size than the photo, so it was left out.", true);
+    }
+    if (groups.metaFile) {
+      try { applyMetaText(await groups.metaFile.text()); }
+      catch { setStatus("meta.json could not be read.", true); }
+    }
+    fillMetaForm();
+    renderMoods();
+    let pathDoc = null;
+    if (groups.pathsFile) {
+      try { pathDoc = JSON.parse(await groups.pathsFile.text()); }
+      catch { setStatus("pieces/paths.json could not be read. Using the PNG masks.", true); }
+    }
+    const pathPieces = Array.isArray(pathDoc?.pieces) ? pathDoc.pieces : [];
+    const claimed = new Set();
+    if (pathPieces.length) {
+      const doc = pathDoc;
+      if (doc.image && (doc.image.width !== fullW || doc.image.height !== fullH)) {
+        setStatus(`Outlines were traced for ${doc.image.width}×${doc.image.height}. This photo is ${fullW}×${fullH}.`, true);
+      }
+      pathPieces.forEach((entry, index) => {
+        const number = entry.index || index + 1;
+        claimed.add(number);
+        const piece = emptyPiece(entry.label || "");
+        if (entry.subpaths?.length) {
+          piece.subpaths = entry.subpaths.map(parseSub);
+          canRevertToPng = groups.pieces.some((item) => item.index === number);
+        }
+        pieces.push(piece);
+        if (!entry.subpaths?.length) {
+          const match = groups.pieces.find((item) => item.index === number);
+          if (match) pendingRaster(piece, match);
+        }
+      });
+    }
+    const extras = groups.pieces.filter((item) => !claimed.has(item.index)).sort((a, b) => a.index - b.index);
+    for (const item of extras) {
+      const piece = emptyPiece(item.label || "");
+      pieces.push(piece);
+      pendingRaster(piece, item);
+    }
+    for (const item of groups.pieces) pngsByIndex.set(item.index, item);
+    selectedId = pieces[0]?.id ?? null;
+    renderList();
+    renderFacts();
+    renderTrails();
+    updateCommand();
+    bump(true);
+    dirty = false;
+    updateSave();
+    const count = pieces.length;
+    if (count) setStatus(`Loaded ${count} piece${count === 1 ? "" : "s"}. Solo and Stack are there to judge them.`);
+  }
+  function pendingRaster(piece, item) {
+    piece._pendingFile = item.file;
+  }
+  async function hydrateRasters() {
+    for (const piece of pieces) {
+      if (!piece._pendingFile) continue;
+      const file = piece._pendingFile;
+      delete piece._pendingFile;
+      await attachRaster(piece, file);
+    }
+  }
+  async function attachRaster(piece, file) {
+    const image = await loadImage(file);
+    if (image.naturalWidth !== fullW || image.naturalHeight !== fullH) {
+      setStatus(`${file.name} is ${image.naturalWidth}×${image.naturalHeight}. Pieces have to match the photo, ${fullW}×${fullH}.`, true);
+      return;
+    }
+    const id = nextId++;
+    const guide = await guideFromImage(image);
+    const blob = file.type === "image/png" ? file : await canvasBlob(imageToCanvas(image));
+    rasters.set(id, { image, blob, name: file.name, ...guide, tint: null, tintIndex: -1 });
+    piece.rasterId = id;
+    touch(piece);
+  }
+  function imageToCanvas(image) {
+    const surface = document.createElement("canvas");
+    surface.width = image.naturalWidth;
+    surface.height = image.naturalHeight;
+    surface.getContext("2d").drawImage(image, 0, 0);
+    return surface;
+  }
+  function parseSub(sub) {
+    const points = (sub.points || []).map((point) => {
+      if (Array.isArray(point)) {
+        return { x: point[0], y: point[1], inX: null, inY: null, outX: null, outY: null, corner: true };
+      }
+      return {
+        x: point.x, y: point.y,
+        inX: point.in ? point.in[0] : null,
+        inY: point.in ? point.in[1] : null,
+        outX: point.out ? point.out[0] : null,
+        outY: point.out ? point.out[1] : null,
+        corner: point.corner != null ? !!point.corner : !(point.in || point.out),
+      };
+    });
+    const raw = Array.isArray(sub.raw) ? sub.raw.map((point) => (
+      Array.isArray(point) ? { x: point[0], y: point[1] } : { x: point.x, y: point.y }
+    )) : null;
+    return {
+      op: sub.op === "sub" ? "sub" : "add",
+      bezier: !!sub.bezier || points.some((point) => point.inX != null || point.outX != null),
+      smooth: sub.smooth ?? null,
+      points,
+      raw,
+    };
+  }
+  function classify(files) {
+    let photo = null;
+    let plate = null;
+    let metaFile = null;
+    let pathsFile = null;
+    const images = [];
+    const pieces = [];
+    const pieceNames = [];
+    for (const file of files) {
+      const name = file.name;
+      if (name === "meta.json") { metaFile = file; continue; }
+      if (name === "paths.json") { pathsFile = file; continue; }
+      if (!IMAGE_EXT.test(name)) continue;
+      const stem = name.replace(/\.[^.]+$/, "");
+      if (/-bw$/i.test(stem) || stem.toLowerCase() === "bw") { plate = file; continue; }
+      const match = stem.match(PIECE_STEM);
+      if (match && /^\d/.test(stem)) {
+        pieces.push({
+          file, index: Number(match[1]),
+          label: match[2] ? match[2].replace(/[-_]+/g, "") : "",
+        });
+        pieceNames.push(name);
+        continue;
+      }
+      images.push(file);
+    }
+    photo = images.find((file) => /^photo\./i.test(file.name))
+      || images.find((file) => /^color\./i.test(file.name))
+      || images.slice().sort((a, b) => b.size - a.size)[0]
+      || null;
+    return { photo, plate, metaFile, pathsFile, pieces, pieceNames, images };
+  }
+
+  function applyMetaText(text) {
+    const data = JSON.parse(text);
+    meta.title = data.title || "";
+    meta.sceneryId = data.sceneryId || "";
+    meta.moodIds = Array.isArray(data.moodIds) ? data.moodIds.map((item) => String(item)) : [];
+    meta.blurb = data.blurb || "";
+    meta.story = data.story || "";
+    meta.revealId = data.revealId || "";
+  }
+  function fillMetaForm() {
+    $("title").value = meta.title;
+    $("blurb").value = meta.blurb;
+    $("story").value = meta.story;
+    $("revealId").value = meta.revealId;
+    const known = registries.sceneries.some((item) => item.id === meta.sceneryId);
+    $("scenery").value = meta.sceneryId && !known ? "__other" : (meta.sceneryId || "");
+    $("sceneryCustomWrap").hidden = $("scenery").value !== "__other";
+    $("sceneryCustom").value = known ? "" : meta.sceneryId;
+    updateSceneryHelp();
+  }
+  function readMetaForm() {
+    meta.title = $("title").value;
+    meta.blurb = $("blurb").value;
+    meta.story = $("story").value;
+    meta.revealId = $("revealId").value.trim();
+    meta.sceneryId = $("scenery").value === "__other" ? $("sceneryCustom").value.trim() : $("scenery").value;
+  }
+  function metaDocument() {
+    readMetaForm();
+    const doc = {
+      title: meta.title.trim(),
+      sceneryId: meta.sceneryId.trim(),
+      moodIds: meta.moodIds.slice(),
+      blurb: meta.blurb.trim(),
+    };
+    if (meta.story.trim()) doc.story = meta.story.trim();
+    const reveal = meta.revealId.trim();
+    const photoId = $("photoId").value.trim();
+    if (reveal && reveal !== photoId) doc.revealId = reveal;
+    return doc;
+  }
+  function metaReady() {
+    const doc = metaDocument();
+    return !!(doc.title && doc.sceneryId);
+  }
+
+  function renderSceneryOptions() {
+    const select = $("scenery");
+    const current = select.value;
+    select.innerHTML = `<option value="">Choose scenery</option>` + registries.sceneries.map((item) =>
+      `<option value="${esc(item.id)}">${esc(item.title)}</option>`
+    ).join("") + `<option value="__other">Other…</option>`;
+    select.value = [...select.options].some((option) => option.value === current) ? current : "";
+  }
+  function renderMoods() {
+    const host = $("moods");
+    const known = new Set(registries.moods.map((item) => item.id));
+    const extras = meta.moodIds.filter((id) => !known.has(id));
+    host.innerHTML = registries.moods.map((item) =>
+      `<button type="button" class="mood" data-mood="${esc(item.id)}" aria-pressed="${meta.moodIds.includes(item.id)}" title="${esc(item.summary)}">${esc(item.title)}</button>`
+    ).join("") + extras.map((id) =>
+      `<button type="button" class="mood" data-mood="${esc(id)}" aria-pressed="true">${esc(id)}</button>`
+    ).join("") + `<span class="mood add"><input id="moodAdd" placeholder="mood id" spellcheck="false" autocomplete="off"></span>`;
+  }
+  function updateSceneryHelp() {
+    const id = $("scenery").value === "__other" ? $("sceneryCustom").value.trim() : $("scenery").value;
+    const scenery = registries.sceneries.find((item) => item.id === id);
+    $("sceneryHelp").textContent = scenery ? `${scenery.summary} ${scenery.story || ""}`.trim() : "";
+  }
+  function renderTrails() {
+    const id = $("photoId").value.trim();
+    const found = registries.trails.filter((trail) => (trail.photoIds || []).includes(id));
+    if (!id) { $("trails").textContent = ""; return; }
+    if (!found.length) {
+      $("trails").innerHTML = `Not on a trail yet. Add <b>${esc(id)}</b> to a photoIds list in <b>shared/source/catalog/trails.json</b> when it should show up in the walk.`;
+      return;
+    }
+    $("trails").innerHTML = `On ${found.map((trail) => `<b>${esc(trail.title)}</b>`).join(", ")}. ${esc(found.map((trail) => trail.summary).filter(Boolean).join(" "))}`;
+  }
+  function renderFacts() {
+    if (!fullW) { $("facts").textContent = ""; return; }
+    const plate = plateImage ? "Dark plate loaded." : "No dark plate yet. photo-bw.jpg is still made separately.";
+    $("facts").textContent = `${photoName || "Photo"} · ${fullW} × ${fullH}. ${plate}`;
+    $("sceneTitle").textContent = $("photoId").value.trim() ? `· ${$("photoId").value.trim()}` : "";
+    document.title = $("photoId").value.trim() ? `Trace pieces — ${$("photoId").value.trim()}` : "Trace pieces";
+  }
+  function updateCommand() {
+    const id = $("photoId").value.trim() || "scene";
+    const title = ($("title").value.trim() || id).replaceAll('"', "'");
+    $("command").textContent = `.\\tools\\chop_puzzle\\.venv\\Scripts\\python .\\tools\\prep_reveal\\prep_reveal.py ${id} --title "${title}"`;
+  }
+  function updateSave() {
+    const button = $("saveBtn");
+    const hasWork = pieces.some((piece) => !isEmpty(piece)) || metaReady();
+    button.disabled = saving || !fullImage || !hasWork;
+    button.textContent = saving ? "Saving…" : sceneHandle ? "Save to folder" : "Download zip";
+    button.classList.toggle("dirty", dirty && !button.disabled);
+  }
+
+  async function save() {
+    if (!fullImage || saving) return;
+    readMetaForm();
+    const exportPieces = pieces.filter((piece) => !isEmpty(piece));
+    if (!exportPieces.length && !metaReady()) {
+      setStatus("Draw a piece, or fill in a title and scenery, before saving.", true);
+      return;
+    }
+    saving = true;
+    updateSave();
+    try {
+      const files = [];
+      for (let index = 0; index < exportPieces.length; index++) {
+        setStatus(`Encoding ${index + 1} of ${exportPieces.length}…`);
+        const piece = exportPieces[index];
+        const name = fileName(piece, index);
+        const blob = await renderPieceBlob(piece);
+        files.push({ name: `pieces/${name}`, blob, data: new Uint8Array(await blob.arrayBuffer()) });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      const paths = pathsDocument(exportPieces);
+      const pathsBlob = new Blob([JSON.stringify(paths, null, 2) + "\n"], { type: "application/json" });
+      files.push({ name: "pieces/paths.json", blob: pathsBlob, data: new Uint8Array(await pathsBlob.arrayBuffer()) });
+      let metaBlob = null;
+      if (metaReady()) {
+        metaBlob = new Blob([JSON.stringify(metaDocument(), null, 2) + "\n"], { type: "application/json" });
+        files.push({ name: "meta.json", blob: metaBlob, data: new Uint8Array(await metaBlob.arrayBuffer()) });
+      }
+      if (sceneHandle) {
+        const piecesDir = await sceneHandle.getDirectoryHandle("pieces", { create: true });
+        const written = new Set();
+        for (const file of files) {
+          if (file.name === "meta.json") {
+            await writeHandle(sceneHandle, "meta.json", file.blob);
+          } else {
+            const base = file.name.slice("pieces/".length);
+            await writeHandle(piecesDir, base, file.blob);
+            if (PIECE_FILE.test(base)) written.add(base);
+          }
+        }
+        for (const name of existingPieceNames) {
+          if (PIECE_FILE.test(name) && !written.has(name)) {
+            try { await piecesDir.removeEntry(name); } catch { /* already gone */ }
+          }
+        }
+        existingPieceNames = written;
+        dirty = false;
+        const metaNote = metaBlob ? "meta.json updated." : "Add a title and scenery when you want meta.json written.";
+        setStatus(`Saved ${exportPieces.length} piece${exportPieces.length === 1 ? "" : "s"} into ${$("photoId").value || "the folder"}. ${metaNote}`);
+      } else {
+        const zip = buildZip(files.map((file) => ({ name: file.name, data: file.data })));
+        const id = $("photoId").value.trim() || "pieces";
+        downloadBlob(zip, `${id}-pieces.zip`);
+        dirty = false;
+        setStatus(metaBlob
+          ? `Downloaded ${id}-pieces.zip. Unzip it into the scene folder, next to the photo.`
+          : `Downloaded ${id}-pieces.zip. Title and scenery were left out until both are filled in.`);
+      }
+    } catch (error) {
+      setStatus(error.message || "Save failed.", true);
+    } finally {
+      saving = false;
+      updateSave();
+    }
+  }
+  async function renderPieceBlob(piece) {
+    if (piece.rasterId && !piece.subpaths.length) {
+      const raster = rasters.get(piece.rasterId);
+      if (raster?.blob && raster.blob.type === "image/png") return raster.blob;
+      if (raster?.image) return canvasBlob(imageToCanvas(raster.image));
+    }
+    const surface = document.createElement("canvas");
+    surface.width = fullW;
+    surface.height = fullH;
+    const g = surface.getContext("2d");
+    g.drawImage(fullImage, 0, 0);
+    g.globalCompositeOperation = "destination-in";
+    g.fillStyle = "#fff";
+    const drew = fillAdds(g, piece, identity);
+    if (!drew) throw new Error(`${piece.label || "A piece"} has no outline to export.`);
+    punchSubs(g, piece, identity);
+    return canvasBlob(surface);
+  }
+  function pathsDocument(exportPieces) {
+    return {
+      version: 1,
+      image: { file: photoName, width: fullW, height: fullH },
+      pieces: exportPieces.map((piece, index) => {
+        const entry = { label: slugify(piece.label) };
+        if (piece.subpaths.length) {
+          entry.subpaths = piece.subpaths.map((sub) => ({
+            op: sub.op,
+            ...(sub.bezier ? { bezier: true } : {}),
+            ...(sub.smooth != null ? { smooth: Math.round(sub.smooth * 100) / 100 } : {}),
+            points: sub.points.map(serializePoint),
+            ...(sub.raw ? { raw: sub.raw.map((point) => [Math.round(point.x * 10) / 10, Math.round(point.y * 10) / 10]) } : {}),
+          }));
+        } else if (piece.rasterId) {
+          entry.raster = fileName(piece, index);
+        }
+        return entry;
+      }),
+    };
+  }
+  function serializePoint(point) {
+    const out = { x: Math.round(point.x * 10) / 10, y: Math.round(point.y * 10) / 10 };
+    if (point.inX != null) out.in = [Math.round(point.inX * 10) / 10, Math.round(point.inY * 10) / 10];
+    if (point.outX != null) out.out = [Math.round(point.outX * 10) / 10, Math.round(point.outY * 10) / 10];
+    if (point.corner) out.corner = true;
+    return out;
+  }
+  function canvasBlob(surface) {
+    return new Promise((resolve, reject) => {
+      surface.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not encode the PNG. The photo may be too large for the browser."))), "image/png");
+    });
+  }
+  async function writeHandle(dir, name, blob) {
+    const handle = await dir.getFileHandle(name, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  }
+  function downloadBlob(blob, name) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 8000);
+  }
+  const CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+    return table;
+  })();
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+  function buildZip(files) {
+    const encoder = new TextEncoder();
+    const parts = [];
+    const central = [];
+    let offset = 0;
+    const now = new Date();
+    const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    for (const file of files) {
+      const name = encoder.encode(file.name);
+      const crc = crc32(file.data);
+      const local = new DataView(new ArrayBuffer(30));
+      local.setUint32(0, 0x04034b50, true);
+      local.setUint16(4, 20, true);
+      local.setUint16(8, 0, true);
+      local.setUint16(10, dosTime, true);
+      local.setUint16(12, dosDate, true);
+      local.setUint32(14, crc, true);
+      local.setUint32(18, file.data.length, true);
+      local.setUint32(22, file.data.length, true);
+      local.setUint16(26, name.length, true);
+      parts.push(new Uint8Array(local.buffer), name, file.data);
+      const cen = new DataView(new ArrayBuffer(46));
+      cen.setUint32(0, 0x02014b50, true);
+      cen.setUint16(4, 20, true);
+      cen.setUint16(6, 20, true);
+      cen.setUint16(12, dosTime, true);
+      cen.setUint16(14, dosDate, true);
+      cen.setUint32(16, crc, true);
+      cen.setUint32(20, file.data.length, true);
+      cen.setUint32(24, file.data.length, true);
+      cen.setUint16(28, name.length, true);
+      cen.setUint32(42, offset, true);
+      central.push(new Uint8Array(cen.buffer), name);
+      offset += 30 + name.length + file.data.length;
+    }
+    let centralSize = 0;
+    for (const part of central) centralSize += part.length;
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, files.length, true);
+    end.setUint16(10, files.length, true);
+    end.setUint32(12, centralSize, true);
+    end.setUint32(16, offset, true);
+    return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: "application/zip" });
+  }
+
+  async function openDirectory() {
+    if (!window.showDirectoryPicker || !window.isSecureContext) {
+      setStatus("Open this page with tools/trace_pieces/serve.ps1 in Chrome or Edge to save into a folder. You can still download a zip.", true);
+      return;
+    }
+    const dir = await showDirectoryPicker({ mode: "readwrite", id: "trail-pieces-scene" });
+    const files = [];
+    for await (const [name, handle] of dir.entries()) {
+      if (handle.kind === "file") files.push(await handle.getFile());
+      if (handle.kind === "directory" && name === "pieces") {
+        for await (const [, child] of handle.entries()) {
+          if (child.kind === "file") files.push(await child.getFile());
+        }
+      }
+    }
+    await loadFileSet(files, { handle: dir, folderName: dir.name });
+    await hydrateRasters();
+    bump(true);
+    dirty = false;
+    updateSave();
+  }
+  async function collectDrop(dataTransfer) {
+    const out = [];
+    const items = [...dataTransfer.items];
+    const walk = (entry) => new Promise((resolve) => {
+      if (!entry) return resolve();
+      if (entry.isFile) {
+        entry.file((file) => { out.push(file); resolve(); }, () => resolve());
+        return;
+      }
+      if (!entry.isDirectory) return resolve();
+      const reader = entry.createReader();
+      const all = [];
+      const read = () => reader.readEntries((entries) => {
+        if (!entries.length) {
+          Promise.all(all.map(walk)).then(() => resolve());
+          return;
+        }
+        all.push(...entries);
+        read();
+      }, () => resolve());
+      read();
+    });
+    if (items.some((item) => item.webkitGetAsEntry)) {
+      await Promise.all(items.map((item) => walk(item.webkitGetAsEntry())));
+      return out;
+    }
+    return [...dataTransfer.files];
+  }
+
+  function onKeyDown(event) {
+    if (event.code === "Space" && !isTyping(event.target)) {
+      event.preventDefault();
+      space = true;
+      updateCursor();
+      return;
+    }
+    if (isTyping(event.target)) {
+      if (event.key === "Escape") event.target.blur();
+      return;
+    }
+    const key = event.key.toLowerCase();
+    if (event.key === "?" || (event.shiftKey && event.key === "/")) {
+      event.preventDefault();
+      if (helpDialog.open) helpDialog.close();
+      else helpDialog.showModal();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && key === "s") { event.preventDefault(); save(); return; }
+    if ((event.ctrlKey || event.metaKey) && key === "z" && event.shiftKey) { event.preventDefault(); doRedo(); return; }
+    if ((event.ctrlKey || event.metaKey) && key === "z") { event.preventDefault(); doUndo(); return; }
+    if ((event.ctrlKey || event.metaKey) && key === "y") { event.preventDefault(); doRedo(); return; }
+    if ((event.ctrlKey || event.metaKey) && event.key === "0") { event.preventDefault(); fitView(); return; }
+    if ((event.ctrlKey || event.metaKey) && event.key === "1") { event.preventDefault(); actualPixels(); return; }
+    if ((event.ctrlKey || event.metaKey) && (event.key === "+" || event.key === "=")) {
+      event.preventDefault();
+      const { w, h } = cssSize();
+      zoomAt(w / 2, h / 2, cam.zoom * 1.2);
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key === "-") {
+      event.preventDefault();
+      const { w, h } = cssSize();
+      zoomAt(w / 2, h / 2, cam.zoom / 1.2);
+      return;
+    }
+    if (event.key === "Escape") {
+      if (pen) {
+        if (pen.created) restoreQuiet(pen.before);
+        pen = null;
+        scheduleDraw();
+        setStatus("Canceled the pen path.");
+        return;
+      }
+      if (selectedPoints.length) { selectedPoints = []; scheduleDraw(); return; }
+      selectedId = null;
+      renderList();
+      scheduleDraw();
+      return;
+    }
+    if (event.key === "Enter" && pen) { event.preventDefault(); finishPen(); return; }
+    if ((event.key === "Backspace" || event.key === "Delete") && pen?.points.length) {
+      event.preventDefault();
+      pen.points.pop();
+      if (!pen.points.length) {
+        if (pen.created) restoreQuiet(pen.before);
+        pen = null;
+      }
+      scheduleDraw();
+      return;
+    }
+    if (event.key === "Backspace" || event.key === "Delete") { event.preventDefault(); deleteSelection(); return; }
+    if (event.key === "Tab") { event.preventDefault(); cyclePiece(event.shiftKey ? -1 : 1); return; }
+    if (event.key === "[" || event.key === "]") {
+      const next = clamp(Number(smoothInput.value) + (event.key === "]" ? 5 : -5), 0, 100);
+      smoothInput.value = String(next);
+      localStorage.setItem("trace-pieces-smooth", smoothInput.value);
+      if (hasSmoothTarget()) remember();
+      applySmoothToSelection();
+      return;
+    }
+    if (event.key.startsWith("Arrow") && selectedPoints.length && selectedPiece()) {
+      event.preventDefault();
+      const step = event.shiftKey ? 10 : 1;
+      const dx = event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0;
+      const dy = event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0;
+      if (!nudgeOpen) { remember(); nudgeOpen = true; }
+      const piece = selectedPiece();
+      for (const hit of selectedPoints) {
+        const point = piece.subpaths[hit.sub]?.points[hit.index];
+        if (point) shiftPoint(point, dx, dy);
+      }
+      for (const hit of selectedPoints) {
+        const sub = piece.subpaths[hit.sub];
+        if (sub?.raw) sub.raw = null;
+      }
+      touch(piece);
+      geomRev += 1;
+      composite = null;
+      dirty = true;
+      scheduleDraw();
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (key === "v" || key === "a") setTool("select");
+    else if (key === "l") setTool("lasso");
+    else if (key === "p") setTool("pen");
+    else if (key === "h") setTool("hand");
+    else if (key === "z") setTool("zoom");
+    else if (key === "n") newPiece();
+    else if (key === "f" && selectedPiece()) framePiece(selectedPiece());
+    else if (event.key === "1") setMode("edit");
+    else if (event.key === "2") setMode("solo");
+    else if (event.key === "3") setMode("stack");
+    else if (event.key === "4") setMode("plate");
+  }
+
+  function wire() {
+    const folderOk = !!(window.showDirectoryPicker && window.isSecureContext);
+    $("folderNote").textContent = folderOk
+      ? "Save writes pieces/01-name.png and meta.json into the folder you open."
+      : "This page was opened as a file, so Save downloads a zip. Run tools/trace_pieces/serve.ps1 and use Chrome or Edge to save straight into the scene folder.";
+    renderSceneryOptions();
+    renderMoods();
+    renderList();
+    updateCommand();
+    updateSave();
+    setTool("lasso");
+    resize();
+    new ResizeObserver(resize).observe(canvas);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", (event) => {
+      if (event.code === "Space") { space = false; updateCursor(); }
+      if (event.key.startsWith("Arrow")) {
+        if (nudgeOpen) scheduleHeavy();
+        nudgeOpen = false;
+      }
+    });
+    window.addEventListener("beforeunload", (event) => {
+      if (!dirty || SELFTEST) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", () => {
+      if (drag?.kind === "lasso" && drag.created) restoreQuiet(drag.before);
+      if (pen) pen.placing = false;
+      drag = null;
+      updateCursor();
+    });
+    canvas.addEventListener("wheel", (event) => {
+      if (!fullImage) return;
+      event.preventDefault();
+      const dy = event.deltaY;
+      let factor;
+      if (event.deltaMode === 1 || Math.abs(dy) >= 50) factor = dy > 0 ? 1 / 1.12 : 1.12;
+      else factor = Math.exp(-dy * 0.01);
+      zoomAt(event.offsetX, event.offsetY, cam.zoom * factor);
+    }, { passive: false });
+    canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+    canvas.addEventListener("dblclick", (event) => {
+      if (tool !== "select" || !selectedPiece()) return;
+      const css = { x: event.offsetX, y: event.offsetY };
+      const piece = selectedPiece();
+      for (let s = 0; s < piece.subpaths.length; s++) {
+        if (insertPoint(piece, s, css)) return;
+      }
+    });
+    document.querySelectorAll(".tool").forEach((button) => {
+      button.addEventListener("click", () => setTool(button.dataset.tool));
+    });
+    document.querySelector(".tool[data-tool=hand]").addEventListener("dblclick", fitView);
+    document.querySelector(".tool[data-tool=zoom]").addEventListener("dblclick", actualPixels);
+    document.querySelectorAll("[data-mode]").forEach((button) => {
+      button.addEventListener("click", () => setMode(button.dataset.mode));
+    });
+    $("zoomLabel").addEventListener("click", () => {
+      if (!fullW) return;
+      if (Math.abs(cam.zoom - 1) < 0.02) fitView();
+      else actualPixels();
+    });
+    let smoothArmed = false;
+    smoothInput.addEventListener("pointerdown", () => { smoothArmed = false; });
+    smoothInput.addEventListener("input", () => {
+      localStorage.setItem("trace-pieces-smooth", smoothInput.value);
+      if (!hasSmoothTarget()) return;
+      if (!smoothArmed) { remember(); smoothArmed = true; }
+      if (applySmoothToSelection()) {
+        dirty = true;
+        updateSave();
+      }
+    });
+    const storedSmooth = localStorage.getItem("trace-pieces-smooth");
+    if (storedSmooth != null) smoothInput.value = storedSmooth;
+    $("folderBtn").addEventListener("click", () => openDirectory().catch((error) => {
+      if (error.name !== "AbortError") setStatus(error.message, true);
+    }));
+    $("emptyFolder").addEventListener("click", () => $("folderBtn").click());
+    $("photoBtn").addEventListener("click", () => $("photoInput").click());
+    $("emptyPhoto").addEventListener("click", () => $("photoInput").click());
+    $("photoInput").addEventListener("change", async () => {
+      const file = $("photoInput").files?.[0];
+      $("photoInput").value = "";
+      if (!file) return;
+      sceneHandle = null;
+      $("photoId").readOnly = false;
+      resetDocument();
+      if (!$("photoId").value) $("photoId").value = slugify(file.name.replace(/\.[^.]+$/, ""));
+      await loadPhotoFile(file);
+      fillMetaForm();
+      renderTrails();
+      updateCommand();
+      dirty = false;
+      updateSave();
+    });
+    $("saveBtn").addEventListener("click", save);
+    $("newPieceBtn").addEventListener("click", () => { const piece = newPiece(); listEl.querySelector(`.piece[data-id="${piece.id}"] .label`)?.focus(); });
+    $("copyCmd").addEventListener("click", async () => {
+      updateCommand();
+      try {
+        await navigator.clipboard.writeText($("command").textContent);
+        setStatus("Copied the prep_reveal command.");
+      } catch {
+        setStatus("Select the command under the photo and copy it.", true);
+      }
+    });
+    listEl.addEventListener("click", (event) => {
+      const row = event.target.closest(".piece");
+      if (event.target.closest("#revertPng")) {
+        revertToPngs();
+        return;
+      }
+      if (!row) return;
+      const piece = pieces.find((item) => item.id === Number(row.dataset.id));
+      if (!piece) return;
+      if (event.target.closest(".eye")) {
+        remember();
+        piece.hidden = !piece.hidden;
+        bump(true);
+        return;
+      }
+      if (event.target.closest(".del")) {
+        selectedId = piece.id;
+        selectedPoints = [];
+        deleteSelection();
+        return;
+      }
+      if (event.target.closest(".edit-points")) {
+        selectedId = piece.id;
+        convertRaster(piece);
+        return;
+      }
+      if (event.target.closest("input")) {
+        selectPiece(piece.id);
+        return;
+      }
+      selectPiece(piece.id);
+    });
+    listEl.addEventListener("beforeinput", (event) => {
+      if (!event.target.classList?.contains("label") || event.target.dataset.armed) return;
+      remember();
+      event.target.dataset.armed = "1";
+    });
+    listEl.addEventListener("focusout", (event) => {
+      if (!event.target.classList?.contains("label")) return;
+      delete event.target.dataset.armed;
+      const piece = pieces.find((item) => item.id === Number(event.target.closest(".piece")?.dataset.id));
+      if (!piece) return;
+      piece.label = slugify(event.target.value);
+      event.target.value = piece.label;
+      const file = event.target.closest(".piece").querySelector(".file");
+      if (file) file.textContent = `${fileName(piece, pieceIndex(piece))} · ${piece.fraction ? `${Math.round(piece.fraction * 1000) / 10}% of the frame` : "Outline"}`;
+      updateSave();
+    });
+    listEl.addEventListener("input", (event) => {
+      if (!event.target.classList.contains("label")) return;
+      const row = event.target.closest(".piece");
+      const piece = pieces.find((item) => item.id === Number(row.dataset.id));
+      if (!piece) return;
+      piece.label = event.target.value;
+      const file = row.querySelector(".file");
+      if (file) file.textContent = `${fileName(piece, pieceIndex(piece))} · ${piece.fraction ? `${Math.round(piece.fraction * 1000) / 10}% of the frame` : "Outline"}`;
+      dirty = true;
+      updateSave();
+    });
+    let dragFrom = -1;
+    listEl.addEventListener("dragstart", (event) => {
+      const row = event.target.closest(".piece");
+      if (!row || !event.target.closest(".grip")) { event.preventDefault(); return; }
+      dragFrom = pieces.findIndex((piece) => piece.id === Number(row.dataset.id));
+      event.dataTransfer.effectAllowed = "move";
+    });
+    listEl.addEventListener("dragover", (event) => {
+      const row = event.target.closest(".piece");
+      if (!row || dragFrom < 0) return;
+      event.preventDefault();
+    });
+    listEl.addEventListener("drop", (event) => {
+      const row = event.target.closest(".piece");
+      if (!row || dragFrom < 0) return;
+      event.preventDefault();
+      const to = pieces.findIndex((piece) => piece.id === Number(row.dataset.id));
+      if (to < 0 || to === dragFrom) return;
+      remember();
+      const [item] = pieces.splice(dragFrom, 1);
+      pieces.splice(to, 0, item);
+      dragFrom = -1;
+      bump(true);
+    });
+    document.querySelectorAll("[data-field]").forEach((field) => {
+      field.addEventListener("beforeinput", () => {
+        if (field.dataset.armed) return;
+        remember();
+        field.dataset.armed = "1";
+      });
+      field.addEventListener("focusout", () => { delete field.dataset.armed; });
+      field.addEventListener("input", () => {
+        if (field.dataset.field === "photoId") {
+          renderTrails();
+          renderFacts();
+        }
+        readMetaForm();
+        updateCommand();
+        dirty = true;
+        updateSave();
+      });
+    });
+    $("scenery").addEventListener("change", () => {
+      remember();
+      $("sceneryCustomWrap").hidden = $("scenery").value !== "__other";
+      readMetaForm();
+      updateSceneryHelp();
+      dirty = true;
+      updateSave();
+    });
+    $("sceneryCustom").addEventListener("input", () => {
+      readMetaForm();
+      updateSceneryHelp();
+      dirty = true;
+      updateSave();
+    });
+    $("moods").addEventListener("click", (event) => {
+      const button = event.target.closest(".mood");
+      if (!button || button.classList.contains("add")) return;
+      remember();
+      const id = button.dataset.mood;
+      if (meta.moodIds.includes(id)) meta.moodIds = meta.moodIds.filter((item) => item !== id);
+      else meta.moodIds.push(id);
+      renderMoods();
+      dirty = true;
+      updateSave();
+    });
+    $("moods").addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.target.id !== "moodAdd") return;
+      event.preventDefault();
+      const id = slugify(event.target.value);
+      if (!id || meta.moodIds.includes(id)) return;
+      remember();
+      meta.moodIds.push(id);
+      renderMoods();
+      dirty = true;
+      updateSave();
+    });
+    window.addEventListener("dragover", (event) => { event.preventDefault(); });
+    window.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      const files = await collectDrop(event.dataTransfer);
+      if (!files.length) return;
+      sceneHandle = null;
+      $("photoId").readOnly = false;
+      await loadFileSet(files, {});
+      await hydrateRasters();
+      bump(true);
+      dirty = false;
+      updateSave();
+      const photoId = $("photoId").value.trim();
+      if (photoId && sceneHandle == null) {
+        setStatus(`Loaded ${photoName}. Download a zip, or open the scene folder when you want to save in place.`);
+      }
+    });
+    fetch("../../shared/source/catalog/sceneries.json").then((res) => res.json()).then((data) => {
+      if (Array.isArray(data.sceneries)) registries.sceneries = data.sceneries;
+      renderSceneryOptions();
+      fillMetaForm();
+    }).catch(() => {});
+    fetch("../../shared/source/catalog/moods.json").then((res) => res.json()).then((data) => {
+      if (Array.isArray(data.moods)) registries.moods = data.moods;
+      renderMoods();
+    }).catch(() => {});
+    fetch("../../shared/source/catalog/trails.json").then((res) => res.json()).then((data) => {
+      if (Array.isArray(data.trails)) registries.trails = data.trails;
+      renderTrails();
+    }).catch(() => {});
+  }
+
+  async function revertToPngs() {
+    if (!pngsByIndex.size || !fullImage) return;
+    remember();
+    const next = [];
+    for (const index of [...pngsByIndex.keys()].sort((a, b) => a - b)) {
+      const item = pngsByIndex.get(index);
+      const piece = emptyPiece(slugify(item.label || ""));
+      next.push(piece);
+      pieces = next;
+      await attachRaster(piece, item.file);
+    }
+    pieces = next;
+    selectedId = pieces[0]?.id ?? null;
+    canRevertToPng = false;
+    bump(true);
+    setStatus("Using the PNG masks. Outlines you had drawn in this visit are undoable.");
+  }
+
+  function assert(cond, message) {
+    if (!cond) throw new Error(message);
+  }
+  async function runSelfTest() {
+    const failures = [];
+    const check = (cond, message) => { if (!cond) failures.push(message); };
+    try {
+      const known = crc32(new TextEncoder().encode("123456789"));
+      check(known === 0xcbf43926, `crc32 ${known.toString(16)}`);
+      const surface = document.createElement("canvas");
+      surface.width = 640;
+      surface.height = 400;
+      const g = surface.getContext("2d");
+      g.fillStyle = "#355c4a";
+      g.fillRect(0, 0, 640, 400);
+      g.fillStyle = "#d7c39a";
+      g.fillRect(40, 30, 200, 80);
+      const blob = await canvasBlob(surface);
+      const file = new File([blob], "photo.png", { type: "image/png" });
+      await loadPhotoFile(file);
+      const raw = [];
+      for (let i = 0; i < 180; i++) {
+        const angle = (i / 180) * Math.PI * 2;
+        const radius = 70 + (i % 7);
+        raw.push({ x: 320 + Math.cos(angle) * radius, y: 200 + Math.sin(angle) * radius });
+      }
+      const smoothed = smoothStroke(raw, 0.75);
+      check(smoothed && smoothed.length >= 8 && smoothed.length <= 40, `smooth count ${smoothed?.length}`);
+      if (smoothed) {
+        for (const point of smoothed) {
+          const dist = Math.hypot(point.x - 320, point.y - 200);
+          check(dist > 55 && dist < 95, `smooth radius ${dist}`);
+        }
+      }
+      const piece = emptyPiece("rock");
+      piece.subpaths.push({
+        op: "add", bezier: false, smooth: 0, raw: null,
+        points: [[80, 60], [240, 60], [240, 200], [80, 200]].map(([x, y]) => (
+          { x, y, inX: null, inY: null, outX: null, outY: null, corner: true }
+        )),
+      });
+      piece.subpaths.push({
+        op: "sub", bezier: false, smooth: 0, raw: null,
+        points: [[120, 90], [180, 90], [180, 140], [120, 140]].map(([x, y]) => (
+          { x, y, inX: null, inY: null, outX: null, outY: null, corner: true }
+        )),
+      });
+      pieces = [piece];
+      selectedId = piece.id;
+      check(pointInPiece(piece, 100, 80), "inside rock");
+      check(!pointInPiece(piece, 150, 110), "hole");
+      check(!pointInPiece(piece, 10, 10), "outside");
+      const exported = await renderPieceBlob(piece);
+      const bitmap = await createImageBitmap(exported);
+      const read = document.createElement("canvas");
+      read.width = 640;
+      read.height = 400;
+      const rg = read.getContext("2d");
+      rg.drawImage(bitmap, 0, 0);
+      const corner = rg.getImageData(1, 1, 1, 1).data;
+      const solid = rg.getImageData(100, 80, 1, 1).data;
+      const hole = rg.getImageData(150, 110, 1, 1).data;
+      check(corner[3] === 0, `corner alpha ${corner[3]}`);
+      check(solid[3] === 255, `solid alpha ${solid[3]}`);
+      check(hole[3] === 0, `hole alpha ${hole[3]}`);
+      const mask = document.createElement("canvas");
+      mask.width = 80;
+      mask.height = 60;
+      const mg = mask.getContext("2d");
+      mg.clearRect(0, 0, 80, 60);
+      mg.fillStyle = "#fff";
+      mg.fillRect(10, 10, 40, 24);
+      mg.globalCompositeOperation = "destination-out";
+      mg.fillRect(20, 16, 16, 10);
+      const maskData = mg.getImageData(0, 0, 80, 60).data;
+      const bits = new Uint8Array(80 * 60);
+      for (let i = 0; i < bits.length; i++) bits[i] = maskData[i * 4 + 3] > 16 ? 1 : 0;
+      const contours = traceContours(bits, 80, 60);
+      check(contours.length >= 2, `contours ${contours.length}`);
+      const roundTrip = parseSub({
+        op: "add", bezier: true,
+        points: [{ x: 1, y: 2, out: [3, 4], corner: false }, { x: 5, y: 6, in: [7, 8] }, { x: 9, y: 10 }],
+      });
+      check(roundTrip.bezier && roundTrip.points[0].outX === 3 && roundTrip.points[1].inY === 8, "parse sub");
+      const zipBlob = buildZip([{ name: "pieces/01-rock.png", data: new Uint8Array(await exported.arrayBuffer()) }]);
+      const zipBytes = new Uint8Array(await zipBlob.arrayBuffer());
+      const view = new DataView(zipBytes.buffer);
+      check(view.getUint32(0, true) === 0x04034b50, "zip signature");
+      check(zipBytes[30] === 112, "zip name starts with p");
+      const paths = pathsDocument(pieces);
+      check(paths.pieces[0].label === "rock" && paths.pieces[0].subpaths.length === 2, "paths");
+      renderList();
+      setMode("stack");
+      scheduleDraw();
+    } catch (error) {
+      failures.push(error.message);
+    }
+    const summary = failures.length ? `SELFTEST FAIL ${failures.join(" | ")}` : "SELFTEST PASS";
+    document.title = summary;
+    setStatus(summary, failures.length > 0);
+    console.log(summary);
+  }
+
+  wire();
+  if (SELFTEST) setTimeout(() => { runSelfTest(); }, 30);
+})();
+</script>
+</body>
+</html>

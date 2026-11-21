@@ -34,6 +34,8 @@ shared/source/reveal/mountain/
     02-river.png
 ```
 
+Trace the pieces with [tools/trace_pieces](../../tools/trace_pieces/index.html)
+(`serve.ps1`, then save into this folder), or drop PNG masks in `pieces/` yourself.
 Then run [tools/prep_reveal](../../tools/prep_reveal/README.md).
 
 Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp`

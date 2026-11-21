@@ -31,6 +31,20 @@ unused area is near-white (same idea as the Death Valley layer exports).
 Pieces do not need to cover the whole photo. Uncovered areas stay on the dark
 plate until every piece is placed, then the color photo fades in.
 
+### Tracing pieces
+
+[tools/trace_pieces](../trace_pieces/index.html) replaces the Photoshop mask step.
+Open a scene folder, draw around each piece, and save full-frame PNGs into
+`pieces/`. Scroll zooms, Space pans. `pieces/paths.json` is only for reopening
+those outlines; this script ignores it.
+
+```powershell
+.\tools\trace_pieces\serve.ps1
+```
+
+Opening the HTML file directly still works for tracing. Saving into the scene
+folder needs that local page, in Chrome or Edge. Then run prep_reveal.
+
 ## Setup
 
 Reuses the chop_puzzle venv:
