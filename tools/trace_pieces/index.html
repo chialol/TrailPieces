@@ -164,6 +164,10 @@
 <div id="app">
   <header>
     <h1>Trace pieces <span id="sceneTitle"></span></h1>
+    <div class="modes" role="toolbar" aria-label="How pieces are made">
+      <button type="button" data-workflow="draw" aria-pressed="true" title="Draw closed outlines (L)">Draw</button>
+      <button type="button" data-workflow="cut" title="Slash the photo into parts that cover it (C)">Cut</button>
+    </div>
     <div class="modes" role="toolbar" aria-label="View">
       <button type="button" data-mode="edit" aria-pressed="true">Edit</button>
       <button type="button" data-mode="solo">Solo</button>
@@ -193,6 +197,9 @@
       <button type="button" class="tool" data-tool="pen" title="Pen (P)">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 15l1.2-4.2L12.4 2.6l3 3L7.2 13.8 3 15z"/><path d="M10.6 4.4l3 3"/></svg>
       </button>
+      <button type="button" class="tool" data-tool="cut" title="Cut (C). Slash across a piece.">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 15.5L15.5 2.5"/><path d="M3.2 5.2l2.2-2.2M12.6 14.8l2.2-2.2"/></svg>
+      </button>
       <button type="button" class="tool" data-tool="hand" title="Hand (H). Hold Space anywhere.">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M7 8V3.8a1.2 1.2 0 0 1 2.4 0V8M9.4 7.2V3.2a1.2 1.2 0 0 1 2.4 0V9M11.8 8.2V5a1.2 1.2 0 0 1 2.4 0v6.2c0 2.6-1.6 4.3-4.2 4.3-2 0-3.2-.7-4.2-2L5 10.2a1.3 1.3 0 0 1 2.2-1.3"/></svg>
       </button>
@@ -206,7 +213,7 @@
         <div class="card">
           <h2>Trace a photo into pieces</h2>
           <p>Draw around each part of the picture. The outline smooths when you let go, and you can drag the points if it needs a correction. Saving writes full-frame transparent PNGs, the same files prep_reveal already reads.</p>
-          <p>Scroll zooms toward the cursor. Hold Space and drag to pan. Right-drag cuts a piece back.</p>
+          <p>Cut is the other way. Slash across the photo and each slash splits one piece in two, so the pieces stay a complete cover with no gaps. Scroll zooms toward the cursor. Hold Space and drag to pan.</p>
           <div class="row">
             <button type="button" class="primary" id="emptyFolder" style="background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:8px 12px;font-weight:600;">Open scene folder</button>
             <button type="button" id="emptyPhoto" style="background:var(--panel-2);color:var(--text);border:0;border-radius:6px;padding:8px 12px;">Open a photo</button>
@@ -287,6 +294,10 @@
         <div class="rowline"><span>Close the pen</span><span><kbd>Enter</kbd></span></div>
         <div class="rowline"><span>Cancel the stroke</span><span><kbd>Esc</kbd></span></div>
         <div class="rowline"><span>Less / more smoothing</span><span><kbd>[</kbd> <kbd>]</kbd></span></div>
+        <h3>Cut</h3>
+        <div class="rowline"><span>Slash pieces apart</span><span><kbd>C</kbd></span></div>
+        <div class="rowline"><span>Back to drawing</span><span><kbd>L</kbd></span></div>
+        <div class="rowline"><span>Split one piece</span><span>Drag across it, edge to edge</span></div>
       </div>
       <div>
         <h3>Points</h3>
@@ -362,6 +373,8 @@
   let selectedId = null;
   let selectedPoints = [];
   let tool = "lasso";
+  let workflow = "draw";
+  let tiled = false;
   let mode = "edit";
   let cam = { x: 0, y: 0, zoom: 1 };
   let space = false;
@@ -393,6 +406,7 @@
     select: "Drag points. Double-click an edge to add one. Delete removes the point, or the piece if none is selected.",
     hand: "Drag to pan. Scrolling zooms toward the cursor.",
     zoom: "Click zooms in. Alt-click zooms out. Drag a rectangle to fill the view.",
+    cut: "Slash from one edge of a piece to the other. The part you cut off becomes a new piece, and the photo stays covered.",
   };
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
@@ -510,6 +524,7 @@
       selectedId,
       photoId: $("photoId").value,
       meta: structuredClone(meta),
+      tiled,
     };
   }
   function ensureUndo(gesture) {
@@ -524,6 +539,7 @@
     pieces = snap.pieces.map(clonePiece);
     selectedId = snap.selectedId;
     if (snap.photoId != null) $("photoId").value = snap.photoId;
+    tiled = snap.tiled === true;
     selectedPoints = [];
     renderList();
     renderFacts();
@@ -536,6 +552,7 @@
       hidden: piece.hidden,
       rasterId: piece.rasterId,
       rev: piece.rev,
+      kind: piece.kind || null,
       subpaths: piece.subpaths.map((sub) => ({
         op: sub.op,
         bezier: !!sub.bezier,
@@ -550,6 +567,7 @@
     selectedId = snap.selectedId;
     selectedPoints = [];
     Object.assign(meta, structuredClone(snap.meta));
+    tiled = snap.tiled === true;
     if (snap.photoId != null) $("photoId").value = snap.photoId;
     pen = null;
     fillMetaForm();
@@ -565,6 +583,9 @@
     applySnap(undo.pop());
     dirty = true;
     updateSave();
+    if (workflow === "cut" && !isCutPartition()) {
+      setStatus("Brought the drawn outlines back. Press C again to start a cut from the whole photo.");
+    }
   }
   function doRedo() {
     if (!redo.length) return;
@@ -599,6 +620,10 @@
   function touch(piece) { piece.rev = geomRev + 1; }
 
   function newPiece() {
+    if (workflow === "cut") {
+      setStatus("In Cut, slash across a piece. The part you cut off is the new piece.");
+      return null;
+    }
     const current = selectedPiece();
     if (current && isEmpty(current)) {
       setStatus("This piece is still empty. Draw into it, or press Esc to leave it.");
@@ -652,17 +677,22 @@
       if (!piece.subpaths.length) piece.rasterId = piece.rasterId;
       selectedPoints = [];
       touch(piece);
+      if (piece.kind === "cut") tiled = false;
       bump(true);
       setStatus("Deleted the selected points.");
       return;
     }
     remember();
     const name = piece.label || fileName(piece, pieceIndex(piece));
+    const cutPiece = piece.kind === "cut";
     pieces = pieces.filter((item) => item !== piece);
     selectedId = pieces[0]?.id ?? null;
     selectedPoints = [];
+    if (cutPiece) tiled = false;
     bump(true);
-    setStatus(`Removed ${name}. Ctrl+Z puts it back.`);
+    setStatus(cutPiece
+      ? `Removed ${name}. The photo is no longer fully covered. Ctrl+Z puts it back.`
+      : `Removed ${name}. Ctrl+Z puts it back.`);
   }
 
   function smoothAmount() { return Number(smoothInput.value) / 100; }
@@ -841,6 +871,12 @@
     if (any) context.fill("evenodd");
     return any;
   }
+  function strokeCut(context, piece) {
+    if (piece.kind !== "cut") return;
+    context.lineJoin = "round";
+    context.lineWidth = 2;
+    context.stroke();
+  }
   function punchSubs(context, piece, project) {
     const subs = piece.subpaths.filter((sub) => sub.op === "sub" && sub.points.length >= 3);
     if (!subs.length) return;
@@ -891,6 +927,313 @@
       if (cross) hit = !hit;
     }
     return hit;
+  }
+
+  function toCorners(points) {
+    return points.map((point) => ({
+      x: point.x, y: point.y,
+      inX: null, inY: null, outX: null, outY: null, corner: true,
+    }));
+  }
+  function polygonArea(ring) {
+    let area = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i];
+      const b = ring[(i + 1) % ring.length];
+      area += a.x * b.y - b.x * a.y;
+    }
+    return area / 2;
+  }
+  function ringOf(piece) {
+    if (!piece || piece.subpaths.length !== 1) return null;
+    const sub = piece.subpaths[0];
+    if (sub.op !== "add" || sub.bezier || sub.points.length < 3) return null;
+    return sub.points;
+  }
+  function isCutPartition() {
+    return pieces.length > 0 && pieces.every((piece) => piece.kind === "cut" && ringOf(piece));
+  }
+  function seedCover() {
+    const piece = emptyPiece("");
+    piece.kind = "cut";
+    piece.subpaths = [{
+      op: "add", bezier: false, smooth: 0, raw: null,
+      points: toCorners([
+        { x: 0, y: 0 }, { x: fullW, y: 0 }, { x: fullW, y: fullH }, { x: 0, y: fullH },
+      ]),
+    }];
+    pieces = [piece];
+    selectedId = piece.id;
+    selectedPoints = [];
+    pen = null;
+    tiled = true;
+    bump(true);
+  }
+  function decimateOpen(points, max) {
+    if (points.length <= max) return points.map((point) => ({ x: point.x, y: point.y }));
+    const out = [{ x: points[0].x, y: points[0].y }];
+    const step = (points.length - 1) / (max - 1);
+    for (let i = 1; i < max - 1; i++) {
+      const point = points[Math.round(i * step)];
+      out.push({ x: point.x, y: point.y });
+    }
+    const last = points[points.length - 1];
+    out.push({ x: last.x, y: last.y });
+    return out;
+  }
+  function smoothOpen(raw, amount) {
+    if (!raw || raw.length < 2) return null;
+    const samples = decimateOpen(raw, 800);
+    const radius = Math.round(amount * amount * 14);
+    let pts = samples;
+    if (radius > 0 && samples.length >= 3) {
+      pts = samples.map((point, index) => {
+        if (index === 0 || index === samples.length - 1) return { x: point.x, y: point.y };
+        let x = 0;
+        let y = 0;
+        let weight = 0;
+        for (let k = -radius; k <= radius; k++) {
+          const j = index + k;
+          if (j <= 0 || j >= samples.length - 1) continue;
+          const w = radius + 1 - Math.abs(k);
+          x += samples[j].x * w;
+          y += samples[j].y * w;
+          weight += w;
+        }
+        return weight ? { x: x / weight, y: y / weight } : { x: point.x, y: point.y };
+      });
+    }
+    const simplified = rdpOpen(pts, Math.max(0.6, amount * 2.5));
+    return simplified.length >= 2 ? simplified : samples;
+  }
+  function segmentHit(a, b, c, d) {
+    const rx = b.x - a.x;
+    const ry = b.y - a.y;
+    const sx = d.x - c.x;
+    const sy = d.y - c.y;
+    const den = rx * sy - ry * sx;
+    if (Math.abs(den) < 1e-8) return null;
+    const qpx = c.x - a.x;
+    const qpy = c.y - a.y;
+    const t = (qpx * sy - qpy * sx) / den;
+    const u = (qpx * ry - qpy * rx) / den;
+    if (t < -1e-8 || t > 1 + 1e-8 || u < -1e-8 || u > 1 + 1e-8) return null;
+    const tt = clamp(t, 0, 1);
+    const uu = clamp(u, 0, 1);
+    return { x: a.x + tt * rx, y: a.y + tt * ry, t: tt, u: uu };
+  }
+  function pointOnStroke(stroke, along) {
+    const index = Math.max(0, Math.min(stroke.length - 1, Math.floor(along)));
+    const t = along - Math.floor(along);
+    const a = stroke[index];
+    const b = stroke[Math.min(index + 1, stroke.length - 1)];
+    if (!a || !b) return null;
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  }
+  function strokeLength(stroke, from, to) {
+    const start = Math.min(from, to);
+    const end = Math.max(from, to);
+    let length = 0;
+    let prev = pointOnStroke(stroke, start);
+    const last = Math.min(stroke.length - 1, Math.floor(end));
+    for (let i = Math.ceil(start); i <= last; i++) {
+      const point = stroke[i];
+      length += Math.hypot(point.x - prev.x, point.y - prev.y);
+      prev = point;
+    }
+    const endPoint = pointOnStroke(stroke, end);
+    return length + Math.hypot(endPoint.x - prev.x, endPoint.y - prev.y);
+  }
+  function snapHit(ring, hit) {
+    const c = ring[hit.edge];
+    const d = ring[(hit.edge + 1) % ring.length];
+    const near = (point, vertex) => ({ x: point.x, y: point.y, edge: hit.edge, u: vertex === hit.edge ? 0 : 1, vertex });
+    if (hit.u <= 0.002 || Math.hypot(hit.x - c.x, hit.y - c.y) < 0.6) return near(c, hit.edge);
+    if (hit.u >= 0.998 || Math.hypot(hit.x - d.x, hit.y - d.y) < 0.6) return near(d, (hit.edge + 1) % ring.length);
+    return { x: hit.x, y: hit.y, edge: hit.edge, u: hit.u, vertex: -1 };
+  }
+  function cutSpans(ring, stroke) {
+    const hits = [];
+    for (let s = 0; s < stroke.length - 1; s++) {
+      const a = stroke[s];
+      const b = stroke[s + 1];
+      for (let e = 0; e < ring.length; e++) {
+        const hit = segmentHit(a, b, ring[e], ring[(e + 1) % ring.length]);
+        if (!hit) continue;
+        hits.push({ x: hit.x, y: hit.y, along: s + hit.t, edge: e, u: hit.u });
+      }
+    }
+    hits.sort((p, q) => p.along - q.along || p.edge - q.edge);
+    const unique = [];
+    for (const hit of hits) {
+      const prev = unique[unique.length - 1];
+      if (prev && Math.hypot(hit.x - prev.x, hit.y - prev.y) < 0.5 && Math.abs(hit.along - prev.along) < 0.75) continue;
+      unique.push(hit);
+    }
+    const spans = [];
+    for (let i = 0; i < unique.length - 1; i++) {
+      const a = unique[i];
+      const b = unique[i + 1];
+      if (b.along - a.along < 1e-4) continue;
+      const length = strokeLength(stroke, a.along, b.along);
+      if (length < 0.8) continue;
+      let inside = false;
+      for (const t of [0.35, 0.5, 0.65]) {
+        const point = pointOnStroke(stroke, a.along + (b.along - a.along) * t);
+        if (point && insideRing(ring, point.x, point.y)) { inside = true; break; }
+      }
+      if (inside) spans.push({ a, b, length });
+    }
+    return spans;
+  }
+  function closedRing(points) {
+    const out = [];
+    for (const point of points) {
+      const prev = out[out.length - 1];
+      if (!prev || Math.hypot(point.x - prev.x, point.y - prev.y) > 0.35) out.push({ x: point.x, y: point.y });
+    }
+    if (out.length > 2 && Math.hypot(out[0].x - out[out.length - 1].x, out[0].y - out[out.length - 1].y) <= 0.35) out.pop();
+    return out.length >= 3 ? out : null;
+  }
+  function cyclicSlice(ring, from, to) {
+    const out = [];
+    let i = from;
+    for (let guard = 0; guard <= ring.length; guard++) {
+      out.push({ x: ring[i].x, y: ring[i].y });
+      if (i === to) return out;
+      i = (i + 1) % ring.length;
+    }
+    return out;
+  }
+  function strokeInterior(stroke, fromAlong, toAlong) {
+    const forward = fromAlong <= toAlong;
+    const start = Math.min(fromAlong, toAlong);
+    const end = Math.max(fromAlong, toAlong);
+    const pts = [];
+    for (let i = Math.ceil(start - 1e-9); i <= Math.floor(end + 1e-9); i++) {
+      if (i <= start + 1e-6 || i >= end - 1e-6 || i < 0 || i >= stroke.length) continue;
+      const point = stroke[i];
+      const prev = pts[pts.length - 1];
+      if (!prev || Math.hypot(point.x - prev.x, point.y - prev.y) > 0.35) pts.push({ x: point.x, y: point.y });
+    }
+    if (!forward) pts.reverse();
+    return pts;
+  }
+  function insertHits(ring, a, b) {
+    const extras = [];
+    if (a.vertex < 0) extras.push({ edge: a.edge, u: a.u, x: a.x, y: a.y, id: "a" });
+    if (b.vertex < 0) extras.push({ edge: b.edge, u: b.u, x: b.x, y: b.y, id: "b" });
+    extras.sort((p, q) => p.edge - q.edge || p.u - q.u);
+    const grown = [];
+    const indexOf = { a: -1, b: -1 };
+    for (let i = 0; i < ring.length; i++) {
+      grown.push({ x: ring[i].x, y: ring[i].y });
+      if (a.vertex === i) indexOf.a = grown.length - 1;
+      if (b.vertex === i) indexOf.b = grown.length - 1;
+      for (const extra of extras) {
+        if (extra.edge !== i) continue;
+        grown.push({ x: extra.x, y: extra.y });
+        indexOf[extra.id] = grown.length - 1;
+      }
+    }
+    if (indexOf.a < 0 || indexOf.b < 0 || indexOf.a === indexOf.b) return null;
+    return { ring: grown, ia: indexOf.a, ib: indexOf.b };
+  }
+  function splitWithSpan(ring, stroke, span) {
+    const a = snapHit(ring, span.a);
+    const b = snapHit(ring, span.b);
+    if (Math.hypot(a.x - b.x, a.y - b.y) < 0.5) return null;
+    const chain = strokeInterior(stroke, span.a.along, span.b.along).filter((point, index, all) => {
+      if (index === 0 && Math.hypot(point.x - a.x, point.y - a.y) < 0.4) return false;
+      if (index === all.length - 1 && Math.hypot(point.x - b.x, point.y - b.y) < 0.4) return false;
+      return true;
+    });
+    const placed = insertHits(ring, a, b);
+    if (!placed) return null;
+    const forward = cyclicSlice(placed.ring, placed.ia, placed.ib);
+    const backward = cyclicSlice(placed.ring, placed.ib, placed.ia);
+    const poly1 = closedRing(forward.concat(chain.slice().reverse()));
+    const poly2 = closedRing(backward.concat(chain));
+    if (!poly1 || !poly2) return null;
+    const area1 = Math.abs(polygonArea(poly1));
+    const area2 = Math.abs(polygonArea(poly2));
+    const parent = Math.abs(polygonArea(ring));
+    if (area1 < 16 || area2 < 16) return null;
+    if (Math.abs(area1 + area2 - parent) > Math.max(20, parent * 0.005)) return null;
+    const smaller = area1 <= area2 ? poly1 : poly2;
+    const larger = area1 <= area2 ? poly2 : poly1;
+    return { smaller, larger, span: span.length };
+  }
+  function splitRing(ring, stroke) {
+    if (!ring || ring.length < 3 || !stroke || stroke.length < 2) return null;
+    for (const span of cutSpans(ring, stroke)) {
+      const result = splitWithSpan(ring, stroke, span);
+      if (result) return result;
+    }
+    return null;
+  }
+  function cutsForStroke(stroke) {
+    const found = [];
+    for (const piece of pieces) {
+      const ring = ringOf(piece);
+      if (!ring) continue;
+      const split = splitRing(ring, stroke);
+      if (split) found.push({ piece, split, span: split.span });
+    }
+    return found;
+  }
+  function chooseCut(found) {
+    if (!found.length) return null;
+    const selected = found.find((item) => item.piece.id === selectedId);
+    const pick = selected || found.reduce((best, item) => (item.span > best.span ? item : best));
+    return { pick, extra: found.filter((item) => item.piece !== pick.piece) };
+  }
+  function offcutFor(stroke) {
+    const choice = chooseCut(cutsForStroke(stroke));
+    return choice ? choice.pick.split.smaller : null;
+  }
+  function commitCut(gesture) {
+    if (!fullW || !fullH) {
+      setStatus("Open a photo before cutting.");
+      scheduleDraw();
+      return;
+    }
+    if (!pieces.length) seedCover();
+    if (!isCutPartition()) {
+      setStatus("Press C to start a cut from the whole photo.");
+      scheduleDraw();
+      return;
+    }
+    const amount = smoothAmount();
+    const smooth = smoothOpen(gesture.points, amount);
+    let found = smooth ? cutsForStroke(smooth) : [];
+    if (!found.length) found = cutsForStroke(gesture.points);
+    if (!found.length) {
+      setStatus("That slash has to cross one piece from edge to edge. Stopping inside a piece does not split it.");
+      scheduleDraw();
+      return;
+    }
+    const { pick, extra } = chooseCut(found);
+    const intact = tiled;
+    remember();
+    const parent = pick.piece;
+    const index = pieces.indexOf(parent);
+    const child = emptyPiece("");
+    child.kind = "cut";
+    child.subpaths = [{ op: "add", bezier: false, smooth: 0, raw: null, points: toCorners(pick.split.smaller) }];
+    parent.kind = "cut";
+    parent.rasterId = null;
+    parent.subpaths = [{ op: "add", bezier: false, smooth: 0, raw: null, points: toCorners(pick.split.larger) }];
+    touch(parent);
+    pieces.splice(Math.max(0, index), 0, child);
+    selectedId = child.id;
+    selectedPoints = [];
+    tiled = intact;
+    bump(true);
+    listEl.querySelector(`.piece[data-id="${child.id}"] .label`)?.focus();
+    setStatus(extra.length
+      ? "Cut off one piece. The slash also crossed another piece; cut that one on its own."
+      : "Cut off one piece. The rest of the photo stays covered.");
   }
   function pointInPiece(piece, x, y) {
     if (piece.rasterId && !piece.subpaths.length) {
@@ -1091,6 +1434,7 @@
     piece.rasterId = null;
     touch(piece);
     selectedPoints = [];
+    tiled = false;
     bump(true);
     const row = listEl.querySelector(`.piece[data-id="${piece.id}"]`);
     row?.scrollIntoView({ block: "nearest" });
@@ -1189,6 +1533,37 @@
     setStatus(HINTS[tool]);
     scheduleDraw();
   }
+  function updateWorkflowButtons() {
+    for (const button of document.querySelectorAll("[data-workflow]")) {
+      button.setAttribute("aria-pressed", button.dataset.workflow === workflow ? "true" : "false");
+    }
+  }
+  function setWorkflow(next) {
+    workflow = next === "cut" ? "cut" : "draw";
+    updateWorkflowButtons();
+    if (workflow === "draw") {
+      if (tool === "cut") setTool("lasso");
+      return;
+    }
+    if (!fullW || !fullH) {
+      setTool("cut");
+      setStatus("Open a photo, then slash across it.");
+      return;
+    }
+    if (isCutPartition()) {
+      setTool("cut");
+      return;
+    }
+    if (pieces.some((piece) => !isEmpty(piece))) {
+      remember();
+      seedCover();
+      setTool("cut");
+      setStatus("Started a cut from the whole photo. Ctrl+Z brings the drawn outlines back.");
+      return;
+    }
+    seedCover();
+    setTool("cut");
+  }
   function setMode(next) {
     mode = next;
     composite = null;
@@ -1249,6 +1624,7 @@
     context.globalCompositeOperation = "destination-in";
     context.fillStyle = "#fff";
     fillAdds(context, piece, projectPreview);
+    strokeCut(context, piece);
     punchSubs(context, piece, projectPreview);
   }
   function ensureComposite() {
@@ -1411,6 +1787,33 @@
     }
   }
   function drawDraft() {
+    if (drag?.kind === "cut" && drag.points.length >= 2) {
+      if (drag.preview && drag.preview.length >= 3) {
+        ctx.beginPath();
+        const start = toScreen(drag.preview[0].x, drag.preview[0].y);
+        ctx.moveTo(start.x, start.y);
+        for (const point of drag.preview) {
+          const screen = toScreen(point.x, point.y);
+          ctx.lineTo(screen.x, screen.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "rgba(228, 194, 122, 0.28)";
+        ctx.fill();
+      }
+      ctx.beginPath();
+      const first = toScreen(drag.points[0].x, drag.points[0].y);
+      ctx.moveTo(first.x, first.y);
+      for (const point of drag.points) {
+        const screen = toScreen(point.x, point.y);
+        ctx.lineTo(screen.x, screen.y);
+      }
+      ctx.strokeStyle = "#f4f0e8";
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      return;
+    }
     if (!drag || drag.kind !== "lasso" || drag.points.length < 2) return;
     ctx.beginPath();
     const first = toScreen(drag.points[0].x, drag.points[0].y);
@@ -1486,7 +1889,16 @@
       updateCursor();
       return;
     }
-    if (event.button === 2 || (event.button === 0 && event.altKey && (tool === "lasso" || tool === "pen" || tool === "select"))) {
+    if (tool === "cut" && event.button === 0) {
+      if (!pieces.length) seedCover();
+      if (!isCutPartition()) {
+        setStatus("Press C to start a cut from the whole photo. These outlines are a drawing.");
+        return;
+      }
+      drag = { kind: "cut", pointerId: event.pointerId, points: [image], preview: null };
+      return;
+    }
+    if (tool !== "cut" && (event.button === 2 || (event.button === 0 && event.altKey && (tool === "lasso" || tool === "pen" || tool === "select")))) {
       startLasso("sub", event.pointerId, image, css);
       return;
     }
@@ -1613,9 +2025,15 @@
       scheduleDraw();
       return;
     }
-    if (drag.kind === "lasso") {
+    if (drag.kind === "lasso" || drag.kind === "cut") {
       const prev = drag.points[drag.points.length - 1];
-      if (Math.hypot(image.x - prev.x, image.y - prev.y) >= 0.6) drag.points.push(image);
+      if (Math.hypot(image.x - prev.x, image.y - prev.y) >= 0.6) {
+        drag.points.push(image);
+        if (drag.kind === "cut" && (drag.points.length < 180 || drag.points.length % 3 === 0)) {
+          const line = drag.points.length > 160 ? rdpOpen(drag.points, 1.4) : drag.points;
+          drag.preview = offcutFor(line);
+        }
+      }
       scheduleDraw();
       return;
     }
@@ -1737,6 +2155,10 @@
     const finished = drag;
     drag = null;
     updateCursor();
+    if (finished.kind === "cut") {
+      commitCut(finished);
+      return;
+    }
     if (finished.kind === "lasso") {
       commitStroke(finished);
       return;
@@ -1794,7 +2216,10 @@
     }
     if ((finished.kind === "points" || finished.kind === "shape" || finished.kind === "handle") && finished.pushed) {
       const piece = pieces.find((item) => item.id === finished.pieceId);
-      if (piece) touch(piece);
+      if (piece) {
+        touch(piece);
+        if (piece.kind === "cut") tiled = false;
+      }
       bump(false);
     }
   }
@@ -1822,6 +2247,7 @@
     touch(piece);
     pen = null;
     selectedPoints = [];
+    tiled = false;
     bump(true);
     if (created) listEl.querySelector(`.piece[data-id="${piece.id}"] .label`)?.focus();
     setStatus(`${fileName(piece, pieceIndex(piece))} closed.`);
@@ -1829,7 +2255,7 @@
 
   function renderList() {
     if (!pieces.length) {
-      listEl.innerHTML = `<div class="empty-list">No pieces yet. Lasso around the first part you want the player to place. The top of this list is offered first.</div>`;
+      listEl.innerHTML = `<div class="empty-list">No pieces yet. Lasso around a part, or switch to Cut and slash the photo into pieces that cover it. The top of this list is offered first.</div>`;
       return;
     }
     listEl.innerHTML = pieces.map((piece, index) => {
@@ -1890,6 +2316,7 @@
       lg.globalCompositeOperation = "destination-in";
       lg.fillStyle = "#fff";
       fillAdds(lg, piece, identity);
+      strokeCut(lg, piece);
       punchSubs(lg, piece, identity);
     }
     g.drawImage(layer, 0, 0);
@@ -1942,7 +2369,7 @@
           if (a[p]) mine += 1;
           if (a[p] && b[p]) shared += 1;
         }
-        if (mine && shared / mine > 0.02) names.push(pieces[other].label || fileName(pieces[other], other));
+        if (!tiled && mine && shared / mine > 0.02) names.push(pieces[other].label || fileName(pieces[other], other));
       }
       piece.overlaps = names;
       const row = listEl.querySelector(`.piece[data-id="${piece.id}"]`);
@@ -2107,6 +2534,7 @@
     pen = null;
     undo = [];
     redo = [];
+    tiled = false;
     plateImage = null;
     platePreview = null;
     canRevertToPng = false;
@@ -2168,6 +2596,7 @@
         const number = entry.index || index + 1;
         claimed.add(number);
         const piece = emptyPiece(entry.label || "");
+        if (entry.kind === "cut") piece.kind = "cut";
         if (entry.subpaths?.length) {
           piece.subpaths = entry.subpaths.map(parseSub);
           canRevertToPng = groups.pieces.some((item) => item.index === number);
@@ -2187,6 +2616,23 @@
     }
     for (const item of groups.pieces) pngsByIndex.set(item.index, item);
     selectedId = pieces[0]?.id ?? null;
+    if (isCutPartition()) {
+      tiled = true;
+      workflow = "cut";
+      updateWorkflowButtons();
+      tool = "cut";
+      for (const button of document.querySelectorAll(".tool")) {
+        button.setAttribute("aria-pressed", button.dataset.tool === "cut" ? "true" : "false");
+      }
+    } else if (workflow === "cut" && pieces.length) {
+      workflow = "draw";
+      tiled = false;
+      updateWorkflowButtons();
+      if (tool === "cut") tool = "lasso";
+      for (const button of document.querySelectorAll(".tool")) {
+        button.setAttribute("aria-pressed", button.dataset.tool === tool ? "true" : "false");
+      }
+    }
     renderList();
     renderFacts();
     renderTrails();
@@ -2196,6 +2642,10 @@
     updateSave();
     const count = pieces.length;
     if (count) setStatus(`Loaded ${count} piece${count === 1 ? "" : "s"}. Solo and Stack are there to judge them.`);
+    else if (workflow === "cut" && fullW) {
+      seedCover();
+      setStatus("The photo is one piece. Slash across it to cut a part off.");
+    }
   }
   function pendingRaster(piece, item) {
     piece._pendingFile = item.file;
@@ -2465,6 +2915,7 @@
     g.fillStyle = "#fff";
     const drew = fillAdds(g, piece, identity);
     if (!drew) throw new Error(`${piece.label || "A piece"} has no outline to export.`);
+    strokeCut(g, piece);
     punchSubs(g, piece, identity);
     return canvasBlob(surface);
   }
@@ -2474,6 +2925,7 @@
       image: { file: photoName, width: fullW, height: fullH },
       pieces: exportPieces.map((piece, index) => {
         const entry = { label: slugify(piece.label) };
+        if (piece.kind === "cut") entry.kind = "cut";
         if (piece.subpaths.length) {
           entry.subpaths = piece.subpaths.map((sub) => ({
             op: sub.op,
@@ -2712,6 +3164,7 @@
         if (sub?.raw) sub.raw = null;
       }
       touch(piece);
+      if (piece.kind === "cut") tiled = false;
       geomRev += 1;
       composite = null;
       dirty = true;
@@ -2720,8 +3173,13 @@
     }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (key === "v" || key === "a") setTool("select");
-    else if (key === "l") setTool("lasso");
-    else if (key === "p") setTool("pen");
+    else if (key === "l") setWorkflow("draw");
+    else if (key === "c") setWorkflow("cut");
+    else if (key === "p") {
+      workflow = "draw";
+      updateWorkflowButtons();
+      setTool("pen");
+    }
     else if (key === "h") setTool("hand");
     else if (key === "z") setTool("zoom");
     else if (key === "n") newPiece();
@@ -2786,7 +3244,18 @@
       }
     });
     document.querySelectorAll(".tool").forEach((button) => {
-      button.addEventListener("click", () => setTool(button.dataset.tool));
+      button.addEventListener("click", () => {
+        const next = button.dataset.tool;
+        if (next === "cut") setWorkflow("cut");
+        else if (next === "lasso" || next === "pen") {
+          workflow = "draw";
+          updateWorkflowButtons();
+          setTool(next);
+        } else setTool(next);
+      });
+    });
+    document.querySelectorAll("[data-workflow]").forEach((button) => {
+      button.addEventListener("click", () => setWorkflow(button.dataset.workflow));
     });
     document.querySelector(".tool[data-tool=hand]").addEventListener("dblclick", fitView);
     document.querySelector(".tool[data-tool=zoom]").addEventListener("dblclick", actualPixels);
@@ -2826,6 +3295,10 @@
       resetDocument();
       if (!$("photoId").value) $("photoId").value = slugify(file.name.replace(/\.[^.]+$/, ""));
       await loadPhotoFile(file);
+      if (workflow === "cut") {
+        seedCover();
+        setStatus("The photo is one piece. Slash across it to cut a part off.");
+      }
       fillMetaForm();
       renderTrails();
       updateCommand();
@@ -2833,7 +3306,11 @@
       updateSave();
     });
     $("saveBtn").addEventListener("click", save);
-    $("newPieceBtn").addEventListener("click", () => { const piece = newPiece(); listEl.querySelector(`.piece[data-id="${piece.id}"] .label`)?.focus(); });
+    $("newPieceBtn").addEventListener("click", () => {
+      const piece = newPiece();
+      if (!piece) return;
+      listEl.querySelector(`.piece[data-id="${piece.id}"] .label`)?.focus();
+    });
     $("copyCmd").addEventListener("click", async () => {
       updateCommand();
       try {
@@ -3039,6 +3516,25 @@
     try {
       const known = crc32(new TextEncoder().encode("123456789"));
       check(known === 0xcbf43926, `crc32 ${known.toString(16)}`);
+      const cover = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+      const cornerCut = splitRing(cover, [{ x: -10, y: 20 }, { x: 30, y: -10 }]);
+      check(!!cornerCut, "corner split");
+      if (cornerCut) {
+        const off = Math.abs(polygonArea(cornerCut.smaller));
+        const rest = Math.abs(polygonArea(cornerCut.larger));
+        check(Math.abs(off + rest - 10000) < 1, `corner areas ${off}+${rest}`);
+        check(insideRing(cornerCut.smaller, 1, 1), "corner in offcut");
+        check(insideRing(cornerCut.larger, 50, 50), "center in remainder");
+      }
+      check(!splitRing(cover, [{ x: -10, y: 50 }, { x: 40, y: 50 }]), "slash that stops inside");
+      const inner = [{ x: 20, y: 20 }, { x: 80, y: 20 }, { x: 80, y: 80 }, { x: 20, y: 80 }];
+      const crossed = splitRing(inner, [{ x: 0, y: 50 }, { x: 100, y: 50 }]);
+      check(!!crossed, "overhanging slash");
+      if (crossed) {
+        const off = Math.abs(polygonArea(crossed.smaller));
+        const rest = Math.abs(polygonArea(crossed.larger));
+        check(Math.abs(off + rest - 3600) < 1, `inner areas ${off}+${rest}`);
+      }
       const surface = document.createElement("canvas");
       surface.width = 640;
       surface.height = 400;
@@ -3121,6 +3617,42 @@
       check(zipBytes[30] === 112, "zip name starts with p");
       const paths = pathsDocument(pieces);
       check(paths.pieces[0].label === "rock" && paths.pieces[0].subpaths.length === 2, "paths");
+      pieces = [];
+      undo = [];
+      redo = [];
+      tiled = false;
+      workflow = "cut";
+      selectedId = null;
+      commitCut({ points: [{ x: -10, y: 30 }, { x: 50, y: -12 }] });
+      check(pieces.length === 2, `first slash ${pieces.length}`);
+      if (pieces.length === 2) {
+        const sum = pieces.reduce((total, piece) => total + Math.abs(polygonArea(ringOf(piece))), 0);
+        check(Math.abs(sum - fullW * fullH) < 2, `cover area ${sum}`);
+      }
+      commitCut({ points: [{ x: -20, y: 220 }, { x: fullW + 30, y: 240 }] });
+      check(pieces.length === 3, `second slash ${pieces.length}`);
+      const held = pieces.length;
+      commitCut({ points: [{ x: -10, y: 300 }, { x: 90, y: 300 }] });
+      check(pieces.length === held, "incomplete slash adds nothing");
+      const left = emptyPiece("left");
+      left.kind = "cut";
+      left.subpaths = [{
+        op: "add", bezier: false, smooth: 0, raw: null,
+        points: toCorners([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 100 }, { x: 0, y: 100 }]),
+      }];
+      const right = emptyPiece("right");
+      right.kind = "cut";
+      right.subpaths = [{
+        op: "add", bezier: false, smooth: 0, raw: null,
+        points: toCorners([{ x: 50, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 50, y: 100 }]),
+      }];
+      pieces = [left, right];
+      tiled = true;
+      selectedId = left.id;
+      commitCut({ points: [{ x: -10, y: 40 }, { x: 110, y: 40 }] });
+      check(pieces.length === 3, `one piece per slash ${pieces.length}`);
+      check(pieces.some((piece) => piece.label === "right"), "uncrossed piece stays");
+      check(pathsDocument(pieces).pieces.every((entry) => entry.kind === "cut"), "paths remember cut");
       renderList();
       setMode("stack");
       scheduleDraw();

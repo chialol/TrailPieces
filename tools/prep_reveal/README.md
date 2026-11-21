@@ -35,8 +35,9 @@ plate until every piece is placed, then the color photo fades in.
 
 [tools/trace_pieces](../trace_pieces/index.html) replaces the Photoshop mask step.
 Open a scene folder, draw around each piece, and save full-frame PNGs into
-`pieces/`. Scroll zooms, Space pans. `pieces/paths.json` is only for reopening
-those outlines; this script ignores it.
+`pieces/`. Cut mode slashes the photo apart instead, so the pieces stay a
+complete cover. Scroll zooms, Space pans. `pieces/paths.json` is only for
+reopening those outlines; this script ignores it.
 
 ```powershell
 .\tools\trace_pieces\serve.ps1
