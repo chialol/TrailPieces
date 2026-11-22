@@ -46,42 +46,45 @@ class TutorialCoachTest {
     }
 
     @Test
-    fun thePieceCanBePlacedOnlyOnTheDragStep() {
+    fun placingTheGuidedPieceLeavesTheRestOfThePuzzle() {
         val coach = TutorialCoach()
-        coach.placePiece()
+        coach.guidedPlaced(puzzleComplete = false)
         assertEquals(TutorialStep.Pan, coach.step)
         coach.skipPanWhenThePhotoFits()
         coach.openPiece()
         coach.closePiece()
-        coach.placePiece()
+        coach.guidedPlaced(puzzleComplete = false)
+        assertEquals(TutorialStep.Solve, coach.step)
+        coach.puzzleComplete()
         assertEquals(TutorialStep.Done, coach.step)
     }
 
     @Test
-    fun aDropLandsWhenTheCenterIsNearTheDestination() {
-        val dest = TutorialRegion(0.2f, 0.1f, 0.6f, 0.4f)
-        assertTrue(tutorialDropHits(dest.centerX, dest.centerY, dest))
-        assertTrue(tutorialDropHits(dest.centerX + dest.width * 0.4f, dest.centerY, dest))
-        assertFalse(tutorialDropHits(dest.centerX + dest.width, dest.centerY + dest.height, dest))
+    fun theLastPieceEndsTheLesson() {
+        val coach = TutorialCoach()
+        coach.skipPanWhenThePhotoFits()
+        coach.openPiece()
+        coach.closePiece()
+        coach.guidedPlaced(puzzleComplete = true)
+        assertEquals(TutorialStep.Done, coach.step)
     }
 
     @Test
-    fun theLessonUsesTheHighestCutAndItsHome() {
-        val tall = piece(id = 14, top = 0, bottom = 1014, left = 0, right = 687)
-        val cap = piece(id = 9, top = 0, bottom = 441, left = 1009, right = 1767)
-        val lower = piece(id = 4, top = 992, bottom = 1639, left = 1684, right = 2499)
-        val chosen = topmostTutorialPiece(listOf(tall, lower, cap))
-        assertEquals(9, chosen.id)
+    fun theLessonUsesTheFirstPieceAndItsHome() {
+        val later = piece(id = 9, order = 9, top = 0, bottom = 441, left = 1009, right = 1767)
+        val first = piece(id = 1, order = 1, top = 0, bottom = 703, left = 2317, right = 2880)
+        val chosen = firstTutorialPiece(listOf(later, first))
+        assertEquals(1, chosen.id)
         val home = tutorialHome(chosen, sceneWidth = 2880, sceneHeight = 1920)
-        assertEquals(1009f / 2880f, home.left, 0.001f)
+        assertEquals(2317f / 2880f, home.left, 0.001f)
         assertEquals(0f, home.top, 0.001f)
-        assertEquals(1767f / 2880f, home.right, 0.001f)
-        assertEquals(441f / 1920f, home.bottom, 0.001f)
+        assertEquals(1f, home.right, 0.001f)
+        assertEquals(703f / 1920f, home.bottom, 0.001f)
     }
 
-    private fun piece(id: Int, top: Int, bottom: Int, left: Int, right: Int) = RevealPiece(
+    private fun piece(id: Int, order: Int = id, top: Int, bottom: Int, left: Int, right: Int) = RevealPiece(
         id = id,
-        order = id,
+        order = order,
         label = null,
         cropFile = "crop/piece_$id.webp",
         liftFile = "lift/piece_$id.webp",

@@ -4,7 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.trailpieces.app.layers.v3.RevealPiece
-import kotlin.math.hypot
 
 /** How far the photo must travel each way, in pixels, before the pan step is done. */
 const val TutorialPanTravelPx = 96f
@@ -13,12 +12,13 @@ enum class TutorialStep {
     Pan,
     Look,
     Drag,
+    Solve,
     Done,
 }
 
 /**
- * First-run lesson: pan both ways, open the piece and put it back, then drag it
- * onto its place on the photo.
+ * First-run lesson: pan both ways, open the first piece and put it back, drag it
+ * home, then place every remaining piece.
  */
 class TutorialCoach {
     var step by mutableStateOf(TutorialStep.Pan)
@@ -53,8 +53,14 @@ class TutorialCoach {
         }
     }
 
-    fun placePiece() {
-        if (step == TutorialStep.Drag) step = TutorialStep.Done
+    /** The guided piece locked. The rest of the puzzle stays to be placed. */
+    fun guidedPlaced(puzzleComplete: Boolean) {
+        if (step != TutorialStep.Drag) return
+        step = if (puzzleComplete) TutorialStep.Done else TutorialStep.Solve
+    }
+
+    fun puzzleComplete() {
+        if (step == TutorialStep.Solve) step = TutorialStep.Done
     }
 }
 
@@ -71,9 +77,9 @@ data class TutorialRegion(
     val centerY: Float get() = (top + bottom) / 2f
 }
 
-/** The cut that sits highest on the photo. That is the piece the lesson uses. */
-fun topmostTutorialPiece(pieces: List<RevealPiece>): RevealPiece =
-    pieces.minWith(compareBy({ it.bbox.top }, { it.bbox.top + it.bbox.bottom }, { it.id }))
+/** Lowest strip order. That piece is the leftmost one, and the one the lesson points at. */
+fun firstTutorialPiece(pieces: List<RevealPiece>): RevealPiece =
+    pieces.minWith(compareBy(RevealPiece::order, RevealPiece::id))
 
 /** That piece's home, in photo fractions. */
 fun tutorialHome(piece: RevealPiece, sceneWidth: Int, sceneHeight: Int): TutorialRegion {
@@ -85,16 +91,4 @@ fun tutorialHome(piece: RevealPiece, sceneWidth: Int, sceneHeight: Int): Tutoria
         right = piece.bbox.right / width,
         bottom = piece.bbox.bottom / height,
     )
-}
-
-/** True when the dragged piece's center is close to the destination, in piece-sized units. */
-fun tutorialDropHits(
-    centerX: Float,
-    centerY: Float,
-    destination: TutorialRegion,
-    slop: Float = 0.6f,
-): Boolean {
-    val dx = (centerX - destination.centerX) / destination.width.coerceAtLeast(0.01f)
-    val dy = (centerY - destination.centerY) / destination.height.coerceAtLeast(0.01f)
-    return hypot(dx, dy) <= slop
 }

@@ -1010,7 +1010,13 @@ private fun InspectOverlay(
                 ),
         )
         BoxWithConstraints(
-            Modifier.fillMaxSize(),
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             val aspect = bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)

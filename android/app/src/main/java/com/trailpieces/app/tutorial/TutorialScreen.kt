@@ -1,8 +1,6 @@
 package com.trailpieces.app.tutorial
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -15,9 +13,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,7 +60,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -68,17 +68,27 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import com.trailpieces.app.layers.v3.RevealLoader
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
+import com.trailpieces.app.layers.v3.PlaceOutcome
+import com.trailpieces.app.layers.v3.RevealBitmaps
+import com.trailpieces.app.layers.v3.RevealLoader
+import com.trailpieces.app.layers.v3.RevealPiece
+import com.trailpieces.app.layers.v3.RevealScene
+import com.trailpieces.app.layers.v3.RevealSession
+import com.trailpieces.app.layers.v3.StripGesture
+import com.trailpieces.app.layers.v3.anchoredTopLeft
+import com.trailpieces.app.layers.v3.classifyStripMove
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 private val Backdrop = Color(0xFF0D0E0C)
 private val Hint = Color(0xFFE9E5DA)
+private val SnapThreshold = 20.dp
+private val IconHeight = 68.dp
+private val IconMaxWidth = 140.dp
 
 private class TutorialFrame {
     var imageTopLeft by mutableStateOf(Offset.Zero)
@@ -88,9 +98,10 @@ private class TutorialFrame {
     var rootOrigin by mutableStateOf(Offset.Zero)
 }
 
-private data class TutorialBitmaps(
-    val photo: ImageBitmap,
-    val piece: ImageBitmap,
+private data class TutorialAssets(
+    val scene: RevealScene,
+    val bitmaps: RevealBitmaps,
+    val guided: RevealPiece,
     val home: TutorialRegion,
 )
 
@@ -104,9 +115,10 @@ fun TutorialScreen(
     BackHandler(enabled = canExit, onBack = onExit)
     val context = LocalContext.current
     val load by produceState<TutorialLoad>(TutorialLoad.Loading, context) {
-        value = withContext(Dispatchers.IO) {
-            runCatching { decodeTutorial(context) }.getOrNull()
-        }?.let(TutorialLoad::Ready) ?: TutorialLoad.Missing
+        value = runCatching { loadTutorial(context) }.fold(
+            onSuccess = { TutorialLoad.Ready(it) },
+            onFailure = { TutorialLoad.Missing },
+        )
     }
     when (val ready = load) {
         TutorialLoad.Loading -> Box(modifier.fillMaxSize().background(Backdrop), contentAlignment = Alignment.Center) {
@@ -120,9 +132,7 @@ fun TutorialScreen(
             )
         }
         is TutorialLoad.Ready -> TutorialPlay(
-            photo = ready.bitmaps.photo,
-            piece = ready.bitmaps.piece,
-            home = ready.bitmaps.home,
+            assets = ready.assets,
             canExit = canExit,
             onExit = onExit,
             onFinished = onFinished,
@@ -133,14 +143,17 @@ fun TutorialScreen(
 
 @Composable
 private fun TutorialPlay(
-    photo: ImageBitmap,
-    piece: ImageBitmap,
-    home: TutorialRegion,
+    assets: TutorialAssets,
     canExit: Boolean,
     onExit: () -> Unit,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scene = assets.scene
+    val bitmaps = assets.bitmaps
+    val guided = assets.guided
+    val home = assets.home
+    val session = remember(scene) { RevealSession(scene) }
     val coach = remember { TutorialCoach() }
     val frame = remember { TutorialFrame() }
     val scroll = rememberScrollState()
@@ -149,9 +162,10 @@ private fun TutorialPlay(
     var panOrigin by remember { mutableIntStateOf(0) }
     var imageWidthPx by remember { mutableFloatStateOf(0f) }
     var viewW by remember { mutableFloatStateOf(0f) }
-    var dragging by remember { mutableStateOf(false) }
+    var dragId by remember { mutableStateOf<Int?>(null) }
     var finger by remember { mutableStateOf(Offset.Zero) }
-    val chipOrigin = remember { arrayOf(Offset.Zero) }
+    var grab by remember { mutableStateOf(Offset(0.5f, 0.5f)) }
+    val snapPx = with(density) { SnapThreshold.toPx() }
 
     LaunchedEffect(scroll.maxValue) {
         if (!panArmed && scroll.maxValue > 0) {
@@ -181,16 +195,49 @@ private fun TutorialPlay(
         scroll.animateScrollTo(target)
     }
 
-    val scrollEnabled = coach.step == TutorialStep.Pan || (coach.step == TutorialStep.Drag && !dragging)
-    val showChip = coach.step == TutorialStep.Look || coach.step == TutorialStep.Drag
-    val prompt = when {
-        coach.step == TutorialStep.Look && !coach.looking -> "Tap the piece"
-        coach.step == TutorialStep.Drag -> "Drag the piece"
+    fun canTap(piece: RevealPiece): Boolean = when (coach.step) {
+        TutorialStep.Look -> piece.id == guided.id
+        TutorialStep.Solve -> true
+        else -> false
+    }
+
+    fun canDrag(piece: RevealPiece): Boolean = when (coach.step) {
+        TutorialStep.Drag -> piece.id == guided.id
+        TutorialStep.Solve -> true
+        else -> false
+    }
+
+    fun releaseDrag() {
+        val id = session.draggingId
+        val piece = scene.pieces.firstOrNull { it.id == id }
+        val size = frame.imageSize
+        if (piece == null || size.width <= 1f) {
+            session.cancelDrag()
+            dragId = null
+            return
+        }
+        val scale = size.width / scene.width.toFloat()
+        val pieceW = (piece.bbox.right - piece.bbox.left) * scale
+        val pieceH = (piece.bbox.bottom - piece.bbox.top) * scale
+        val topLeft = anchoredTopLeft(finger, grab, pieceW, pieceH)
+        val outcome = session.tryPlace(topLeft, frame.imageTopLeft, size.width, snapPx)
+        dragId = null
+        if (outcome != PlaceOutcome.Locked) return
+        if (id == guided.id && coach.step == TutorialStep.Drag) {
+            coach.guidedPlaced(session.isComplete)
+        } else if (session.isComplete) {
+            coach.puzzleComplete()
+        }
+    }
+
+    val dragging = dragId != null
+    val scrollEnabled = session.inspected == null && !dragging
+    val caption = when (coach.step) {
+        TutorialStep.Look -> "Tap the piece"
+        TutorialStep.Drag -> "Drag the piece"
+        TutorialStep.Solve -> "Place the rest"
         else -> null
     }
-    val pieceAspect = piece.width.toFloat() / piece.height.toFloat().coerceAtLeast(1f)
-    val chipH = 72.dp
-    val chipW = minOf(chipH * pieceAspect, 220.dp)
 
     Box(
         modifier
@@ -202,8 +249,7 @@ private fun TutorialPlay(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (showChip || canExit || prompt != null) 96.dp else 0.dp)
-                    .padding(end = 16.dp),
+                    .height(96.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (canExit) {
@@ -211,68 +257,48 @@ private fun TutorialPlay(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Hint)
                     }
                 }
-                if (showChip) {
-                    Image(
-                        bitmap = piece,
-                        contentDescription = "Piece",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .padding(start = if (canExit) 0.dp else 16.dp)
-                            .size(chipW, chipW / pieceAspect)
-                            .graphicsLayer { alpha = if (dragging || coach.looking) 0f else 1f }
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(
-                                width = 2.dp,
-                                color = Hint.copy(alpha = if (coach.step == TutorialStep.Look) 0.9f else 0.4f),
-                                shape = RoundedCornerShape(10.dp),
-                            )
-                            .onGloballyPositioned {
-                                chipOrigin[0] = it.positionInRoot()
-                                frame.chipCenter = it.boundsInRoot().center
-                            }
-                            .then(
-                                if (coach.step == TutorialStep.Look) {
-                                    Modifier.clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = { coach.openPiece() },
-                                    )
-                                } else {
-                                    Modifier.pointerInput(coach.step) {
-                                        detectDragGestures(
-                                            onDragStart = { local ->
-                                                dragging = true
-                                                finger = chipOrigin[0] + local
-                                            },
-                                            onDrag = { change, _ ->
-                                                finger = chipOrigin[0] + change.position
-                                                change.consume()
-                                            },
-                                            onDragEnd = {
-                                                val size = frame.imageSize
-                                                if (size.width > 1f && size.height > 1f) {
-                                                    val fx = (finger.x - frame.imageTopLeft.x) / size.width
-                                                    val fy = (finger.y - frame.imageTopLeft.y) / size.height
-                                                    if (tutorialDropHits(fx, fy, home)) {
-                                                        coach.placePiece()
-                                                    }
-                                                }
-                                                dragging = false
-                                            },
-                                            onDragCancel = { dragging = false },
-                                        )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    session.pieces.filter { it.id !in session.placedIds }.forEach { piece ->
+                        key(piece.id) {
+                            PieceChip(
+                                piece = piece,
+                                icon = bitmaps.icons.getValue(piece.id),
+                                highlighted = piece.id == guided.id &&
+                                    (coach.step == TutorialStep.Look || coach.step == TutorialStep.Drag),
+                                hidden = dragId == piece.id,
+                                canTap = canTap(piece),
+                                canDrag = canDrag(piece),
+                                onPosition = { center ->
+                                    if (piece.id == guided.id) frame.chipCenter = center
+                                },
+                                onTap = {
+                                    session.select(piece.id)
+                                    if (piece.id == guided.id) coach.openPiece()
+                                },
+                                onDragStart = { at, fraction ->
+                                    session.startDrag(piece.id)
+                                    if (session.draggingId == piece.id) {
+                                        dragId = piece.id
+                                        finger = at
+                                        grab = fraction
                                     }
                                 },
-                            ),
-                    )
-                }
-                if (prompt != null) {
-                    Text(
-                        text = prompt,
-                        color = Hint,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(start = 16.dp),
-                    )
+                                onDrag = { finger = it },
+                                onDragEnd = { releaseDrag() },
+                                onDragCancel = {
+                                    session.cancelDrag()
+                                    dragId = null
+                                },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -289,7 +315,7 @@ private fun TutorialPlay(
                 ) {
                     val viewportW = constraints.maxWidth.toFloat()
                     val viewportH = constraints.maxHeight.toFloat()
-                    val aspect = photo.width.toFloat() / photo.height.toFloat().coerceAtLeast(0.01f)
+                    val aspect = scene.aspectRatio.coerceAtLeast(0.01f)
                     val widthPx = viewportH * aspect
                     val heightPx = viewportH
                     val imageW = with(density) { widthPx.toDp() }
@@ -317,28 +343,44 @@ private fun TutorialPlay(
                                 },
                         ) {
                             Image(
-                                bitmap = photo,
-                                contentDescription = "After the Fire",
+                                bitmap = bitmaps.plate,
+                                contentDescription = scene.title,
                                 contentScale = ContentScale.FillBounds,
                                 modifier = Modifier.fillMaxSize(),
                             )
+                            val placedIds = session.placedIds.toList()
+                            Canvas(Modifier.fillMaxSize()) {
+                                val scale = size.width / scene.width.toFloat()
+                                placedIds.forEach { id ->
+                                    val placed = scene.pieces.first { it.id == id }
+                                    val crop = bitmaps.crops[id] ?: return@forEach
+                                    drawImage(
+                                        image = crop,
+                                        dstOffset = IntOffset(
+                                            (placed.bbox.left * scale).roundToInt(),
+                                            (placed.bbox.top * scale).roundToInt(),
+                                        ),
+                                        dstSize = IntSize(
+                                            ((placed.bbox.right - placed.bbox.left) * scale).roundToInt().coerceAtLeast(1),
+                                            ((placed.bbox.bottom - placed.bbox.top) * scale).roundToInt().coerceAtLeast(1),
+                                        ),
+                                    )
+                                }
+                            }
                             if (coach.step == TutorialStep.Drag) {
-                                val dest = home
                                 Box(
                                     Modifier
-                                        .offset(x = imageW * dest.left, y = imageH * dest.top)
-                                        .size(width = imageW * dest.width, height = imageH * dest.height)
-                                        .onGloballyPositioned { frame.ghostCenter = it.boundsInRoot().center }
-                                        .clip(RoundedCornerShape(18.dp))
-                                        .border(2.dp, Hint, RoundedCornerShape(18.dp)),
+                                        .offset(x = imageW * home.left, y = imageH * home.top)
+                                        .size(width = imageW * home.width, height = imageH * home.height)
+                                        .onGloballyPositioned { frame.ghostCenter = it.boundsInRoot().center },
                                 ) {
                                     Image(
-                                        bitmap = piece,
+                                        bitmap = bitmaps.crops.getValue(guided.id),
                                         contentDescription = null,
                                         contentScale = ContentScale.FillBounds,
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .graphicsLayer { alpha = 0.42f },
+                                            .graphicsLayer { alpha = 0.45f },
                                     )
                                 }
                             }
@@ -347,48 +389,147 @@ private fun TutorialPlay(
                 }
                 if (coach.step == TutorialStep.Pan) {
                     PanHint(Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp))
+                } else if (caption != null) {
+                    Text(
+                        text = caption,
+                        color = Hint,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 28.dp)
+                            .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+                            .padding(horizontal = 18.dp, vertical = 8.dp),
+                    )
                 }
             }
         }
 
-        if (coach.step == TutorialStep.Drag && !dragging && frame.chipCenter != Offset.Zero && frame.ghostCenter != Offset.Zero) {
+        if (coach.step == TutorialStep.Drag && !dragging &&
+            frame.chipCenter != Offset.Zero && frame.ghostCenter != Offset.Zero
+        ) {
             Canvas(Modifier.fillMaxSize()) {
-                val from = frame.chipCenter - frame.rootOrigin
-                val to = frame.ghostCenter - frame.rootOrigin
-                drawTutorialArrow(from, to)
+                drawTutorialArrow(frame.chipCenter - frame.rootOrigin, frame.ghostCenter - frame.rootOrigin)
             }
         }
 
-        if (dragging && frame.imageSize.width > 1f) {
-            val destW = frame.imageSize.width * home.width
-            val destH = frame.imageSize.height * home.height
+        val flying = scene.pieces.firstOrNull { it.id == dragId }
+        if (flying != null && frame.imageSize.width > 1f) {
+            val scale = frame.imageSize.width / scene.width.toFloat()
+            val pieceW = (flying.bbox.right - flying.bbox.left) * scale
+            val pieceH = (flying.bbox.bottom - flying.bbox.top) * scale
+            val topLeft = anchoredTopLeft(finger, grab, pieceW, pieceH) - frame.rootOrigin
             Image(
-                bitmap = piece,
+                bitmap = bitmaps.crops.getValue(flying.id),
                 contentDescription = null,
                 contentScale = ContentScale.FillBounds,
                 modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            (finger.x - frame.rootOrigin.x - destW / 2f).roundToInt(),
-                            (finger.y - frame.rootOrigin.y - destH / 2f).roundToInt(),
-                        )
-                    }
-                    .size(
-                        with(density) { destW.toDp() },
-                        with(density) { destH.toDp() },
-                    )
-                    .clip(RoundedCornerShape(18.dp)),
+                    .offset { IntOffset(topLeft.x.roundToInt(), topLeft.y.roundToInt()) }
+                    .size(with(density) { pieceW.toDp() }, with(density) { pieceH.toDp() }),
             )
         }
 
-        if (coach.looking) {
-            EnlargedPiece(piece = piece, onClose = { coach.closePiece() })
+        val inspected = session.inspected
+        if (inspected != null) {
+            EnlargedPiece(
+                bitmap = bitmaps.lifts[inspected.id] ?: bitmaps.icons.getValue(inspected.id),
+                onClose = {
+                    session.deselect()
+                    coach.closePiece()
+                },
+            )
         }
 
         if (coach.step == TutorialStep.Done) {
             FinishTutorial(onFinished = onFinished)
         }
     }
+}
+
+@Composable
+private fun PieceChip(
+    piece: RevealPiece,
+    icon: ImageBitmap,
+    highlighted: Boolean,
+    hidden: Boolean,
+    canTap: Boolean,
+    canDrag: Boolean,
+    onPosition: (Offset) -> Unit,
+    onTap: () -> Unit,
+    onDragStart: (fingerInRoot: Offset, grab: Offset) -> Unit,
+    onDrag: (fingerInRoot: Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
+) {
+    val origin = remember { arrayOf(Offset.Zero) }
+    val aspect = icon.width.toFloat() / icon.height.toFloat().coerceAtLeast(1f)
+    val width = minOf(IconHeight * aspect, IconMaxWidth)
+    val height = width / aspect
+    Image(
+        bitmap = icon,
+        contentDescription = piece.label ?: "Piece ${piece.id}",
+        contentScale = ContentScale.FillBounds,
+        modifier = Modifier
+            .size(width, height)
+            .graphicsLayer { alpha = if (hidden) 0f else 1f }
+            .then(
+                if (highlighted) {
+                    Modifier.border(3.dp, Hint, RoundedCornerShape(10.dp))
+                } else {
+                    Modifier
+                },
+            )
+            .onGloballyPositioned {
+                origin[0] = it.positionInRoot()
+                onPosition(it.boundsInRoot().center)
+            }
+            .pointerInput(piece.id, canTap, canDrag) {
+                if (!canTap && !canDrag) return@pointerInput
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val pointerId = down.id
+                    var claimed = false
+                    var ended = false
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                            if (!change.pressed) {
+                                ended = true
+                                if (claimed) onDragEnd() else if (canTap) onTap()
+                                break
+                            }
+                            if (!claimed) {
+                                val delta = change.position - down.position
+                                when (classifyStripMove(delta.x, delta.y, slop)) {
+                                    StripGesture.Pending -> Unit
+                                    StripGesture.Scroll -> {
+                                        ended = true
+                                        break
+                                    }
+                                    StripGesture.Drag -> if (canDrag) {
+                                        claimed = true
+                                        val sizePx = Size(size.width.toFloat(), size.height.toFloat())
+                                        val fraction = Offset(
+                                            (down.position.x / sizePx.width).coerceIn(0f, 1f),
+                                            (down.position.y / sizePx.height).coerceIn(0f, 1f),
+                                        )
+                                        onDragStart(origin[0] + change.position, fraction)
+                                        change.consume()
+                                        onDrag(origin[0] + change.position)
+                                    }
+                                }
+                            } else {
+                                change.consume()
+                                onDrag(origin[0] + change.position)
+                            }
+                        }
+                    } finally {
+                        if (claimed && !ended) onDragCancel()
+                    }
+                }
+            },
+    )
 }
 
 @Composable
@@ -427,7 +568,7 @@ private fun PanHint(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EnlargedPiece(piece: ImageBitmap, onClose: () -> Unit) {
+private fun EnlargedPiece(bitmap: ImageBitmap, onClose: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier
@@ -436,18 +577,27 @@ private fun EnlargedPiece(piece: ImageBitmap, onClose: () -> Unit) {
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = {},
+                    onClick = onClose,
                 ),
         )
-        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            val aspect = piece.width.toFloat() / piece.height.toFloat().coerceAtLeast(0.01f)
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClose,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            val aspect = bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(0.01f)
             val maxW = maxWidth * 0.86f
             val maxH = maxHeight * 0.62f
             val width = if (maxW / aspect <= maxH) maxW else maxH * aspect
             val height = width / aspect
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Image(
-                    bitmap = piece,
+                    bitmap = bitmap,
                     contentDescription = "Piece",
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier
@@ -538,28 +688,17 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTutorialArrow(f
 private sealed interface TutorialLoad {
     data object Loading : TutorialLoad
     data object Missing : TutorialLoad
-    data class Ready(val bitmaps: TutorialBitmaps) : TutorialLoad
+    data class Ready(val assets: TutorialAssets) : TutorialLoad
 }
 
-private fun decodeTutorial(context: Context): TutorialBitmaps {
-    val scene = RevealLoader.load(context, "tutorial")
-        ?: error("tutorial scene is missing")
-    val piece = topmostTutorialPiece(scene.pieces)
-    return TutorialBitmaps(
-        photo = decodeReveal(context, scene.aliveFile),
-        piece = decodeReveal(context, piece.cropFile),
-        home = tutorialHome(piece, scene.width, scene.height),
+private suspend fun loadTutorial(context: Context): TutorialAssets {
+    val scene = RevealLoader.load(context, "tutorial") ?: error("tutorial scene is missing")
+    val bitmaps = RevealBitmaps.load(context, scene)
+    val guided = firstTutorialPiece(scene.pieces)
+    return TutorialAssets(
+        scene = scene,
+        bitmaps = bitmaps,
+        guided = guided,
+        home = tutorialHome(guided, scene.width, scene.height),
     )
-}
-
-private fun decodeReveal(context: Context, file: String): ImageBitmap {
-    val path = "reveal/tutorial/$file"
-    val hardware = BitmapFactory.Options().apply {
-        inPreferredConfig = Bitmap.Config.HARDWARE
-        inScaled = false
-    }
-    val bitmap = context.assets.open(path).use { BitmapFactory.decodeStream(it, null, hardware) }
-        ?: context.assets.open(path).use { BitmapFactory.decodeStream(it) }
-        ?: error("Could not decode $path")
-    return bitmap.asImageBitmap()
 }
