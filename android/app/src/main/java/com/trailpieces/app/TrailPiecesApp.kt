@@ -4,62 +4,64 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.trailpieces.app.journey.JourneyScreen
 import com.trailpieces.app.journey.LocalJourney
-import com.trailpieces.app.layers.LayersScreen
-import com.trailpieces.app.layers.v3.RevealScreen
-import com.trailpieces.app.puzzle.PuzzleLoader
+import com.trailpieces.app.tutorial.TutorialScreen
+import com.trailpieces.app.tutorial.TutorialStore
 import com.trailpieces.app.ui.HomeMenuScreen
-import com.trailpieces.app.ui.MissingPuzzleScreen
-import com.trailpieces.app.ui.PuzzleScreen
-import com.trailpieces.puzzle.demo.CascadeDemo
-import com.trailpieces.puzzle.service.PuzzleBoard
 
 private enum class AppDestination {
+    Tutorial,
     Menu,
     Journey,
-    TrailPuzzle,
-    LayersConcept,
-    RevealPhoto,
 }
+
+private val DestinationSaver = Saver<AppDestination, String>(
+    save = { it.name },
+    restore = { saved -> AppDestination.entries.firstOrNull { it.name == saved } ?: AppDestination.Menu },
+)
 
 @Composable
 fun TrailPiecesApp() {
     val context = LocalContext.current
-    var destination by rememberSaveable { mutableStateOf(AppDestination.Menu) }
-
-    val defaultManifest = PuzzleLoader.loadDefault(context)
-    val useCascadeDemo = CascadeDemo.ENABLED && defaultManifest != null
-    val manifest = if (useCascadeDemo) {
-        CascadeDemo.manifest.copy(
-            tiles = CascadeDemo.manifest.tiles.map { tile ->
-                tile.copy(assetPath = defaultManifest!!.tiles[tile.id.coerceAtMost(defaultManifest.tiles.lastIndex)].assetPath)
-            },
+    val tutorialStore = remember { TutorialStore(context) }
+    var destination by rememberSaveable(stateSaver = DestinationSaver) {
+        mutableStateOf(
+            if (tutorialStore.isComplete()) AppDestination.Menu else AppDestination.Tutorial,
         )
-    } else {
-        defaultManifest
     }
-    val initialBoard: PuzzleBoard? = if (useCascadeDemo) {
-        CascadeDemo.board(defaultManifest)
-    } else {
-        null
+    // A restored menu from an older install still owes the first-run lesson.
+    LaunchedEffect(Unit) {
+        if (!tutorialStore.isComplete()) destination = AppDestination.Tutorial
     }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         val contentModifier = Modifier.padding(innerPadding)
         when (destination) {
+            AppDestination.Tutorial -> {
+                TutorialScreen(
+                    canExit = tutorialStore.isComplete(),
+                    onExit = { destination = AppDestination.Menu },
+                    onFinished = {
+                        tutorialStore.markComplete()
+                        destination = AppDestination.Menu
+                    },
+                    modifier = contentModifier,
+                )
+            }
             AppDestination.Menu -> {
                 HomeMenuScreen(
                     onWalkTrail = { destination = AppDestination.Journey },
-                    onTrailPuzzle = { destination = AppDestination.TrailPuzzle },
-                    onLayersConcept = { destination = AppDestination.LayersConcept },
-                    onRevealPhoto = { destination = AppDestination.RevealPhoto },
+                    onReplayTutorial = { destination = AppDestination.Tutorial },
                     modifier = contentModifier,
                 )
             }
@@ -68,33 +70,6 @@ fun TrailPiecesApp() {
                     graph = LocalJourney.graph(context),
                     saveScope = LocalJourney.saveScope,
                     onExit = { destination = AppDestination.Menu },
-                    modifier = contentModifier,
-                )
-            }
-            AppDestination.TrailPuzzle -> {
-                if (manifest == null) {
-                    MissingPuzzleScreen(
-                        onBack = { destination = AppDestination.Menu },
-                        modifier = contentModifier,
-                    )
-                } else {
-                    PuzzleScreen(
-                        manifest = manifest,
-                        initialBoard = initialBoard,
-                        onBack = { destination = AppDestination.Menu },
-                        modifier = contentModifier,
-                    )
-                }
-            }
-            AppDestination.LayersConcept -> {
-                LayersScreen(
-                    onBack = { destination = AppDestination.Menu },
-                    modifier = contentModifier,
-                )
-            }
-            AppDestination.RevealPhoto -> {
-                RevealScreen(
-                    onBack = { destination = AppDestination.Menu },
                     modifier = contentModifier,
                 )
             }

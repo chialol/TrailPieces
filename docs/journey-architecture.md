@@ -6,7 +6,7 @@ This is the app flow around a finished photo. It does not change puzzle-engine r
 
 ## Player journey
 
-1. From home, **Walk a trail** (the existing Trail puzzle, Develop a print, and Reveal a photo entries stay).
+1. A fresh install plays the tutorial first. After that, home is **Walk a trail**, with a small replay of the tutorial. The older Trail puzzle, Develop a print, and Reveal a photo entries are gone from home.
 2. The player picks a lens: **Mood**, **Scenery**, or **Trail**.
 3. Mood or scenery shows the photos tagged with that choice. A trail shows its stops in walk order, each with collected state.
 4. Choosing a photo opens that photo’s reveal scene directly. The reveal scene picker is not shown on this path.

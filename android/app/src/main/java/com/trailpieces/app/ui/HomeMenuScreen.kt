@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,9 +18,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun HomeMenuScreen(
     onWalkTrail: () -> Unit,
-    onTrailPuzzle: () -> Unit,
-    onLayersConcept: () -> Unit,
-    onRevealPhoto: () -> Unit,
+    onReplayTutorial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -36,7 +34,7 @@ fun HomeMenuScreen(
             color = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = "Choose a mode",
+            text = "Photos from the trail.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -50,29 +48,11 @@ fun HomeMenuScreen(
         ) {
             Text("Walk a trail")
         }
-        OutlinedButton(
-            onClick = onTrailPuzzle,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
+        TextButton(
+            onClick = onReplayTutorial,
+            modifier = Modifier.padding(top = 8.dp),
         ) {
-            Text("Trail puzzle")
-        }
-        OutlinedButton(
-            onClick = onLayersConcept,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-        ) {
-            Text("Develop a print")
-        }
-        OutlinedButton(
-            onClick = onRevealPhoto,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-        ) {
-            Text("Reveal a photo")
+            Text("Replay the tutorial")
         }
     }
 }

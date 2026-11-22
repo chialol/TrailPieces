@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -715,22 +716,11 @@ private fun RevealRound(
                     }
                 }
                 val inspected = session.inspected
-                // Stay composed while the finger is down. Removing the overlay at drag
-                // start cancels the gesture that is dragging it.
                 if (!complete && inspected != null) {
                     InspectOverlay(
                         piece = inspected,
-                        visible = drag.pieceId == null && !drag.returning,
                         bitmap = bitmaps.lifts[inspected.id] ?: bitmaps.icons.getValue(inspected.id),
                         onDismiss = { session.deselect() },
-                        onDragStart = { fingerInRoot, grab, iconSize, iconTopLeft ->
-                            beginDrag(inspected, fingerInRoot, grab, iconSize, iconTopLeft)
-                        },
-                        onDrag = { fingerInRoot ->
-                            if (!drag.returning && drag.pieceId != null) drag.finger = fingerInRoot
-                        },
-                        onDragEnd = { if (!drag.returning) release() },
-                        onDragCancel = { cancelDrag() },
                     )
                 }
             }
@@ -1006,15 +996,9 @@ private fun WaitingIcon(
 private fun InspectOverlay(
     piece: RevealPiece,
     bitmap: ImageBitmap,
-    visible: Boolean,
     onDismiss: () -> Unit,
-    onDragStart: (fingerInRoot: Offset, grab: Offset, iconSize: Size, iconTopLeft: Offset) -> Unit,
-    onDrag: (fingerInRoot: Offset) -> Unit,
-    onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit,
 ) {
-    val origin = remember { arrayOf(Offset.Zero) }
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (visible) 1f else 0f }) {
+    Box(Modifier.fillMaxSize()) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -1041,32 +1025,15 @@ private fun InspectOverlay(
                     contentScale = ContentScale.FillBounds,
                     modifier = Modifier
                         .size(width, height)
-                        .onGloballyPositioned { origin[0] = it.positionInRoot() }
-                        .pointerInput(piece.id) {
-                            detectDragGestures(
-                                onDragStart = { local ->
-                                    val sizePx = Size(size.width.toFloat(), size.height.toFloat())
-                                    val grab = Offset(
-                                        (local.x / sizePx.width).coerceIn(0f, 1f),
-                                        (local.y / sizePx.height).coerceIn(0f, 1f),
-                                    )
-                                    onDragStart(origin[0] + local, grab, sizePx, origin[0])
-                                },
-                                onDrag = { change, _ ->
-                                    change.consume()
-                                    onDrag(origin[0] + change.position)
-                                },
-                                onDragEnd = onDragEnd,
-                                onDragCancel = onDragCancel,
-                            )
-                        },
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        ),
                 )
-                Text(
-                    text = "Drag onto the photo",
-                    color = OnBackdrop,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
+                IconButton(onClick = onDismiss, modifier = Modifier.padding(top = 12.dp)) {
+                    Icon(Icons.Filled.Close, contentDescription = "Put it back", tint = OnBackdrop)
+                }
             }
         }
     }

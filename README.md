@@ -36,7 +36,7 @@ See [android/README.md](android/README.md) for detailed setup and troubleshootin
 2. Run [tools/prep_layers/README.md](tools/prep_layers/README.md).
 3. Rebuild/run. Assets land in `android/app/src/main/assets/layers/{stem}/`.
 
-The app home menu includes **Walk a trail**, **Trail puzzle**, **Develop a print**, and **Reveal a photo**.
+A fresh install opens the tutorial. After that, home is **Walk a trail**, with **Replay the tutorial**.
 
 ## Adding a photo for Walk a trail
 

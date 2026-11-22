@@ -18,7 +18,7 @@
       "title": "Columbia Gorge",
       "summary": "Waterfalls along the gorge.",
       "story": "The Columbia River cuts through the Cascades here. Creeks fall off the Oregon cliffs in a long line of waterfalls.",
-      "photoIds": ["multnomah"]
+      "photoIds": ["multnomah", "tutorial"]
     },
     {
       "id": "smithrock",

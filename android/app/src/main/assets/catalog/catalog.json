@@ -140,6 +140,17 @@
       "revealId": "smithrock3",
       "blurb": "A snow-covered peak behind jagged rock.",
       "story": ""
+    },
+    {
+      "id": "tutorial",
+      "title": "After the Fire",
+      "sceneryId": "forest",
+      "moodIds": [
+        "quiet"
+      ],
+      "revealId": "tutorial",
+      "blurb": "A rocky creek under standing dead trees.",
+      "story": "The Eagle Creek Fire burned the forest along the Multnomah Falls trail in 2017. The creek still runs through those trunks."
     }
   ],
   "trails": [
@@ -168,7 +179,8 @@
       "summary": "Waterfalls along the gorge.",
       "story": "The Columbia River cuts through the Cascades here. Creeks fall off the Oregon cliffs in a long line of waterfalls.",
       "photoIds": [
-        "multnomah"
+        "multnomah",
+        "tutorial"
       ]
     },
     {

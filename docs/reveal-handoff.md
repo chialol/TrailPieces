@@ -27,7 +27,7 @@ App code: `android/app/src/main/java/com/trailpieces/app/layers/v3/`
 
 Unit tests: `android/app/src/test/kotlin/com/trailpieces/app/layers/v3/RevealSessionTest.kt`
 
-Routing: the home menu's **Reveal a photo** goes straight to `RevealScreen` (`TrailPiecesApp.kt`) and still shows the scene picker. **Walk a trail** opens one scene with `initialSceneId` and records completion through `onCompleted` (see [`journey-architecture.md`](journey-architecture.md)). `LayersScreen` still has a `REVEAL_V3` chip, which is now redundant.
+Routing: home no longer opens a scene picker. **Walk a trail** opens one scene with `initialSceneId` and records completion through `onCompleted` (see [`journey-architecture.md`](journey-architecture.md)). An enlarged piece is put back with the X before it can be dragged. `LayersScreen` still has a `REVEAL_V3` chip, which is now redundant.
 
 ## Assets
 

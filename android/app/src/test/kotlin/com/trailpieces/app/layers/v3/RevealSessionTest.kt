@@ -92,36 +92,43 @@ class RevealSessionTest {
     }
 
     @Test
-    fun inspectionStaysThroughAMissAndClearsWhenThatPieceLocks() {
+    fun anOpenPieceCannotBeDraggedUntilItIsPutBack() {
+        val session = RevealSession(scene())
+        session.select(2)
+        session.startDrag(2)
+        assertNull(session.draggingId)
+        assertEquals(2, session.inspected?.id)
+
+        session.startDrag(1)
+        assertNull(session.draggingId)
+        assertEquals(2, session.inspected?.id)
+
+        session.deselect()
+        session.startDrag(2)
+        assertEquals(2, session.draggingId)
+        assertNull(session.inspected)
+    }
+
+    @Test
+    fun aMissAfterPuttingThePieceBackLeavesItUnplaced() {
         val session = RevealSession(scene())
         val imageTopLeft = Offset(0f, 100f)
         session.select(2)
+        session.deselect()
         session.startDrag(2)
-        assertEquals(2, session.inspected?.id)
         assertEquals(
             PlaceOutcome.Missed,
             session.tryPlace(Offset(0f, 0f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
         )
-        assertEquals(2, session.inspected?.id)
+        assertEquals(emptyList<Int>(), session.placedIds)
+        assertNull(session.inspected)
+        assertNull(session.draggingId)
 
         session.startDrag(2)
         assertEquals(
             PlaceOutcome.Locked,
             session.tryPlace(Offset(420f, 220f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
         )
-        assertNull(session.inspected)
-        session.select(2)
-        assertNull(session.inspected)
-    }
-
-    @Test
-    fun draggingADifferentPieceClosesInspection() {
-        val session = RevealSession(scene())
-        session.select(1)
-        session.startDrag(2)
-        assertNull(session.inspected)
-        assertEquals(2, session.draggingId)
-        session.select(1)
         assertNull(session.inspected)
     }
 
