@@ -41,7 +41,7 @@ The app home menu includes **Walk a trail**, **Trail puzzle**, **Develop a print
 ## Adding a photo for Walk a trail
 
 1. Put `photo.jpg` in **`shared/source/reveal/<id>/`**.
-2. Seed `meta.json` for that folder. That is the only agent step. If a trail was named, the photo id is added to that trail's `photoIds` in `shared/source/catalog/trails.json` at the same time.
+2. Seed `meta.json` for that folder. That is the only agent step. The photo id is added to a trail for that place in `shared/source/catalog/trails.json` at the same time, creating the trail when none exists.
 3. Cut in the tracer (`.\tools\trace_pieces\serve.ps1`) and save into that same folder. Unzip a downloaded zip there too, next to `photo.jpg`.
 4. Add `photo-bw.jpg` (same pixel size), then from the repo:
 

@@ -5,11 +5,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import kotlin.math.abs
 import kotlin.math.hypot
 
 /**
- * Sequential snap-place. Only [current] can be dragged. A release near that
- * piece's bbox origin locks it and offers the next piece.
+ * Snap-place. Any unplaced piece can be dragged. A release near that
+ * piece's bbox origin locks it. [inspected] is the piece opened for a look,
+ * with no finger on it.
  *
  * Positions are in root pixels. The screen passes where the photo's top-left
  * currently sits (after any pan) and how wide it is drawn.
@@ -27,18 +29,35 @@ class RevealSession(
     var draggingId by mutableStateOf<Int?>(null)
         private set
 
+    var selectedId by mutableStateOf<Int?>(null)
+        private set
+
     val placedCount: Int get() = _placed.size
 
     val isComplete: Boolean get() = pieces.isNotEmpty() && _placed.size == pieces.size
 
-    /** The single piece currently offered, in [pieces] order. */
-    val current: RevealPiece? get() = pieces.firstOrNull { it.id !in _placed }
+    /** The piece open for inspection, when it is still unplaced. */
+    val inspected: RevealPiece? get() = pieces.firstOrNull { it.id == selectedId && it.id !in _placed }
 
     fun piece(id: Int): RevealPiece = pieces.first { it.id == id }
 
+    /** Opens [pieceId] for inspection. Tapping the open piece closes it. */
+    fun select(pieceId: Int) {
+        if (draggingId != null) return
+        if (pieces.none { it.id == pieceId } || pieceId in _placed) return
+        selectedId = if (selectedId == pieceId) null else pieceId
+    }
+
+    fun deselect() {
+        if (draggingId != null) return
+        selectedId = null
+    }
+
+    /** Lifts any unplaced piece. Dragging a different piece closes an open inspection. */
     fun startDrag(pieceId: Int) {
-        val piece = current ?: return
-        if (pieceId != piece.id) return
+        if (draggingId != null) return
+        if (pieces.none { it.id == pieceId } || pieceId in _placed) return
+        if (selectedId != pieceId) selectedId = null
         draggingId = pieceId
     }
 
@@ -65,9 +84,8 @@ class RevealSession(
         snapThresholdPx: Float,
     ): PlaceOutcome {
         val dragId = draggingId ?: return PlaceOutcome.Ignored
-        val piece = current ?: return PlaceOutcome.Ignored
         draggingId = null
-        if (dragId != piece.id) return PlaceOutcome.Ignored
+        val piece = pieces.firstOrNull { it.id == dragId && it.id !in _placed } ?: return PlaceOutcome.Ignored
         val home = homeTopLeftInRoot(piece, imageTopLeftInRoot, imageWidthPx)
         val dist = hypot(
             pieceTopLeftInRoot.x - home.x,
@@ -75,6 +93,7 @@ class RevealSession(
         )
         if (dist > snapThresholdPx) return PlaceOutcome.Missed
         _placed.add(piece.id)
+        if (selectedId == piece.id) selectedId = null
         feedback.onCorrectRelease(piece.id)
         if (isComplete) feedback.onSceneAlive()
         return PlaceOutcome.Locked
@@ -83,6 +102,7 @@ class RevealSession(
     /** Opens the finished photo with every piece already home. */
     fun restoreComplete() {
         draggingId = null
+        selectedId = null
         _placed.clear()
         pieces.forEach { _placed.add(it.id) }
     }
@@ -104,6 +124,14 @@ fun anchoredTopLeft(
         fingerInRoot.x - across * widthPx,
         fingerInRoot.y - down * heightPx,
     )
+}
+
+enum class StripGesture { Pending, Scroll, Drag }
+
+/** A downward move claims the piece. A sideways move leaves the strip free to scroll. */
+fun classifyStripMove(dx: Float, dy: Float, slop: Float): StripGesture {
+    if (hypot(dx, dy) < slop) return StripGesture.Pending
+    return if (abs(dy) >= abs(dx)) StripGesture.Drag else StripGesture.Scroll
 }
 
 /**

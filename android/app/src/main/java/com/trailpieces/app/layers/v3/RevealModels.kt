@@ -26,7 +26,7 @@ data class RevealScene(
 
 data class RevealPiece(
     val id: Int,
-    /** Play order. Lower numbers are offered first. */
+    /** Strip order. Lower numbers sit further left. Any unplaced piece can be played. */
     val order: Int,
     /** Short name such as "meadow", or null when the file was only numbered. */
     val label: String?,

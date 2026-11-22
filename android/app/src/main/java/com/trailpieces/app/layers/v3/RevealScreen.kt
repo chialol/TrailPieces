@@ -13,7 +13,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -70,7 +72,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
@@ -91,14 +92,14 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private val SnapThresholdDp = 20.dp
-private val ActiveIconHeight = 60.dp
-private val WaitingIconHeight = 40.dp
-private val IconMaxWidth = 150.dp
+private val StripIconHeight = 76.dp
+private val IconMaxWidth = 180.dp
 private val Backdrop = Color(0xFF0D0E0C)
 private val OnBackdrop = Color(0xFFE9E5DA)
 
 private const val GrowMs = 170
 private const val CenterMs = 140
+/** Midpoint of the piece. The finger stays here so the piece can reach the bottom edge. */
 private val PieceCenter = Offset(0.5f, 0.5f)
 private const val ReturnMs = 260
 private const val SettleSlide = 0.3f
@@ -243,7 +244,7 @@ private class DragState {
     var finger by mutableStateOf(Offset.Zero)
     /**
      * Where on the lift image the finger is, 0–1 on each axis. Starts at the touch
-     * point on the icon and settles on the center while the piece is still icon-sized.
+     * point and settles on the center while the piece is still icon-sized.
      */
     val grabAnim = Animatable(PieceCenter, Offset.VectorConverter)
     val grab: Offset get() = grabAnim.value
@@ -524,6 +525,29 @@ private fun RevealRound(
         }
     }
 
+    fun beginDrag(
+        piece: RevealPiece,
+        fingerInRoot: Offset,
+        grab: Offset,
+        iconSize: Size,
+        iconTopLeft: Offset,
+    ) {
+        if (drag.returning || drag.pieceId != null) return
+        session.startDrag(piece.id)
+        if (session.draggingId != piece.id) return
+        drag.iconSizePx = iconSize
+        drag.iconTopLeftInRoot = iconTopLeft
+        drag.finger = fingerInRoot
+        scope.launch { runCatching { drag.grow.snapTo(0f) } }
+        scope.launch {
+            runCatching {
+                drag.grabAnim.snapTo(grab)
+                drag.grabAnim.animateTo(PieceCenter, tween(CenterMs, easing = FastOutSlowInEasing))
+            }
+        }
+        drag.pieceId = piece.id
+    }
+
     val complete = session.isComplete
 
     Box(
@@ -536,7 +560,7 @@ private fun RevealRound(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(ActiveIconHeight + 24.dp),
+                    .height(StripIconHeight + 24.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
@@ -554,21 +578,12 @@ private fun RevealRound(
                         drag = drag,
                         geo = geo,
                         modifier = Modifier.weight(1f),
-                        onDragStart = { piece, fingerInRoot, grab, iconSize, iconTopLeft ->
+                        onTap = { piece ->
                             if (drag.returning || drag.pieceId != null) return@WaitingRow
-                            session.startDrag(piece.id)
-                            if (session.draggingId != piece.id) return@WaitingRow
-                            drag.iconSizePx = iconSize
-                            drag.iconTopLeftInRoot = iconTopLeft
-                            drag.finger = fingerInRoot
-                            scope.launch { runCatching { drag.grow.snapTo(0f) } }
-                            scope.launch {
-                                runCatching {
-                                    drag.grabAnim.snapTo(grab)
-                                    drag.grabAnim.animateTo(PieceCenter, tween(CenterMs, easing = FastOutSlowInEasing))
-                                }
-                            }
-                            drag.pieceId = piece.id
+                            session.select(piece.id)
+                        },
+                        onDragStart = { piece, fingerInRoot, grab, iconSize, iconTopLeft ->
+                            beginDrag(piece, fingerInRoot, grab, iconSize, iconTopLeft)
                         },
                         onDrag = { fingerInRoot ->
                             if (!drag.returning && drag.pieceId != null) drag.finger = fingerInRoot
@@ -698,6 +713,25 @@ private fun RevealRound(
                     ) {
                         footer()
                     }
+                }
+                val inspected = session.inspected
+                // Stay composed while the finger is down. Removing the overlay at drag
+                // start cancels the gesture that is dragging it.
+                if (!complete && inspected != null) {
+                    InspectOverlay(
+                        piece = inspected,
+                        visible = drag.pieceId == null && !drag.returning,
+                        bitmap = bitmaps.lifts[inspected.id] ?: bitmaps.icons.getValue(inspected.id),
+                        onDismiss = { session.deselect() },
+                        onDragStart = { fingerInRoot, grab, iconSize, iconTopLeft ->
+                            beginDrag(inspected, fingerInRoot, grab, iconSize, iconTopLeft)
+                        },
+                        onDrag = { fingerInRoot ->
+                            if (!drag.returning && drag.pieceId != null) drag.finger = fingerInRoot
+                        },
+                        onDragEnd = { if (!drag.returning) release() },
+                        onDragCancel = { cancelDrag() },
+                    )
                 }
             }
         }
@@ -847,12 +881,13 @@ private fun WaitingRow(
     drag: DragState,
     geo: PlayGeometry,
     modifier: Modifier = Modifier,
+    onTap: (piece: RevealPiece) -> Unit,
     onDragStart: (piece: RevealPiece, fingerInRoot: Offset, grab: Offset, iconSize: Size, iconTopLeft: Offset) -> Unit,
     onDrag: (fingerInRoot: Offset) -> Unit,
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
 ) {
-    val currentId = session.current?.id
+    val selectedId = session.inspected?.id
     val draggingId = drag.pieceId
     Row(
         modifier = modifier
@@ -864,16 +899,16 @@ private fun WaitingRow(
         session.pieces.filter { it.id !in session.placedIds }.forEach { piece ->
             key(piece.id) {
                 val icon = bitmaps.icons.getValue(piece.id)
-                val active = piece.id == currentId
-                val (w, h) = iconDp(icon, if (active) ActiveIconHeight else WaitingIconHeight)
+                val (w, h) = iconDp(icon, StripIconHeight)
                 WaitingIcon(
                     piece = piece,
                     icon = icon,
                     width = w,
                     height = h,
-                    active = active,
+                    selected = piece.id == selectedId,
                     hidden = draggingId == piece.id,
                     geo = geo,
+                    onTap = { onTap(piece) },
                     onDragStart = onDragStart,
                     onDrag = onDrag,
                     onDragEnd = onDragEnd,
@@ -890,51 +925,132 @@ private fun WaitingIcon(
     icon: ImageBitmap,
     width: Dp,
     height: Dp,
-    active: Boolean,
+    selected: Boolean,
     hidden: Boolean,
     geo: PlayGeometry,
+    onTap: () -> Unit,
     onDragStart: (piece: RevealPiece, fingerInRoot: Offset, grab: Offset, iconSize: Size, iconTopLeft: Offset) -> Unit,
     onDrag: (fingerInRoot: Offset) -> Unit,
     onDragEnd: () -> Unit,
     onDragCancel: () -> Unit,
 ) {
     val origin = remember { arrayOf(Offset.Zero) }
-    val down = remember { arrayOf(Offset.Zero) }
     Image(
         bitmap = icon,
         contentDescription = piece.label,
         contentScale = ContentScale.FillBounds,
         modifier = Modifier
             .size(width, height)
-            .graphicsLayer {
-                alpha = when {
-                    hidden -> 0f
-                    active -> 1f
-                    else -> 0.4f
-                }
-            }
+            .graphicsLayer { alpha = if (hidden) 0f else 1f }
+            .then(
+                if (selected) {
+                    Modifier.border(2.dp, OnBackdrop, RoundedCornerShape(10.dp))
+                } else {
+                    Modifier
+                },
+            )
             .onGloballyPositioned {
                 origin[0] = it.positionInRoot()
                 geo.iconTopLeftInRoot[piece.id] = origin[0]
             }
-            .then(
-                if (active) {
-                    Modifier
-                        .pointerInput(piece.id) {
-                            awaitEachGesture {
-                                down[0] = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position
+            .pointerInput(piece.id) {
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val pointerId = down.id
+                    var claimed = false
+                    var ended = false
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                            if (!change.pressed) {
+                                ended = true
+                                if (claimed) onDragEnd() else onTap()
+                                break
+                            }
+                            if (!claimed) {
+                                val delta = change.position - down.position
+                                when (classifyStripMove(delta.x, delta.y, slop)) {
+                                    StripGesture.Pending -> Unit
+                                    StripGesture.Scroll -> {
+                                        ended = true
+                                        break
+                                    }
+                                    StripGesture.Drag -> {
+                                        claimed = true
+                                        val sizePx = Size(size.width.toFloat(), size.height.toFloat())
+                                        val grab = Offset(
+                                            (down.position.x / sizePx.width).coerceIn(0f, 1f),
+                                            (down.position.y / sizePx.height).coerceIn(0f, 1f),
+                                        )
+                                        onDragStart(piece, origin[0] + change.position, grab, sizePx, origin[0])
+                                        change.consume()
+                                        onDrag(origin[0] + change.position)
+                                    }
+                                }
+                            } else {
+                                change.consume()
+                                onDrag(origin[0] + change.position)
                             }
                         }
+                    } finally {
+                        if (claimed && !ended) onDragCancel()
+                    }
+                }
+            },
+    )
+}
+
+@Composable
+private fun InspectOverlay(
+    piece: RevealPiece,
+    bitmap: ImageBitmap,
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    onDragStart: (fingerInRoot: Offset, grab: Offset, iconSize: Size, iconTopLeft: Offset) -> Unit,
+    onDrag: (fingerInRoot: Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
+) {
+    val origin = remember { arrayOf(Offset.Zero) }
+    Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (visible) 1f else 0f }) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.45f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
+        )
+        BoxWithConstraints(
+            Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            val aspect = bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)
+            val maxW = maxWidth * 0.86f
+            val maxH = maxHeight * 0.62f
+            val width = if (maxW / aspect <= maxH) maxW else maxH * aspect
+            val height = width / aspect
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = piece.label ?: "Piece ${piece.id}",
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .size(width, height)
+                        .onGloballyPositioned { origin[0] = it.positionInRoot() }
                         .pointerInput(piece.id) {
                             detectDragGestures(
                                 onDragStart = { local ->
                                     val sizePx = Size(size.width.toFloat(), size.height.toFloat())
-                                    val grabAt = down[0]
                                     val grab = Offset(
-                                        (grabAt.x / sizePx.width).coerceIn(0f, 1f),
-                                        (grabAt.y / sizePx.height).coerceIn(0f, 1f),
+                                        (local.x / sizePx.width).coerceIn(0f, 1f),
+                                        (local.y / sizePx.height).coerceIn(0f, 1f),
                                     )
-                                    onDragStart(piece, origin[0] + local, grab, sizePx, origin[0])
+                                    onDragStart(origin[0] + local, grab, sizePx, origin[0])
                                 },
                                 onDrag = { change, _ ->
                                     change.consume()
@@ -943,12 +1059,17 @@ private fun WaitingIcon(
                                 onDragEnd = onDragEnd,
                                 onDragCancel = onDragCancel,
                             )
-                        }
-                } else {
-                    Modifier
-                },
-            ),
-    )
+                        },
+                )
+                Text(
+                    text = "Drag onto the photo",
+                    color = OnBackdrop,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+        }
+    }
 }
 
 private fun iconDp(icon: ImageBitmap, targetHeight: Dp): Pair<Dp, Dp> {

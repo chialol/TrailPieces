@@ -7,7 +7,7 @@ never ships the original file. Output height is capped at **1920px** (width at
 ## Mass-output loop
 
 1. Put `photo.jpg` in `shared/source/reveal/<id>/`. `photo-bw.jpg` can wait until the finish command. It has to be the same pixel size as the photo.
-2. Seed `meta.json` (title, scenery, one mood, blurb). If a trail was named with that request, the photo id is added to that trail's `photoIds` then. That step does not cut pieces and does not install anything.
+2. Seed `meta.json` (title, scenery, one mood, blurb) and put the photo on a trail for that place in `shared/source/catalog/trails.json`, creating the trail when none exists. That step does not cut pieces and does not install anything.
 3. Serve the tracer and cut there. Save into the scene folder.
 
 ```powershell
@@ -38,7 +38,7 @@ shared/source/reveal/mountain/
   photo.jpg                 # full color, portrait or landscape
   photo-bw.jpg              # dark plate, SAME pixel size as photo.jpg
   pieces/
-    01-meadow.png           # full frame, SAME pixel size, play order
+    01-meadow.png           # full frame, SAME pixel size, strip order from the left
     02-river.png
 ```
 
@@ -49,9 +49,9 @@ is `<that filename>-bw.jpg` (`photo-bw.jpg` or `mountain-bw.jpg`).
 
 Preferred: **PNG with real transparency**, one file per piece, canvas identical
 to the photo. Opaque where the piece is, transparent everywhere else. Number
-them in the order the player should receive them. `01.png` is valid. A word
-after the number is the on-screen name: `01-meadow.png` is offered first and
-labeled "meadow".
+them from left to right in the strip. `01.png` is valid. A word
+after the number is the on-screen name: `01-meadow.png` sits first in the strip and
+is labeled "meadow". Any piece can be played.
 
 Also accepted: JPEG full frames whose kept pixels match `photo.jpg` and whose
 unused area is near-white (same idea as the Death Valley layer exports).

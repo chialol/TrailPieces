@@ -3,9 +3,9 @@ name: stage-reveal
 description: >-
   Seed reveal-photo metadata for one folder under shared/source/reveal.
   Use when the user points at that folder or asks to pregenerate or stage
-  meta.json. Write meta.json and stop. If they named a trail, also add the
-  photo id to that trail's photoIds. Do not cut pieces, invent a dark plate,
-  invent a trail, run prep, or import the catalog. When the user says the
+  meta.json. Write meta.json and stop. Also put the photo on a trail for its
+  place, creating that trail when it does not exist yet. Do not cut pieces,
+  invent a dark plate, run prep, or import the catalog. When the user says the
   cuts are done, commit the saved meta.json with stage_reveal.py commit.
 ---
 
@@ -42,7 +42,7 @@ tools/chop_puzzle/.venv/Scripts/python tools/stage_reveal/stage_reveal.py inspec
 
 Omit `story` when you do not know a concrete fact. Omit `revealId` unless the asset folder differs from the photo id.
 
-7. Trail membership is recorded only while seeding, and only when the user named a trail in that request. Open `shared/source/catalog/trails.json`, find the trail with that id, and append the photo id to its `photoIds` if it is not already there. Do not add a trail. Do not change other trails. If they did not name a trail, or the name is not an id already in that file, do not edit `trails.json`.
+7. Put the photo on a trail in `shared/source/catalog/trails.json`. A trail is the place, the way a mood is the feeling. If a trail is already that place, append the photo id to its `photoIds` when it is missing. If none is, add one trail and do not change the others. The id is lowercase letters and digits (`smithrock`). The title is the place name (`Smith Rock`). The summary is one short line in the same voice as the other trails. Add `story` only when you know a concrete fact. `photoIds` lists this photo, or this photo appended to the existing list. Do not leave the photo off every trail. Do not add it to an unrelated trail.
 8. Run `check` with the same interpreter and folder. It must print `ok <photo-id>`. Fix the file until it does.
 9. Tell the user the fields, then end with [After seeding](#after-seeding). Do not ask what to run next. Do not ask a pile of other questions.
 
@@ -50,9 +50,7 @@ Omit `story` when you do not know a concrete fact. Omit `revealId` unless the as
 
 This is the whole reply ending. Fill in the photo id. Do not offer to cut, prep, import, or install.
 
-Seeded `<photo-id>`. Open the tracer with `.\tools\trace_pieces\serve.ps1`, cut in Cut mode (pen is P), and save with Open folder into `shared/source/reveal/<photo-id>`; if Save downloads a zip, unzip it into that folder so `pieces/` and `meta.json` sit next to `photo.jpg`, not in a sibling `<photo-id>-pieces` folder. Add `photo-bw.jpg` beside the photo at the same pixel size, then from the repo run `.\tools\finish_reveal.ps1 <photo-id>`. Install from Android Studio and open Walk a trail.
-
-If they did not name a trail, add one more sentence after that. Name the trail ids currently in `shared/source/catalog/trails.json` and say the photo will not show in Walk a trail until one is named. Do not invent an id. Do not ask which one.
+Seeded `<photo-id>` on the `<trail title>` trail. Open the tracer with `.\tools\trace_pieces\serve.ps1`, cut in Cut mode (pen is P), and save with Open folder into `shared/source/reveal/<photo-id>`; if Save downloads a zip, unzip it into that folder so `pieces/` and `meta.json` sit next to `photo.jpg`, not in a sibling `<photo-id>-pieces` folder. Add `photo-bw.jpg` beside the photo at the same pixel size, then from the repo run `.\tools\finish_reveal.ps1 <photo-id>`. Install from Android Studio and open Walk a trail.
 
 To cut, in its own window (`serve.ps1` stays open):
 
@@ -66,25 +64,25 @@ After `photo-bw.jpg` and the pieces are in the scene folder, paste this:
 .\tools\finish_reveal.ps1 <photo-id>
 ```
 
-`finish_reveal.ps1` runs prep. When the photo id is already on a trail, it also runs `import_catalog`. Install from Android Studio and open **Walk a trail**. When the id is not on a trail, the assets are still prepped and the photo will not appear there until the id is added to a trail `photoIds` list and `finish_reveal` (or `import_catalog`) is run again.
+`finish_reveal.ps1` runs prep. Seeding already put the photo on a trail, so this also runs `import_catalog`. Install from Android Studio and open **Walk a trail**.
 
 ## Commit
 
 Run this only after the user says the cuts are done and the metadata should go into the catalog.
 
-Do not rewrite `meta.json`. The copy saved from the tool is the one to commit. Do not run `finish_reveal.ps1` or prep. Do not create a git commit. Do not edit `trails.json`. Trail membership was recorded at seed time, or it was not.
+Do not rewrite `meta.json`. The copy saved from the tool is the one to commit. Do not run `finish_reveal.ps1` or prep. Do not create a git commit. Trail membership was recorded at seed time. If this photo id is on no trail, add it to the place trail (create that trail when it is missing) before the command below. Do not leave it off Walk a trail.
 
 ```
 tools/chop_puzzle/.venv/Scripts/python tools/stage_reveal/stage_reveal.py commit shared/source/reveal/<photo-id>
 ```
 
-That command runs `import_catalog`. If it says pieces are missing, or `scene.json` is missing, stop and report that message. The missing-assets message already names `.\tools\finish_reveal.ps1 <photo-id>`. Do not invent a dark plate. Do not invent a trail. If the photo id is not in any trail's `photoIds`, say it will not show in Walk a trail until a trail is named and `finish_reveal` (or `import_catalog`) is run again.
+That command runs `import_catalog`. If it says pieces are missing, or `scene.json` is missing, stop and report that message. The missing-assets message already names `.\tools\finish_reveal.ps1 <photo-id>`. Do not invent a dark plate.
 
 ## Operating rules
 
 - Do not auto-generate pieces.
 - Do not invent `photo-bw`. It is optional until `finish_reveal.ps1`.
-- Do not invent a trail. Add the photo id to a trail's `photoIds` only when they named that trail while asking to seed.
+- A seeded photo belongs on a trail for its place. Join that trail when it exists. Create it when it does not. Do not add the photo to an unrelated trail.
 - Open photo loads `meta.json` only when the tracer is served from the repo (`.\tools\trace_pieces\serve.ps1`). A `file://` page cannot see the folder beside the photo.
 - The scenery id and the scenery menu must show the same scenery.
 - The photo id (folder name) is not the scenery id.

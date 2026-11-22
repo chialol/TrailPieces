@@ -95,6 +95,11 @@ class CatalogParserTest {
         assertTrue(catalog.sceneries.any { it.id == "meadow" })
         assertTrue(index.photo("multnomah")!!.story.contains("620"))
         assertTrue(index.trail("columbia")!!.story.isNotBlank())
+        val smith = index.trail("smithrock")!!
+        assertEquals("Smith Rock", smith.title)
+        assertEquals(listOf("smithoverlook", "smithrock2"), smith.photoIds)
+        val open = index.photosForMood("open").map { it.id }
+        assertTrue(open.containsAll(listOf("smithoverlook", "smithrock2")))
     }
 }
 

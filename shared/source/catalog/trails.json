@@ -19,6 +19,13 @@
       "summary": "Waterfalls along the gorge.",
       "story": "The Columbia River cuts through the Cascades here. Creeks fall off the Oregon cliffs in a long line of waterfalls.",
       "photoIds": ["multnomah"]
+    },
+    {
+      "id": "smithrock",
+      "title": "Smith Rock",
+      "summary": "Cliffs above the Crooked River.",
+      "story": "Smith Rock stands above the Crooked River in Oregon's high desert.",
+      "photoIds": ["smithoverlook", "smithrock2"]
     }
   ]
 }

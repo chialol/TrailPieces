@@ -10,15 +10,42 @@ import org.junit.Test
 
 class RevealSessionTest {
     @Test
-    fun offersPiecesInOrder() {
+    fun anyUnplacedPieceCanBeDragged() {
         val session = RevealSession(scene())
-        assertEquals(1, session.current?.id)
         session.startDrag(2)
-        assertNull(session.draggingId)
+        assertEquals(2, session.draggingId)
+        session.cancelDrag()
+        session.startDrag(1)
+        assertEquals(1, session.draggingId)
     }
 
     @Test
-    fun lockAdvancesAndMissStays() {
+    fun aLaterPieceCanLockBeforeAnEarlierOne() {
+        val feedback = RecordingFeedback()
+        val session = RevealSession(scene(), feedback)
+        val imageTopLeft = Offset(0f, 100f)
+
+        session.startDrag(2)
+        assertEquals(
+            PlaceOutcome.Locked,
+            session.tryPlace(Offset(420f, 220f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
+        )
+        assertEquals(listOf(2), session.placedIds)
+        session.startDrag(2)
+        assertNull(session.draggingId)
+
+        session.startDrag(1)
+        assertEquals(
+            PlaceOutcome.Locked,
+            session.tryPlace(Offset(100f, 300f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
+        )
+        assertTrue(session.isComplete)
+        assertEquals(listOf(2, 1), feedback.locked)
+        assertEquals(1, feedback.aliveCount)
+    }
+
+    @Test
+    fun lockAndMissDoNotForceTheNextPiece() {
         val feedback = RecordingFeedback()
         val session = RevealSession(scene(), feedback)
         val imageTopLeft = Offset(0f, 100f)
@@ -29,15 +56,15 @@ class RevealSessionTest {
             session.tryPlace(Offset(100f, 300f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
         )
         assertEquals(listOf(1), feedback.locked)
-        assertEquals(0, feedback.aliveCount)
-        assertEquals(2, session.current?.id)
+        assertNull(session.inspected)
+        assertNull(session.draggingId)
 
         session.startDrag(2)
         assertEquals(
             PlaceOutcome.Missed,
             session.tryPlace(Offset(0f, 0f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
         )
-        assertEquals(2, session.current?.id)
+        assertEquals(listOf(1), session.placedIds)
         assertNull(session.draggingId)
 
         session.startDrag(2)
@@ -48,7 +75,62 @@ class RevealSessionTest {
         assertTrue(session.isComplete)
         assertEquals(listOf(1, 2), feedback.locked)
         assertEquals(1, feedback.aliveCount)
-        assertNull(session.current)
+    }
+
+    @Test
+    fun tapOpensAPieceAndTappingItAgainClosesIt() {
+        val session = RevealSession(scene())
+        session.select(2)
+        assertEquals(2, session.inspected?.id)
+        session.select(1)
+        assertEquals(1, session.inspected?.id)
+        session.select(1)
+        assertNull(session.inspected)
+        session.select(2)
+        session.deselect()
+        assertNull(session.inspected)
+    }
+
+    @Test
+    fun inspectionStaysThroughAMissAndClearsWhenThatPieceLocks() {
+        val session = RevealSession(scene())
+        val imageTopLeft = Offset(0f, 100f)
+        session.select(2)
+        session.startDrag(2)
+        assertEquals(2, session.inspected?.id)
+        assertEquals(
+            PlaceOutcome.Missed,
+            session.tryPlace(Offset(0f, 0f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
+        )
+        assertEquals(2, session.inspected?.id)
+
+        session.startDrag(2)
+        assertEquals(
+            PlaceOutcome.Locked,
+            session.tryPlace(Offset(420f, 220f), imageTopLeft, imageWidthPx = 1000f, snapThresholdPx = 72f),
+        )
+        assertNull(session.inspected)
+        session.select(2)
+        assertNull(session.inspected)
+    }
+
+    @Test
+    fun draggingADifferentPieceClosesInspection() {
+        val session = RevealSession(scene())
+        session.select(1)
+        session.startDrag(2)
+        assertNull(session.inspected)
+        assertEquals(2, session.draggingId)
+        session.select(1)
+        assertNull(session.inspected)
+    }
+
+    @Test
+    fun aSecondDragDoesNotStealThePiece() {
+        val session = RevealSession(scene())
+        session.startDrag(2)
+        session.startDrag(1)
+        assertEquals(2, session.draggingId)
     }
 
     @Test
@@ -70,6 +152,13 @@ class RevealSessionTest {
         assertEquals(finger.y, icon.y + 0.8f * 48f, 0.01f)
         assertEquals(finger.x, full.x + 0.25f * 1800f, 0.01f)
         assertEquals(finger.y, full.y + 0.8f * 640f, 0.01f)
+    }
+
+    @Test
+    fun aDownwardMoveClaimsThePieceAndASidewaysMoveScrolls() {
+        assertEquals(StripGesture.Pending, classifyStripMove(dx = 2f, dy = 3f, slop = 12f))
+        assertEquals(StripGesture.Drag, classifyStripMove(dx = 4f, dy = 20f, slop = 12f))
+        assertEquals(StripGesture.Scroll, classifyStripMove(dx = 20f, dy = 4f, slop = 12f))
     }
 
     @Test
