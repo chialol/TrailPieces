@@ -1,0 +1,686 @@
+{
+  "version": 1,
+  "image": {
+    "file": "photo.jpg",
+    "width": 5464,
+    "height": 8192
+  },
+  "pieces": [
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 1754.1,
+              "y": 4841.5,
+              "corner": true
+            },
+            {
+              "x": 1575.3,
+              "y": 5772.6,
+              "corner": true
+            },
+            {
+              "x": 1298.1,
+              "y": 5741.6,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 6664.7,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 3832.3,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 3931.4,
+              "y": 1563.9,
+              "corner": true
+            },
+            {
+              "x": 3944.8,
+              "y": 1461.8,
+              "corner": true
+            },
+            {
+              "x": 3973.4,
+              "y": 0,
+              "corner": true
+            },
+            {
+              "x": 5464,
+              "y": 0,
+              "corner": true
+            },
+            {
+              "x": 5464,
+              "y": 1630.3,
+              "corner": true
+            },
+            {
+              "x": 4858.1,
+              "y": 1770.4,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 5464,
+              "y": 3610.5,
+              "corner": true
+            },
+            {
+              "x": 5464,
+              "y": 5293.6,
+              "corner": true
+            },
+            {
+              "x": 4723.3,
+              "y": 4797.1,
+              "corner": true
+            },
+            {
+              "x": 4173,
+              "y": 5408.5,
+              "corner": true
+            },
+            {
+              "x": 3457.3,
+              "y": 5343.4,
+              "corner": true
+            },
+            {
+              "x": 3775.8,
+              "y": 4901,
+              "corner": true
+            },
+            {
+              "x": 3793.5,
+              "y": 4255,
+              "corner": true
+            },
+            {
+              "x": 3771.8,
+              "y": 4265.3,
+              "corner": true
+            },
+            {
+              "x": 3849.6,
+              "y": 3158.1,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 5464,
+              "y": 5293.6,
+              "corner": true
+            },
+            {
+              "x": 5464,
+              "y": 8192,
+              "corner": true
+            },
+            {
+              "x": 4745.5,
+              "y": 8192,
+              "corner": true
+            },
+            {
+              "x": 2858.5,
+              "y": 6417.7,
+              "corner": true
+            },
+            {
+              "x": 3713.2,
+              "y": 5518.6,
+              "corner": true
+            },
+            {
+              "x": 4123.9,
+              "y": 5463.1,
+              "corner": true
+            },
+            {
+              "x": 4723.3,
+              "y": 4797.1,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 3601,
+              "y": 2835.2,
+              "corner": true
+            },
+            {
+              "x": 3598.3,
+              "y": 2834.9,
+              "corner": true
+            },
+            {
+              "x": 3573.2,
+              "y": 3458.4,
+              "corner": true
+            },
+            {
+              "x": 2961.8,
+              "y": 3600.3,
+              "corner": true
+            },
+            {
+              "x": 2464.6,
+              "y": 2715.2,
+              "corner": true
+            },
+            {
+              "x": 1985.9,
+              "y": 2765.6,
+              "corner": true
+            },
+            {
+              "x": 1771.8,
+              "y": 2551.4,
+              "corner": true
+            },
+            {
+              "x": 1715.1,
+              "y": 2236.5,
+              "corner": true
+            },
+            {
+              "x": 1321.6,
+              "y": 1947.2,
+              "corner": true
+            },
+            {
+              "x": 1507.2,
+              "y": 1663.3,
+              "corner": true
+            },
+            {
+              "x": 2653.6,
+              "y": 1909,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 4044.2,
+              "y": 3212.6,
+              "corner": true
+            },
+            {
+              "x": 3849.6,
+              "y": 3158.1,
+              "corner": true
+            },
+            {
+              "x": 3771.8,
+              "y": 4265.3,
+              "corner": true
+            },
+            {
+              "x": 2740.1,
+              "y": 4752.7,
+              "corner": true
+            },
+            {
+              "x": 2515,
+              "y": 3704.1,
+              "corner": true
+            },
+            {
+              "x": 3573.2,
+              "y": 3458.4,
+              "corner": true
+            },
+            {
+              "x": 3598.3,
+              "y": 2834.9,
+              "corner": true
+            },
+            {
+              "x": 4051.8,
+              "y": 2897.8,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 1294.2,
+              "y": 5744.4,
+              "corner": true
+            },
+            {
+              "x": 1298.1,
+              "y": 5741.6,
+              "corner": true
+            },
+            {
+              "x": 3289.9,
+              "y": 5963.8,
+              "corner": true
+            },
+            {
+              "x": 2858.5,
+              "y": 6417.7,
+              "corner": true
+            },
+            {
+              "x": 4745.5,
+              "y": 8192,
+              "corner": true
+            },
+            {
+              "x": 2616.7,
+              "y": 8192,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 2616.7,
+              "y": 8192,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 8192,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 6664.7,
+              "corner": true
+            },
+            {
+              "x": 1294.2,
+              "y": 5744.4,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 5464,
+              "y": 1630.3,
+              "corner": true
+            },
+            {
+              "x": 5464,
+              "y": 3610.5,
+              "corner": true
+            },
+            {
+              "x": 4044.2,
+              "y": 3212.6,
+              "corner": true
+            },
+            {
+              "x": 4051.8,
+              "y": 2897.8,
+              "corner": true
+            },
+            {
+              "x": 3601,
+              "y": 2835.2,
+              "corner": true
+            },
+            {
+              "x": 3548.8,
+              "y": 2784.2,
+              "corner": true
+            },
+            {
+              "x": 3831.4,
+              "y": 2331,
+              "corner": true
+            },
+            {
+              "x": 3931.4,
+              "y": 1563.9,
+              "corner": true
+            },
+            {
+              "x": 4858.1,
+              "y": 1770.4,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 3548.8,
+              "y": 2784.2,
+              "corner": true
+            },
+            {
+              "x": 2653.6,
+              "y": 1909,
+              "corner": true
+            },
+            {
+              "x": 2516.8,
+              "y": 1879.7,
+              "corner": true
+            },
+            {
+              "x": 1918.5,
+              "y": 0,
+              "corner": true
+            },
+            {
+              "x": 3973.4,
+              "y": 0,
+              "corner": true
+            },
+            {
+              "x": 3944.8,
+              "y": 1461.8,
+              "corner": true
+            },
+            {
+              "x": 3831.4,
+              "y": 2331,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 2961.8,
+              "y": 3600.3,
+              "corner": true
+            },
+            {
+              "x": 2515,
+              "y": 3704.1,
+              "corner": true
+            },
+            {
+              "x": 2740.1,
+              "y": 4752.7,
+              "corner": true
+            },
+            {
+              "x": 2669.7,
+              "y": 4785.9,
+              "corner": true
+            },
+            {
+              "x": 2200.7,
+              "y": 4998.3,
+              "corner": true
+            },
+            {
+              "x": 1793.6,
+              "y": 4635.5,
+              "corner": true
+            },
+            {
+              "x": 1754.1,
+              "y": 4841.5,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 3832.3,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 2379.5,
+              "corner": true
+            },
+            {
+              "x": 1072.6,
+              "y": 1764.1,
+              "corner": true
+            },
+            {
+              "x": 1715.1,
+              "y": 2236.5,
+              "corner": true
+            },
+            {
+              "x": 1771.8,
+              "y": 2551.4,
+              "corner": true
+            },
+            {
+              "x": 1985.9,
+              "y": 2765.6,
+              "corner": true
+            },
+            {
+              "x": 2464.6,
+              "y": 2715.2,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 2516.8,
+              "y": 1879.7,
+              "corner": true
+            },
+            {
+              "x": 1507.2,
+              "y": 1663.3,
+              "corner": true
+            },
+            {
+              "x": 1321.6,
+              "y": 1947.2,
+              "corner": true
+            },
+            {
+              "x": 1072.6,
+              "y": 1764.1,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 2379.5,
+              "corner": true
+            },
+            {
+              "x": 0,
+              "y": 0,
+              "corner": true
+            },
+            {
+              "x": 1918.5,
+              "y": 0,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "",
+      "kind": "cut",
+      "subpaths": [
+        {
+          "op": "add",
+          "smooth": 0,
+          "points": [
+            {
+              "x": 4173,
+              "y": 5408.5,
+              "corner": true
+            },
+            {
+              "x": 4123.9,
+              "y": 5463.1,
+              "corner": true
+            },
+            {
+              "x": 3713.2,
+              "y": 5518.6,
+              "corner": true
+            },
+            {
+              "x": 3289.9,
+              "y": 5963.8,
+              "corner": true
+            },
+            {
+              "x": 1575.3,
+              "y": 5772.6,
+              "corner": true
+            },
+            {
+              "x": 1793.6,
+              "y": 4635.5,
+              "corner": true
+            },
+            {
+              "x": 2200.7,
+              "y": 4998.3,
+              "corner": true
+            },
+            {
+              "x": 2669.7,
+              "y": 4785.9,
+              "corner": true
+            },
+            {
+              "x": 3793.5,
+              "y": 4255,
+              "corner": true
+            },
+            {
+              "x": 3775.8,
+              "y": 4901,
+              "corner": true
+            },
+            {
+              "x": 3457.3,
+              "y": 5343.4,
+              "corner": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

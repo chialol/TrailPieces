@@ -87,6 +87,17 @@
       "story": "Multnomah Falls drops 620 feet in two tiers, the tallest in Oregon. Benson Bridge crosses between them."
     },
     {
+      "id": "multnomahforest",
+      "title": "Wahkeena loop",
+      "sceneryId": "forest",
+      "moodIds": [
+        "quiet"
+      ],
+      "revealId": "multnomahforest",
+      "blurb": "",
+      "story": "Foggy forest on the Wahkeena loop"
+    },
+    {
       "id": "obsidianpool",
       "title": "Obsidian Pool",
       "sceneryId": "alpine",
@@ -107,6 +118,17 @@
       "revealId": "sahalie",
       "blurb": "Mist and moss where the river drops.",
       "story": "Sahalie Falls drops over a lava shelf on the upper McKenzie. Koosah Falls is a short walk downstream."
+    },
+    {
+      "id": "silverfalls",
+      "title": "Trail of ten falls",
+      "sceneryId": "forest",
+      "moodIds": [
+        "quiet"
+      ],
+      "revealId": "silverfalls",
+      "blurb": "",
+      "story": "Forest and cliff in Silver Falls State Park."
     },
     {
       "id": "smithoverlook",
