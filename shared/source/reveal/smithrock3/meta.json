@@ -1,6 +1,8 @@
 {
   "title": "Snow Peak",
   "sceneryId": "alpine",
-  "moodIds": ["open"],
+  "moodIds": [
+    "open"
+  ],
   "blurb": "A snow-covered peak behind jagged rock."
 }

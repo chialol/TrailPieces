@@ -315,7 +315,7 @@
         <div class="rowline"><span>This list</span><span><kbd>?</kbd></span></div>
       </div>
     </div>
-    <p style="margin-top:14px;">A plain lasso starts a new piece. Shift adds to the selected one. The file is named <kbd>01-bridge.png</kbd>, a full-frame PNG the size of the photo, transparent outside the outline. Play order is the list order, top first. <kbd>pieces/paths.json</kbd> is only so this page can reopen the outlines.</p>
+    <p style="margin-top:14px;">A plain lasso starts a new piece. Shift adds to the selected one. The file is named <kbd>01-bridge.png</kbd>, a full-frame PNG the size of the photo, transparent outside the outline. This list stays in the order you cut them. Download and Save to folder shuffle those numbers so the puzzle does not offer the cuts in a row. <kbd>pieces/paths.json</kbd> reopens the same outlines under the shuffled numbers.</p>
     <p>Next: save into the scene folder. A zip unzips there, next to photo.jpg, not into a sibling folder. Add photo-bw.jpg at the same pixel size, then from the repo run <kbd>.\tools\finish_reveal.ps1</kbd> with the photo id. Install from Android Studio and open Walk a trail.</p>
     <form method="dialog" style="text-align:right;"><button type="submit" class="textbtn">Close</button></form>
   </div>
@@ -424,6 +424,18 @@
     const slug = slugify(piece.label);
     const num = String(index + 1).padStart(2, "0");
     return slug ? `${num}-${slug}.png` : `${num}.png`;
+  }
+  // Play order only. The cut list, undo stack, and selection stay as they are.
+  function shuffleExportPieces(exportPieces, random) {
+    const ordered = exportPieces.slice();
+    const next = random || Math.random;
+    for (let i = ordered.length - 1; i > 0; i--) {
+      const j = Math.floor(next() * (i + 1));
+      const swap = ordered[i];
+      ordered[i] = ordered[j];
+      ordered[j] = swap;
+    }
+    return ordered;
   }
   function esc(value) {
     return String(value).replace(/[&<>"']/g, (ch) => ({
@@ -2350,7 +2362,7 @@
 
   function renderList() {
     if (!pieces.length) {
-      listEl.innerHTML = `<div class="empty-list">No pieces yet. Lasso around a part, or switch to Cut and slash the photo into pieces that cover it. The top of this list is offered first.</div>`;
+      listEl.innerHTML = `<div class="empty-list">No pieces yet. Lasso around a part, or switch to Cut and slash the photo into pieces that cover it. This list stays in cut order. Save shuffles the order the puzzle offers.</div>`;
       return;
     }
     listEl.innerHTML = pieces.map((piece, index) => {
@@ -2359,7 +2371,7 @@
         : "";
       const share = piece.fraction ? `${Math.round(piece.fraction * 1000) / 10}% of the frame` : (piece.rasterId && !piece.subpaths.length ? "Painted mask" : "Outline");
       return `<article class="piece${piece.id === selectedId ? " selected" : ""}${piece.hidden ? " hidden-piece" : ""}" data-id="${piece.id}">
-        <div class="grip" draggable="true" title="Drag to set play order">${gripIcon()}</div>
+        <div class="grip" draggable="true" title="Drag to reorder the list">${gripIcon()}</div>
         <img alt="" width="72" height="54" src="${piece.thumbURL || ""}">
         <div class="name">
           <input class="label" value="${esc(piece.label)}" placeholder="bridge" spellcheck="false" autocomplete="off" aria-label="Piece name">
@@ -2998,7 +3010,7 @@
   async function save() {
     if (!fullImage || saving) return;
     readMetaForm();
-    const exportPieces = pieces.filter((piece) => !isEmpty(piece));
+    const exportPieces = shuffleExportPieces(pieces.filter((piece) => !isEmpty(piece)));
     if (!exportPieces.length && !metaReady()) {
       setStatus("Draw a piece, or fill in a title and scenery, before saving.", true);
       return;
@@ -3823,6 +3835,64 @@
       check(zipBytes[30] === 112, "zip name starts with p");
       const paths = pathsDocument(pieces);
       check(paths.pieces[0].label === "rock" && paths.pieces[0].subpaths.length === 2, "paths");
+      const editorIds = pieces.map((piece) => piece.id).join(",");
+      const editorSelected = selectedId;
+      const undoCount = undo.length;
+      const redoCount = redo.length;
+      const ringAt = (x) => ({
+        op: "add", bezier: false, smooth: 0, raw: null,
+        points: toCorners([{ x, y: 0 }, { x: x + 20, y: 0 }, { x: x + 20, y: 20 }, { x, y: 20 }]),
+      });
+      const north = emptyPiece("north");
+      north.kind = "cut";
+      north.subpaths = [ringAt(10)];
+      const south = emptyPiece("south");
+      south.kind = "cut";
+      south.subpaths = [ringAt(40)];
+      const painted = emptyPiece("mask");
+      painted.rasterId = 1;
+      const cutOrder = [north, painted, south];
+      const mark = north.subpaths[0].points[0].x;
+      const ordered = shuffleExportPieces(cutOrder, () => 0);
+      check(cutOrder.map((piece) => piece.label).join(",") === "north,mask,south", "cut order stays on the source");
+      check(ordered.map((piece) => piece.label).join(",") === "mask,south,north", "stubbed shuffle");
+      check(ordered[0] !== cutOrder[0], "stubbed order is not cut order");
+      check(north.subpaths[0].points[0].x === mark, "shuffle leaves geometry");
+      const files = ordered.map((piece, index) => fileName(piece, index));
+      const doc = pathsDocument(ordered);
+      check(doc.pieces.length === files.length && files.length === 3, "one file and paths entry per piece");
+      const numbers = files.map((name) => Number(name.slice(0, 2)));
+      check(numbers.join(",") === "1,2,3", `export numbers ${numbers.join(",")}`);
+      check(new Set(files).size === files.length, `unique names ${files.join(" ")}`);
+      doc.pieces.forEach((entry, index) => {
+        const piece = ordered[index];
+        check(entry.label === slugify(piece.label), `label stays with ${piece.label}`);
+        if (piece.kind) check(entry.kind === piece.kind, `kind stays with ${piece.label}`);
+        else check(!entry.kind, "mask kind stays unset");
+        if (piece.subpaths.length) {
+          check(!entry.raster, `${piece.label} outline stays off the mask name`);
+          check(entry.subpaths.length === piece.subpaths.length, `subpaths stay with ${piece.label}`);
+          check(entry.subpaths[0].op === piece.subpaths[0].op, `op stays with ${piece.label}`);
+          check(entry.subpaths[0].points[0].x === piece.subpaths[0].points[0].x, `points stay with ${piece.label}`);
+        } else {
+          check(entry.raster === files[index], `raster ${entry.raster} matches ${files[index]}`);
+          check(!entry.subpaths, "mask does not take an outline");
+        }
+      });
+      const sameA = emptyPiece("Rock Face");
+      const sameB = emptyPiece("rockface");
+      sameA.subpaths = [ringAt(80)];
+      sameB.subpaths = [ringAt(120)];
+      const sameNames = shuffleExportPieces([sameA, sameB], () => 0).map((piece, index) => fileName(piece, index));
+      check(sameNames[0] !== sameNames[1], `same label keeps unique stems ${sameNames.join(" ")}`);
+      const solo = emptyPiece("solo");
+      solo.subpaths = [ringAt(160)];
+      let soloRolls = 0;
+      const soloOrder = shuffleExportPieces([solo], () => { soloRolls += 1; return 0; });
+      check(soloRolls === 0 && soloOrder[0] === solo && fileName(soloOrder[0], 0) === "01-solo.png", "one piece stays 01");
+      check(pieces.map((piece) => piece.id).join(",") === editorIds, "editor list stays in cut order");
+      check(selectedId === editorSelected, "selection stays");
+      check(undo.length === undoCount && redo.length === redoCount, "undo stack stays");
       pieces = [];
       undo = [];
       redo = [];

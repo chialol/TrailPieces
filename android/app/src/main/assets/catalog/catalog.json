@@ -129,6 +129,17 @@
       "revealId": "smithrock2",
       "blurb": "A sheer cliff and a jagged spire over dry grass.",
       "story": ""
+    },
+    {
+      "id": "smithrock3",
+      "title": "Snow Peak",
+      "sceneryId": "alpine",
+      "moodIds": [
+        "open"
+      ],
+      "revealId": "smithrock3",
+      "blurb": "A snow-covered peak behind jagged rock.",
+      "story": ""
     }
   ],
   "trails": [
