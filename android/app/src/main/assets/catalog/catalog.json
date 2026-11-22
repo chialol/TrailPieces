@@ -87,6 +87,17 @@
       "story": "Multnomah Falls drops 620 feet in two tiers, the tallest in Oregon. Benson Bridge crosses between them."
     },
     {
+      "id": "obsidianpool",
+      "title": "Obsidian Pool",
+      "sceneryId": "alpine",
+      "moodIds": [
+        "quiet"
+      ],
+      "revealId": "obsidianpool",
+      "blurb": "A still pool under a scree slope.",
+      "story": ""
+    },
+    {
       "id": "sahalie",
       "title": "Sahalie Falls",
       "sceneryId": "waterfall",
