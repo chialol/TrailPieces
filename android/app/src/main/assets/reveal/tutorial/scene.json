@@ -17,7 +17,7 @@
   "pieces": [
     {
       "id": 1,
-      "order": 1,
+      "order": 8,
       "cropFile": "crop/piece_01.webp",
       "liftFile": "lift/piece_01.webp",
       "iconFile": "icon/piece_01.webp",
@@ -115,7 +115,7 @@
     },
     {
       "id": 8,
-      "order": 8,
+      "order": 14,
       "cropFile": "crop/piece_08.webp",
       "liftFile": "lift/piece_08.webp",
       "iconFile": "icon/piece_08.webp",
@@ -199,7 +199,7 @@
     },
     {
       "id": 14,
-      "order": 14,
+      "order": 1,
       "cropFile": "crop/piece_14.webp",
       "liftFile": "lift/piece_14.webp",
       "iconFile": "icon/piece_14.webp",

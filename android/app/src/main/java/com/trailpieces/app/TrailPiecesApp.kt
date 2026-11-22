@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,13 +34,7 @@ fun TrailPiecesApp() {
     val context = LocalContext.current
     val tutorialStore = remember { TutorialStore(context) }
     var destination by rememberSaveable(stateSaver = DestinationSaver) {
-        mutableStateOf(
-            if (tutorialStore.isComplete()) AppDestination.Menu else AppDestination.Tutorial,
-        )
-    }
-    // A restored menu from an older install still owes the first-run lesson.
-    LaunchedEffect(Unit) {
-        if (!tutorialStore.isComplete()) destination = AppDestination.Tutorial
+        mutableStateOf(AppDestination.Menu)
     }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -49,7 +42,7 @@ fun TrailPiecesApp() {
         when (destination) {
             AppDestination.Tutorial -> {
                 TutorialScreen(
-                    canExit = tutorialStore.isComplete(),
+                    canExit = true,
                     onExit = { destination = AppDestination.Menu },
                     onFinished = {
                         tutorialStore.markComplete()
@@ -60,6 +53,8 @@ fun TrailPiecesApp() {
             }
             AppDestination.Menu -> {
                 HomeMenuScreen(
+                    tutorialComplete = tutorialStore.isComplete(),
+                    onPlay = { destination = AppDestination.Tutorial },
                     onWalkTrail = { destination = AppDestination.Journey },
                     onReplayTutorial = { destination = AppDestination.Tutorial },
                     modifier = contentModifier,

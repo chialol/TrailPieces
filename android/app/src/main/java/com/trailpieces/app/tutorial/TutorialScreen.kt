@@ -72,12 +72,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.trailpieces.app.journey.LocalJourney
 import com.trailpieces.app.layers.v3.PlaceOutcome
 import com.trailpieces.app.layers.v3.RevealBitmaps
 import com.trailpieces.app.layers.v3.RevealLoader
 import com.trailpieces.app.layers.v3.RevealPiece
 import com.trailpieces.app.layers.v3.RevealScene
+import com.trailpieces.app.layers.v3.RevealScreen
 import com.trailpieces.app.layers.v3.RevealSession
+import com.trailpieces.journey.CatalogIndex
+import com.trailpieces.journey.PlayerProgress
+import com.trailpieces.journey.continueAfter
 import com.trailpieces.app.layers.v3.StripGesture
 import com.trailpieces.app.layers.v3.anchoredTopLeft
 import com.trailpieces.app.layers.v3.classifyStripMove
@@ -112,6 +117,11 @@ fun TutorialScreen(
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var celebrating by remember { mutableStateOf(false) }
+    if (celebrating) {
+        TutorialFinale(onFinished = onFinished, modifier = modifier)
+        return
+    }
     BackHandler(enabled = canExit, onBack = onExit)
     val context = LocalContext.current
     val load by produceState<TutorialLoad>(TutorialLoad.Loading, context) {
@@ -135,7 +145,7 @@ fun TutorialScreen(
             assets = ready.assets,
             canExit = canExit,
             onExit = onExit,
-            onFinished = onFinished,
+            onContinue = { celebrating = true },
             modifier = modifier,
         )
     }
@@ -146,7 +156,7 @@ private fun TutorialPlay(
     assets: TutorialAssets,
     canExit: Boolean,
     onExit: () -> Unit,
-    onFinished: () -> Unit,
+    onContinue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scene = assets.scene
@@ -282,12 +292,12 @@ private fun TutorialPlay(
                                     session.select(piece.id)
                                     if (piece.id == guided.id) coach.openPiece()
                                 },
-                                onDragStart = { at, fraction ->
+                                onDragStart = { at, _ ->
                                     session.startDrag(piece.id)
                                     if (session.draggingId == piece.id) {
                                         dragId = piece.id
                                         finger = at
-                                        grab = fraction
+                                        grab = Offset(0.5f, 0.5f)
                                     }
                                 },
                                 onDrag = { finger = it },
@@ -440,7 +450,7 @@ private fun TutorialPlay(
         }
 
         if (coach.step == TutorialStep.Done) {
-            FinishTutorial(onFinished = onFinished)
+            FinishTutorial(onContinue = onContinue)
         }
     }
 }
@@ -618,7 +628,7 @@ private fun EnlargedPiece(bitmap: ImageBitmap, onClose: () -> Unit) {
 }
 
 @Composable
-private fun FinishTutorial(onFinished: () -> Unit) {
+private fun FinishTutorial(onContinue: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         Box(
             Modifier
@@ -649,7 +659,7 @@ private fun FinishTutorial(onFinished: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp),
             )
-            Button(onClick = onFinished, modifier = Modifier.padding(top = 24.dp)) {
+            Button(onClick = onContinue, modifier = Modifier.padding(top = 24.dp)) {
                 Text("Continue")
             }
         }
@@ -683,6 +693,109 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTutorialArrow(f
         close()
     }
     drawPath(headPath, Hint)
+}
+
+@Composable
+private fun TutorialFinale(
+    onFinished: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var ready by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val reading by produceState<TutorialReading?>(null, context) {
+        value = runCatching { loadTutorialReading(context) }.getOrNull()
+    }
+    RevealScreen(
+        onBack = onFinished,
+        initialSceneId = "tutorial",
+        celebrate = true,
+        readingBand = true,
+        onPresentationSettled = { ready = true },
+        onReplayStarted = { ready = false },
+        footer = {
+            if (ready) {
+                TutorialReadingPanel(reading = reading, onDone = onFinished)
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+private data class TutorialReading(
+    val trailTitle: String,
+    val collectedLine: String,
+    val placeStory: String,
+    val trailStory: String,
+)
+
+@Composable
+private fun TutorialReadingPanel(
+    reading: TutorialReading?,
+    onDone: () -> Unit,
+) {
+    val trailTitle = reading?.trailTitle ?: "Collected"
+    val collectedLine = reading?.collectedLine.orEmpty()
+    val placeStory = reading?.placeStory.orEmpty()
+    val trailStory = reading?.trailStory.orEmpty()
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Text(
+            text = trailTitle,
+            style = MaterialTheme.typography.titleMedium,
+            color = Hint,
+        )
+        if (collectedLine.isNotBlank()) {
+            Text(
+                text = collectedLine,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Hint,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        if (placeStory.isNotBlank()) {
+            Text(
+                text = placeStory,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Hint.copy(alpha = 0.9f),
+                modifier = Modifier.padding(top = 10.dp),
+            )
+        }
+        if (trailStory.isNotBlank() && trailStory != placeStory) {
+            Text(
+                text = trailStory,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Hint.copy(alpha = 0.9f),
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        Button(
+            onClick = onDone,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
+        ) {
+            Text("Done")
+        }
+    }
+}
+
+private suspend fun loadTutorialReading(context: Context): TutorialReading {
+    val catalog = LocalJourney.graph(context).catalog.load()
+    val index = CatalogIndex(catalog)
+    val photo = index.photo("tutorial") ?: error("tutorial photo is not in the catalog")
+    val offer = continueAfter(
+        catalog,
+        PlayerProgress(playerId = "", completedPhotoIds = emptySet()),
+        photo.id,
+        null,
+    )
+    val trail = offer.trailId?.let { index.trail(it) }
+    val scenery = index.scenery(photo.sceneryId)
+    return TutorialReading(
+        trailTitle = trail?.title ?: "Collected",
+        collectedLine = if (offer.total == 0) "Saved" else "${offer.collected} of ${offer.total} collected",
+        placeStory = photo.story.ifBlank { scenery?.story.orEmpty() },
+        trailStory = trail?.story.orEmpty(),
+    )
 }
 
 private sealed interface TutorialLoad {

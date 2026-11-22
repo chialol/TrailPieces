@@ -36,7 +36,7 @@ See [android/README.md](android/README.md) for detailed setup and troubleshootin
 2. Run [tools/prep_layers/README.md](tools/prep_layers/README.md).
 3. Rebuild/run. Assets land in `android/app/src/main/assets/layers/{stem}/`.
 
-A fresh install opens the tutorial. After that, home is **Walk a trail**, with **Replay the tutorial**.
+A fresh install opens the menu with **Play**, which runs the tutorial. After that, home unlocks **Walk a trail** and **Replay the tutorial**.
 
 ## Adding a photo for Walk a trail
 

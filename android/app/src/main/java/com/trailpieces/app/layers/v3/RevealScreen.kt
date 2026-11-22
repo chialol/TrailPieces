@@ -123,6 +123,8 @@ fun RevealScreen(
     onPresentationSettled: () -> Unit = {},
     onReplayStarted: () -> Unit = {},
     startCompleted: Boolean = false,
+    /** Pieces are already home. Play the gloss, zoom out, then the reading band. */
+    celebrate: Boolean = false,
     readingBand: Boolean = false,
     footer: @Composable () -> Unit = {},
 ) {
@@ -154,6 +156,7 @@ fun RevealScreen(
                     onPresentationSettled = onPresentationSettled,
                     onReplayStarted = onReplayStarted,
                     startCompleted = startCompleted,
+                    celebrate = celebrate,
                     readingBand = readingBand,
                     footer = footer,
                     modifier = modifier,
@@ -293,6 +296,7 @@ private fun RevealPlayfield(
     onPresentationSettled: () -> Unit,
     onReplayStarted: () -> Unit,
     startCompleted: Boolean,
+    celebrate: Boolean,
     readingBand: Boolean,
     footer: @Composable () -> Unit,
     modifier: Modifier = Modifier,
@@ -317,6 +321,7 @@ private fun RevealPlayfield(
     }
 
     var showFinished by remember { mutableStateOf(startCompleted) }
+    var celebrateRound by remember { mutableStateOf(celebrate) }
     var epoch by remember { mutableStateOf(0) }
     key(epoch) {
         RevealRound(
@@ -326,12 +331,14 @@ private fun RevealPlayfield(
             onBack = onBack,
             onReplay = {
                 showFinished = false
+                celebrateRound = false
                 onReplayStarted()
                 epoch++
             },
             onCompleted = onCompleted,
             onPresentationSettled = onPresentationSettled,
             startCompleted = showFinished,
+            celebrate = celebrateRound,
             readingBand = readingBand,
             footer = footer,
             modifier = modifier,
@@ -349,6 +356,7 @@ private fun RevealRound(
     onCompleted: () -> Unit,
     onPresentationSettled: () -> Unit,
     startCompleted: Boolean,
+    celebrate: Boolean,
     readingBand: Boolean,
     footer: @Composable () -> Unit,
     modifier: Modifier = Modifier,
@@ -356,17 +364,18 @@ private fun RevealRound(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val session = remember {
-        RevealSession(scene).also { if (startCompleted) it.restoreComplete() }
+        RevealSession(scene).also { if (startCompleted || celebrate) it.restoreComplete() }
     }
     session.feedback = feedback
     val drag = remember { DragState() }
     val geo = remember { PlayGeometry() }
-    val finale = remember { Finale(if (startCompleted) 1f else 0f, if (startCompleted) 1f else 0f) }
+    val settledAlready = startCompleted && !celebrate
+    val finale = remember { Finale(if (settledAlready) 1f else 0f, if (settledAlready) 1f else 0f) }
     val viewer = remember { Viewer() }
-    val lens = remember { Animatable(if (startCompleted && scene.isLandscape) 1f else 0f) }
-    val shrink = remember { Animatable(if (startCompleted) 1f else 0f) }
-    var settled by remember { mutableStateOf(startCompleted) }
-    var pinchOn by remember { mutableStateOf(startCompleted) }
+    val lens = remember { Animatable(if (settledAlready && scene.isLandscape) 1f else 0f) }
+    val shrink = remember { Animatable(if (settledAlready) 1f else 0f) }
+    var settled by remember { mutableStateOf(settledAlready) }
+    var pinchOn by remember { mutableStateOf(settledAlready) }
     var lensStartScroll by remember { mutableFloatStateOf(0f) }
     var notified by remember { mutableStateOf(false) }
     // The drag gesture captures the first release lambda. These refs stay current.
@@ -381,6 +390,7 @@ private fun RevealRound(
     val snapThresholdPx = with(density) { SnapThresholdDp.toPx() }
 
     LaunchedEffect(Unit) {
+        if (celebrate) return@LaunchedEffect
         if (startCompleted) {
             if (!notified) {
                 notified = true
@@ -487,6 +497,13 @@ private fun RevealRound(
             }
             notifySettled()
         }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!celebrate) return@LaunchedEffect
+        snapshotFlow { fit.widthPx }.first { it > 0f }
+        if (scroll.maxValue > 0) scroll.scrollTo(scroll.maxValue / 2)
+        playFinale()
     }
 
     fun release() {

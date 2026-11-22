@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun HomeMenuScreen(
+    tutorialComplete: Boolean,
+    onPlay: () -> Unit,
     onWalkTrail: () -> Unit,
     onReplayTutorial: () -> Unit,
     modifier: Modifier = Modifier,
@@ -40,19 +42,30 @@ fun HomeMenuScreen(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 12.dp, bottom = 32.dp),
         )
-        Button(
-            onClick = onWalkTrail,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 6.dp),
-        ) {
-            Text("Walk a trail")
-        }
-        TextButton(
-            onClick = onReplayTutorial,
-            modifier = Modifier.padding(top = 8.dp),
-        ) {
-            Text("Replay the tutorial")
+        if (!tutorialComplete) {
+            Button(
+                onClick = onPlay,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+            ) {
+                Text("Play")
+            }
+        } else {
+            Button(
+                onClick = onWalkTrail,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+            ) {
+                Text("Walk a trail")
+            }
+            TextButton(
+                onClick = onReplayTutorial,
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                Text("Replay the tutorial")
+            }
         }
     }
 }
