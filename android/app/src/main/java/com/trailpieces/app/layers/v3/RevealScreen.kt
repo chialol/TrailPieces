@@ -15,7 +15,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -38,7 +37,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -734,9 +732,11 @@ private fun RevealRound(
                 }
                 val inspected = session.inspected
                 if (!complete && inspected != null) {
-                    InspectOverlay(
+                    PieceInspectOverlay(
                         piece = inspected,
                         bitmap = bitmaps.lifts[inspected.id] ?: bitmaps.icons.getValue(inspected.id),
+                        liftPad = scene.liftPad,
+                        mask = bitmaps.hitMasks.getValue(inspected.id),
                         onDismiss = { session.deselect() },
                     )
                 }
@@ -1007,59 +1007,6 @@ private fun WaitingIcon(
                 }
             },
     )
-}
-
-@Composable
-private fun InspectOverlay(
-    piece: RevealPiece,
-    bitmap: ImageBitmap,
-    onDismiss: () -> Unit,
-) {
-    Box(Modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.45f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss,
-                ),
-        )
-        BoxWithConstraints(
-            Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            val aspect = bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)
-            val maxW = maxWidth * 0.86f
-            val maxH = maxHeight * 0.62f
-            val width = if (maxW / aspect <= maxH) maxW else maxH * aspect
-            val height = width / aspect
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = piece.label ?: "Piece ${piece.id}",
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier
-                        .size(width, height)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
-                        ),
-                )
-                IconButton(onClick = onDismiss, modifier = Modifier.padding(top = 12.dp)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Put it back", tint = OnBackdrop)
-                }
-            }
-        }
-    }
 }
 
 private fun iconDp(icon: ImageBitmap, targetHeight: Dp): Pair<Dp, Dp> {

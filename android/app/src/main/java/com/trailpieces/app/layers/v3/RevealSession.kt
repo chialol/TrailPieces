@@ -11,7 +11,8 @@ import kotlin.math.hypot
 /**
  * Snap-place. Any unplaced piece can be dragged once it is back in the row.
  * A release near that piece's bbox origin locks it. [inspected] is the piece
- * opened for a look. It has to be put back before any piece can be dragged.
+ * opened for a look. A tap outside its shape puts it back. It has to be put
+ * back before any piece can be dragged.
  *
  * Positions are in root pixels. The screen passes where the photo's top-left
  * currently sits (after any pan) and how wide it is drawn.
@@ -53,7 +54,7 @@ class RevealSession(
         selectedId = null
     }
 
-    /** Lifts an unplaced piece. An open piece has to be put back before anything can be dragged. */
+    /** Lifts an unplaced piece. An open piece has to be put back, by tapping outside it, before anything can be dragged. */
     fun startDrag(pieceId: Int) {
         if (draggingId != null || selectedId != null) return
         if (pieces.none { it.id == pieceId } || pieceId in _placed) return

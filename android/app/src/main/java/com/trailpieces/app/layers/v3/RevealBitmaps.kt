@@ -22,6 +22,8 @@ class RevealBitmaps(
     val crops: Map<Int, ImageBitmap>,
     val lifts: Map<Int, ImageBitmap>,
     val icons: Map<Int, ImageBitmap>,
+    /** Crop alpha for each piece, used to tell a tap on the shape from a tap beside it. */
+    val hitMasks: Map<Int, PieceMask>,
 ) {
     companion object {
         @OptIn(ExperimentalCoroutinesApi::class)
@@ -30,34 +32,61 @@ class RevealBitmaps(
         suspend fun load(context: Context, scene: RevealScene): RevealBitmaps =
             withContext(decodeDispatcher) {
                 coroutineScope {
-                    val plate = async { decode(context, scene, scene.plateFile) }
-                    val alive = async { decode(context, scene, scene.aliveFile) }
-                    val crops = scene.pieces.map { p -> async { p.id to decode(context, scene, p.cropFile) } }
-                    val lifts = scene.pieces.map { p -> async { p.id to decode(context, scene, p.liftFile) } }
-                    val icons = scene.pieces.map { p -> async { p.id to decode(context, scene, p.iconFile) } }
+                    val plate = async { decode(context, scene, scene.plateFile).image }
+                    val alive = async { decode(context, scene, scene.aliveFile).image }
+                    val crops = scene.pieces.map { p ->
+                        async { p.id to decode(context, scene, p.cropFile, withMask = true) }
+                    }
+                    val lifts = scene.pieces.map { p -> async { p.id to decode(context, scene, p.liftFile).image } }
+                    val icons = scene.pieces.map { p -> async { p.id to decode(context, scene, p.iconFile).image } }
+                    val decodedCrops = crops.awaitAll()
                     RevealBitmaps(
                         plate = plate.await(),
                         alive = alive.await(),
-                        crops = crops.awaitAll().toMap(),
+                        crops = decodedCrops.associate { it.first to it.second.image },
                         lifts = lifts.awaitAll().toMap(),
                         icons = icons.awaitAll().toMap(),
+                        hitMasks = decodedCrops.associate { it.first to it.second.mask!! },
                     )
                 }
             }
 
         suspend fun loadCover(context: Context, scene: RevealScene): ImageBitmap =
-            withContext(Dispatchers.IO) { decode(context, scene, scene.coverFile) }
+            withContext(Dispatchers.IO) { decode(context, scene, scene.coverFile).image }
 
-        private fun decode(context: Context, scene: RevealScene, file: String): ImageBitmap {
+        private class Decoded(val image: ImageBitmap, val mask: PieceMask?)
+
+        private fun decode(
+            context: Context,
+            scene: RevealScene,
+            file: String,
+            withMask: Boolean = false,
+        ): Decoded {
             val path = "reveal/${scene.id}/$file"
-            val hardware = BitmapFactory.Options().apply {
-                inPreferredConfig = Bitmap.Config.HARDWARE
+            val options = BitmapFactory.Options().apply {
+                inPreferredConfig = Bitmap.Config.ARGB_8888
                 inScaled = false
             }
-            val bitmap = context.assets.open(path).use { BitmapFactory.decodeStream(it, null, hardware) }
-                ?: context.assets.open(path).use { BitmapFactory.decodeStream(it) }
+            val software = context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }
                 ?: error("Could not decode $path")
-            return bitmap.asImageBitmap()
+            val mask = if (withMask) maskOf(software) else null
+            val gpu = software.copy(Bitmap.Config.HARDWARE, false)
+            val image = if (gpu != null) {
+                software.recycle()
+                gpu.asImageBitmap()
+            } else {
+                software.asImageBitmap()
+            }
+            return Decoded(image, mask)
+        }
+
+        private fun maskOf(bitmap: Bitmap): PieceMask {
+            val width = bitmap.width
+            val height = bitmap.height
+            val pixels = IntArray(width * height)
+            bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+            val alpha = ByteArray(pixels.size) { index -> (pixels[index] ushr 24).toByte() }
+            return PieceMask(width, height, alpha)
         }
     }
 }

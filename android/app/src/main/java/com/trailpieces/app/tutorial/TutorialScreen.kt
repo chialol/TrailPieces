@@ -6,6 +6,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -28,11 +29,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -52,14 +53,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -68,11 +69,14 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.trailpieces.app.R
 import com.trailpieces.app.journey.LocalJourney
+import com.trailpieces.app.layers.v3.PieceInspectOverlay
 import com.trailpieces.app.layers.v3.PlaceOutcome
 import com.trailpieces.app.layers.v3.RevealBitmaps
 import com.trailpieces.app.layers.v3.RevealLoader
@@ -87,6 +91,7 @@ import com.trailpieces.app.layers.v3.StripGesture
 import com.trailpieces.app.layers.v3.anchoredTopLeft
 import com.trailpieces.app.layers.v3.classifyStripMove
 import kotlinx.coroutines.flow.first
+import kotlin.math.atan2
 import kotlin.math.roundToInt
 
 private val Backdrop = Color(0xFF0D0E0C)
@@ -95,10 +100,17 @@ private val SnapThreshold = 20.dp
 private val IconHeight = 68.dp
 private val IconMaxWidth = 140.dp
 
+/** Fingertip of Material's touch_app icon, as a fraction of the 24×24 viewport. */
+private const val TouchTipX = 11.5f / 24f
+private const val TouchTipY = 6f / 24f
+private val TouchIconSize = 48.dp
+
 private class TutorialFrame {
     var imageTopLeft by mutableStateOf(Offset.Zero)
     var imageSize by mutableStateOf(Size.Zero)
+    var chipBounds by mutableStateOf(Rect.Zero)
     var chipCenter by mutableStateOf(Offset.Zero)
+    var ghostBounds by mutableStateOf(Rect.Zero)
     var ghostCenter by mutableStateOf(Offset.Zero)
     var rootOrigin by mutableStateOf(Offset.Zero)
 }
@@ -242,11 +254,10 @@ private fun TutorialPlay(
 
     val dragging = dragId != null
     val scrollEnabled = session.inspected == null && !dragging
-    val caption = when (coach.step) {
-        TutorialStep.Look -> "Tap the piece"
-        TutorialStep.Drag -> "Drag the piece"
-        TutorialStep.Solve -> "Place the rest"
-        else -> null
+    val bottomCaption = if (coach.step == TutorialStep.Solve && session.placedIds.size < 2) {
+        "Place the rest of the pieces."
+    } else {
+        null
     }
 
     Box(
@@ -285,8 +296,11 @@ private fun TutorialPlay(
                                 hidden = dragId == piece.id,
                                 canTap = canTap(piece),
                                 canDrag = canDrag(piece),
-                                onPosition = { center ->
-                                    if (piece.id == guided.id) frame.chipCenter = center
+                                onPosition = { bounds ->
+                                    if (piece.id == guided.id) {
+                                        frame.chipBounds = bounds
+                                        frame.chipCenter = bounds.center
+                                    }
                                 },
                                 onTap = {
                                     session.select(piece.id)
@@ -382,7 +396,10 @@ private fun TutorialPlay(
                                     Modifier
                                         .offset(x = imageW * home.left, y = imageH * home.top)
                                         .size(width = imageW * home.width, height = imageH * home.height)
-                                        .onGloballyPositioned { frame.ghostCenter = it.boundsInRoot().center },
+                                        .onGloballyPositioned {
+                                            frame.ghostBounds = it.boundsInRoot()
+                                            frame.ghostCenter = frame.ghostBounds.center
+                                        },
                                 ) {
                                     Image(
                                         bitmap = bitmaps.crops.getValue(guided.id),
@@ -398,10 +415,10 @@ private fun TutorialPlay(
                     }
                 }
                 if (coach.step == TutorialStep.Pan) {
-                    PanHint(Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp))
-                } else if (caption != null) {
+                    PanHint(Modifier.align(Alignment.Center))
+                } else if (bottomCaption != null) {
                     Text(
-                        text = caption,
+                        text = bottomCaption,
                         color = Hint,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier
@@ -414,11 +431,18 @@ private fun TutorialPlay(
             }
         }
 
+        if (coach.step == TutorialStep.Look && session.inspected == null && frame.chipBounds != Rect.Zero) {
+            TapCoach(anchor = frame.chipBounds.bottomCenter - frame.rootOrigin)
+        }
         if (coach.step == TutorialStep.Drag && !dragging &&
             frame.chipCenter != Offset.Zero && frame.ghostCenter != Offset.Zero
         ) {
-            Canvas(Modifier.fillMaxSize()) {
-                drawTutorialArrow(frame.chipCenter - frame.rootOrigin, frame.ghostCenter - frame.rootOrigin)
+            DragCoach(
+                from = frame.chipCenter - frame.rootOrigin,
+                to = frame.ghostCenter - frame.rootOrigin,
+            )
+            if (frame.ghostBounds != Rect.Zero) {
+                PlaceCaption(topCenter = frame.ghostBounds.bottomCenter - frame.rootOrigin)
             }
         }
 
@@ -440,11 +464,19 @@ private fun TutorialPlay(
 
         val inspected = session.inspected
         if (inspected != null) {
-            EnlargedPiece(
+            PieceInspectOverlay(
+                piece = inspected,
                 bitmap = bitmaps.lifts[inspected.id] ?: bitmaps.icons.getValue(inspected.id),
-                onClose = {
+                liftPad = scene.liftPad,
+                mask = bitmaps.hitMasks.getValue(inspected.id),
+                onDismiss = {
                     session.deselect()
                     coach.closePiece()
+                },
+                caption = if (coach.step == TutorialStep.Look) {
+                    "Tap outside the piece when you're done."
+                } else {
+                    null
                 },
             )
         }
@@ -463,7 +495,7 @@ private fun PieceChip(
     hidden: Boolean,
     canTap: Boolean,
     canDrag: Boolean,
-    onPosition: (Offset) -> Unit,
+    onPosition: (Rect) -> Unit,
     onTap: () -> Unit,
     onDragStart: (fingerInRoot: Offset, grab: Offset) -> Unit,
     onDrag: (fingerInRoot: Offset) -> Unit,
@@ -490,7 +522,7 @@ private fun PieceChip(
             )
             .onGloballyPositioned {
                 origin[0] = it.positionInRoot()
-                onPosition(it.boundsInRoot().center)
+                onPosition(it.boundsInRoot())
             }
             .pointerInput(piece.id, canTap, canDrag) {
                 if (!canTap && !canDrag) return@pointerInput
@@ -570,7 +602,7 @@ private fun PanHint(modifier: Modifier = Modifier) {
             drawChevron(Offset(size.width * 0.72f, y), pointingRight = true)
         }
         Text(
-            text = "Slide left and right",
+            text = "Drag to look around.",
             color = Hint,
             style = MaterialTheme.typography.bodyLarge,
         )
@@ -578,52 +610,161 @@ private fun PanHint(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EnlargedPiece(bitmap: ImageBitmap, onClose: () -> Unit) {
-    Box(Modifier.fillMaxSize()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.55f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClose,
-                ),
-        )
-        BoxWithConstraints(
-            Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClose,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            val aspect = bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(0.01f)
-            val maxW = maxWidth * 0.86f
-            val maxH = maxHeight * 0.62f
-            val width = if (maxW / aspect <= maxH) maxW else maxH * aspect
-            val height = width / aspect
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = "Piece",
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier
-                        .size(width, height)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
-                        ),
-                )
-                IconButton(onClick = onClose, modifier = Modifier.padding(top = 12.dp)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Put it back", tint = Hint)
+private fun TapCoach(anchor: Offset) {
+    val transition = rememberInfiniteTransition(label = "tap")
+    val pulse by transition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pulse",
+    )
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        TouchIcon(
+            modifier = Modifier
+                .offset {
+                    val sizePx = TouchIconSize.toPx()
+                    val overlap = 4.dp.toPx()
+                    IntOffset(
+                        (anchor.x - sizePx * TouchTipX).roundToInt(),
+                        (anchor.y - overlap - sizePx * TouchTipY).roundToInt(),
+                    )
                 }
+                .graphicsLayer {
+                    scaleX = pulse
+                    scaleY = pulse
+                    transformOrigin = TransformOrigin(TouchTipX, TouchTipY)
+                },
+        )
+        Text(
+            text = "Tap to inspect the piece.",
+            color = Hint,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .offset {
+                    val sizePx = TouchIconSize.toPx()
+                    val textW = 220.dp.toPx()
+                    val maxX = (maxWidth.toPx() - textW).coerceAtLeast(0f)
+                    val x = (anchor.x - textW / 2f).coerceIn(0f, maxX)
+                    val iconTop = anchor.y - 4.dp.toPx() - sizePx * TouchTipY
+                    val top = iconTop + sizePx + 8.dp.toPx()
+                    IntOffset(x.roundToInt(), top.roundToInt())
+                }
+                .width(220.dp)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun PlaceCaption(topCenter: Offset) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        Text(
+            text = "Place the piece here.",
+            color = Hint,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .offset {
+                    val textW = 240.dp.toPx()
+                    val maxX = (maxWidth.toPx() - textW).coerceAtLeast(0f)
+                    val x = (topCenter.x - textW / 2f).coerceIn(0f, maxX)
+                    IntOffset(x.roundToInt(), (topCenter.y + 10.dp.toPx()).roundToInt())
+                }
+                .width(240.dp)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun DragCoach(from: Offset, to: Offset) {
+    val transition = rememberInfiniteTransition(label = "drag")
+    val travel by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2400
+                0f at 0
+                0f at 360
+                1f at 1800 using FastOutSlowInEasing
+                1f at 2400
+            },
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "travel",
+    )
+    val density = LocalDensity.current
+    val stroke = with(density) { 12.dp.toPx() }
+    val delta = to - from
+    val len = delta.getDistance()
+    Box(Modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize()) {
+            if (len < 8f) return@Canvas
+            drawLine(Color.Black.copy(alpha = 0.35f), from, to, strokeWidth = stroke + 8f, cap = StrokeCap.Round)
+            drawLine(Hint.copy(alpha = 0.38f), from, to, strokeWidth = stroke, cap = StrokeCap.Round)
+            val steps = 5
+            for (step in steps downTo 1) {
+                val behind = travel - step * 0.04f
+                if (behind <= 0f) continue
+                drawCircle(
+                    color = Hint.copy(alpha = 0.16f * (steps - step + 1) / steps),
+                    radius = stroke * 0.55f,
+                    center = from + delta * behind,
+                )
             }
         }
+        if (len >= 8f) {
+            val head = from + delta * travel
+            val rotation = -(atan2(delta.y, delta.x) * (180f / Math.PI.toFloat()) + 90f)
+            val fade = when {
+                travel < 0.08f -> travel / 0.08f
+                travel > 0.92f -> (1f - travel) / 0.08f
+                else -> 1f
+            }
+            TouchIcon(
+                modifier = Modifier
+                    .offset {
+                        val sizePx = TouchIconSize.toPx()
+                        IntOffset(
+                            (head.x - sizePx * TouchTipX).roundToInt(),
+                            (head.y - sizePx * TouchTipY).roundToInt(),
+                        )
+                    }
+                    .graphicsLayer {
+                        rotationZ = rotation
+                        transformOrigin = TransformOrigin(TouchTipX, TouchTipY)
+                        alpha = fade
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TouchIcon(modifier: Modifier = Modifier) {
+    val painter = painterResource(R.drawable.ic_touch_app)
+    Box(modifier.size(TouchIconSize)) {
+        Icon(
+            painter = painter,
+            contentDescription = null,
+            tint = Color.Black.copy(alpha = 0.4f),
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(1.dp, 2.dp),
+        )
+        Icon(
+            painter = painter,
+            contentDescription = null,
+            tint = Hint,
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 
@@ -674,25 +815,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawChevron(center:
     val bottom = Offset(center.x - dir * arm, center.y + arm)
     drawLine(Hint, top, tip, strokeWidth = 5f, cap = StrokeCap.Round)
     drawLine(Hint, tip, bottom, strokeWidth = 5f, cap = StrokeCap.Round)
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTutorialArrow(from: Offset, to: Offset) {
-    val delta = to - from
-    val len = delta.getDistance()
-    if (len < 8f) return
-    val unit = delta / len
-    val normal = Offset(-unit.y, unit.x)
-    val head = 28f
-    val base = to - unit * head
-    drawLine(Color.Black.copy(alpha = 0.55f), from, base, strokeWidth = 10f, cap = StrokeCap.Round)
-    drawLine(Hint, from, base, strokeWidth = 5f, cap = StrokeCap.Round)
-    val headPath = Path().apply {
-        moveTo(to.x, to.y)
-        lineTo(base.x + normal.x * 12f, base.y + normal.y * 12f)
-        lineTo(base.x - normal.x * 12f, base.y - normal.y * 12f)
-        close()
-    }
-    drawPath(headPath, Hint)
 }
 
 @Composable
