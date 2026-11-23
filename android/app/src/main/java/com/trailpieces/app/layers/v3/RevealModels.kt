@@ -1,6 +1,12 @@
 package com.trailpieces.app.layers.v3
 
-import com.trailpieces.app.layers.LayerBBox
+/** Tight rectangle of a piece on the scene, in scene pixels. */
+data class LayerBBox(
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+)
 
 /**
  * A reveal scene: a dark plate the player pans, color pieces that lock onto it,

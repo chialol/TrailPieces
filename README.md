@@ -12,9 +12,6 @@ trailPieces/
 └── docs/        # Design notes and documentation
 ```
 
-**Puzzle engine architecture** (park-only release, mid-drag owns motion):  
-[`docs/puzzle-architecture.md`](docs/puzzle-architecture.md) · session handoff [`HANDOFF.md`](HANDOFF.md)
-
 ## Getting started (Android)
 
 1. Open **Android Studio** → **Open** → select the `android/` folder.
@@ -23,18 +20,6 @@ trailPieces/
 4. Select your device in the toolbar and click **Run** (green play button).
 
 See [android/README.md](android/README.md) for detailed setup and troubleshooting.
-
-## Adding puzzle images
-
-1. Drop a portrait photo in **`shared/source/`** (e.g. `shared/source/trail.jpg`).
-2. Run the chop script — see [tools/chop_puzzle/README.md](tools/chop_puzzle/README.md).
-3. Rebuild/run the Android app. Tiles land in `android/app/src/main/assets/puzzles/default/`.
-
-## Adding layered scene images
-
-1. Drop `{stem}.jpg` (optional) plus `{stem}-1.jpg` … `{stem}-N.jpg` in **`shared/source/`**.
-2. Run [tools/prep_layers/README.md](tools/prep_layers/README.md).
-3. Rebuild/run. Assets land in `android/app/src/main/assets/layers/{stem}/`.
 
 A fresh install opens the menu with **Play**, which runs the tutorial. After that, home unlocks **Walk a trail** and **Replay the tutorial**.
 

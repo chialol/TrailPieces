@@ -1,7 +1,6 @@
 package com.trailpieces.app.layers.v3
 
 import androidx.compose.ui.geometry.Offset
-import com.trailpieces.app.layers.LayerBBox
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

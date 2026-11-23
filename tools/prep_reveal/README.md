@@ -54,7 +54,7 @@ after the number is the on-screen name: `01-meadow.png` sits first in the strip 
 is labeled "meadow". Any piece can be played.
 
 Also accepted: JPEG full frames whose kept pixels match `photo.jpg` and whose
-unused area is near-white (same idea as the Death Valley layer exports).
+unused area is near-white.
 
 Pieces do not need to cover the whole photo. Uncovered areas stay on the dark
 plate until every piece is placed, then the color photo fades in.
@@ -75,7 +75,7 @@ Reuses the chop_puzzle venv:
 ```powershell
 cd C:\src\2026\natureGame
 python -m venv tools\chop_puzzle\.venv
-tools\chop_puzzle\.venv\Scripts\pip install -r tools\prep_layers\requirements.txt
+tools\chop_puzzle\.venv\Scripts\pip install -r tools\prep_reveal\requirements.txt
 ```
 
 ## Usage

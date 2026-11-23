@@ -1,6 +1,6 @@
 package com.trailpieces.app.tutorial
 
-import com.trailpieces.app.layers.LayerBBox
+import com.trailpieces.app.layers.v3.LayerBBox
 import com.trailpieces.app.layers.v3.RevealPiece
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

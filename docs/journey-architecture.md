@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-04. Status: **implemented**. Authoring steps are in [`../tools/import_catalog/README.md`](../tools/import_catalog/README.md).
 
-This is the app flow around a finished photo. It does not change puzzle-engine rules or the reveal drag mechanic. [`puzzle-architecture.md`](puzzle-architecture.md) and [`reveal-handoff.md`](reveal-handoff.md) stay the source of truth for those modes.
+This is the app flow around a finished photo. Reveal placement stays in `:app` `layers/v3`. [`reveal-handoff.md`](reveal-handoff.md) is the source of truth for that mode.
 
 ## Player journey
 
@@ -33,7 +33,7 @@ assets/catalog/catalog.json     the document the app loads
 :app                    asset + local-file implementations, Compose flow, reveal hook
 ```
 
-`:puzzle-engine` is not involved. Reveal image prep (`tools/prep_reveal`) is not involved. Metadata changes do not re-encode photos.
+Reveal image prep (`tools/prep_reveal`) is not involved. Metadata changes do not re-encode photos.
 
 A future login swaps implementations behind the same interfaces. Screens never branch on local versus network.
 
@@ -105,7 +105,7 @@ The Trail list in **Walk a trail** shows a photo when its id is in that trail's 
 
 ## Domain (`:journey`)
 
-Package `com.trailpieces.journey`. Kotlin JVM, same style as `:puzzle-engine`. JSON parsed with `org.json` so the parser matches `RevealLoader` and needs no new compiler plugin.
+Package `com.trailpieces.journey`. Kotlin JVM. JSON parsed with `org.json` so the parser matches `RevealLoader` and needs no new compiler plugin.
 
 ```kotlin
 data class Mood(val id: String, val title: String, val summary: String)

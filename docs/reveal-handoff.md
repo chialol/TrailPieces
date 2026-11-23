@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-04. Everything below is committed (`c3855a4`).
 
-This mode is separate from the trail-puzzle engine. `HANDOFF.md` and `docs/puzzle-architecture.md` cover the grid puzzle; none of the `:puzzle-engine` rules apply here.
+This is the photo the player reveals: a dark plate, color pieces that lock onto it, then the full-color photo.
 
 ## What the mode is
 
@@ -27,7 +27,7 @@ App code: `android/app/src/main/java/com/trailpieces/app/layers/v3/`
 
 Unit tests: `android/app/src/test/kotlin/com/trailpieces/app/layers/v3/RevealSessionTest.kt`
 
-Routing: home no longer opens a scene picker. **Walk a trail** opens one scene with `initialSceneId` and records completion through `onCompleted` (see [`journey-architecture.md`](journey-architecture.md)). An enlarged piece is put back by tapping outside its shape. The tap tests the crop's opaque pixels, so the outline, the shadow, and the empty corners of the bounds do not count as the piece. There is no close button. It has to be put back before it can be dragged. `LayersScreen` still has a `REVEAL_V3` chip, which is now redundant.
+Routing: home no longer opens a scene picker. **Walk a trail** opens one scene with `initialSceneId` and records completion through `onCompleted` (see [`journey-architecture.md`](journey-architecture.md)). An enlarged piece is put back by tapping outside its shape. The tap tests the crop's opaque pixels, so the outline, the shadow, and the empty corners of the bounds do not count as the piece. There is no close button. It has to be put back before it can be dragged.
 
 ## Assets
 

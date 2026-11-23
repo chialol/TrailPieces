@@ -104,7 +104,7 @@ if (Test-Path -LiteralPath $metaPath -PathType Leaf) {
 $python = Join-Path $root "tools\chop_puzzle\.venv\Scripts\python.exe"
 $prep = Join-Path $root "tools\prep_reveal\prep_reveal.py"
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
-    Fail "Missing $python`nFrom the repo:`npython -m venv tools\chop_puzzle\.venv`ntools\chop_puzzle\.venv\Scripts\pip install -r tools\prep_layers\requirements.txt"
+    Fail "Missing $python`nFrom the repo:`npython -m venv tools\chop_puzzle\.venv`ntools\chop_puzzle\.venv\Scripts\pip install -r tools\prep_reveal\requirements.txt"
 }
 
 $prepArgs = @($prep, $sceneId)

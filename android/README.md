@@ -51,15 +51,4 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 | `local.properties` missing | Android Studio creates this automatically on first open. It points to your SDK at `%LOCALAPPDATA%\Android\Sdk`. Do **not** commit this file. |
 | JDK errors | **File → Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK** — select **Embedded JDK** or **jbr-17** from Android Studio. |
 
-## Adding images
-
-1. Drop a portrait photo in **`shared/source/`** at the repo root.
-2. Run the chop script:
-
-```powershell
-tools\chop_puzzle\.venv\Scripts\python tools\chop_puzzle\chop.py
-```
-
-(See [tools/chop_puzzle/README.md](../tools/chop_puzzle/README.md) for first-time Python setup.)
-
-3. Rebuild/run the app. Output goes to `app/src/main/assets/puzzles/default/`.
+A new trail photo is added from the repo root. See the root [README](../README.md).

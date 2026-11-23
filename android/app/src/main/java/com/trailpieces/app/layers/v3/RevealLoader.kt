@@ -1,7 +1,6 @@
 package com.trailpieces.app.layers.v3
 
 import android.content.Context
-import com.trailpieces.app.layers.LayerBBox
 import org.json.JSONObject
 
 object RevealLoader {
