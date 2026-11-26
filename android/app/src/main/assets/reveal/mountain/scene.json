@@ -1,6 +1,6 @@
 {
   "id": "mountain",
-  "title": "Mountain",
+  "title": "Meadow on the Obsidian Trail",
   "mode": "reveal_v3",
   "width": 2878,
   "height": 1920,
@@ -10,7 +10,7 @@
   "liftPad": 41,
   "source": {
     "colorFile": "photo.jpg",
-    "plateFile": "photo-bw.png",
+    "plateFile": "photo-bw.jpg",
     "sourceWidth": 7935,
     "sourceHeight": 5293
   },
@@ -22,13 +22,12 @@
       "liftFile": "lift/piece_01.webp",
       "iconFile": "icon/piece_01.webp",
       "bbox": {
-        "left": 1058,
-        "top": 1580,
-        "right": 2546,
+        "left": 0,
+        "top": 1469,
+        "right": 504,
         "bottom": 1920
       },
-      "sourceFile": "01-river1.png",
-      "label": "river1"
+      "sourceFile": "01.png"
     },
     {
       "id": 2,
@@ -37,13 +36,12 @@
       "liftFile": "lift/piece_02.webp",
       "iconFile": "icon/piece_02.webp",
       "bbox": {
-        "left": 2108,
-        "top": 233,
-        "right": 2797,
-        "bottom": 1327
+        "left": 1052,
+        "top": 850,
+        "right": 1832,
+        "bottom": 1605
       },
-      "sourceFile": "02-forest1.png",
-      "label": "forest1"
+      "sourceFile": "02.png"
     },
     {
       "id": 3,
@@ -52,13 +50,12 @@
       "liftFile": "lift/piece_03.webp",
       "iconFile": "icon/piece_03.webp",
       "bbox": {
-        "left": 0,
-        "top": 37,
-        "right": 681,
-        "bottom": 446
+        "left": 1966,
+        "top": 325,
+        "right": 2508,
+        "bottom": 1056
       },
-      "sourceFile": "03-cliff.png",
-      "label": "cliff"
+      "sourceFile": "03.png"
     },
     {
       "id": 4,
@@ -67,13 +64,12 @@
       "liftFile": "lift/piece_04.webp",
       "iconFile": "icon/piece_04.webp",
       "bbox": {
-        "left": 894,
-        "top": 427,
-        "right": 1610,
-        "bottom": 947
+        "left": 1230,
+        "top": 313,
+        "right": 1704,
+        "bottom": 1202
       },
-      "sourceFile": "04-clearance.png",
-      "label": "clearance"
+      "sourceFile": "04.png"
     },
     {
       "id": 5,
@@ -82,13 +78,12 @@
       "liftFile": "lift/piece_05.webp",
       "iconFile": "icon/piece_05.webp",
       "bbox": {
-        "left": 856,
-        "top": 1185,
-        "right": 2757,
-        "bottom": 1659
+        "left": 0,
+        "top": 1296,
+        "right": 637,
+        "bottom": 1857
       },
-      "sourceFile": "05-meadow.png",
-      "label": "meadow"
+      "sourceFile": "05.png"
     },
     {
       "id": 6,
@@ -98,12 +93,11 @@
       "iconFile": "icon/piece_06.webp",
       "bbox": {
         "left": 0,
-        "top": 190,
-        "right": 1401,
-        "bottom": 1425
+        "top": 228,
+        "right": 491,
+        "bottom": 1115
       },
-      "sourceFile": "06-forest2.png",
-      "label": "forest2"
+      "sourceFile": "06.png"
     },
     {
       "id": 7,
@@ -112,13 +106,12 @@
       "liftFile": "lift/piece_07.webp",
       "iconFile": "icon/piece_07.webp",
       "bbox": {
-        "left": 1203,
-        "top": 275,
-        "right": 1787,
-        "bottom": 626
+        "left": 376,
+        "top": 0,
+        "right": 998,
+        "bottom": 371
       },
-      "sourceFile": "07-mountain.png",
-      "label": "mountain"
+      "sourceFile": "07.png"
     },
     {
       "id": 8,
@@ -127,13 +120,12 @@
       "liftFile": "lift/piece_08.webp",
       "iconFile": "icon/piece_08.webp",
       "bbox": {
-        "left": 0,
-        "top": 0,
-        "right": 2869,
-        "bottom": 501
+        "left": 1495,
+        "top": 572,
+        "right": 2046,
+        "bottom": 1292
       },
-      "sourceFile": "08-sky.png",
-      "label": "sky"
+      "sourceFile": "08.png"
     },
     {
       "id": 9,
@@ -142,13 +134,12 @@
       "liftFile": "lift/piece_09.webp",
       "iconFile": "icon/piece_09.webp",
       "bbox": {
-        "left": 0,
-        "top": 1205,
-        "right": 1290,
-        "bottom": 1835
+        "left": 1360,
+        "top": 0,
+        "right": 2071,
+        "bottom": 420
       },
-      "sourceFile": "09-river2.png",
-      "label": "river2"
+      "sourceFile": "09.png"
     },
     {
       "id": 10,
@@ -157,13 +148,250 @@
       "liftFile": "lift/piece_10.webp",
       "iconFile": "icon/piece_10.webp",
       "bbox": {
-        "left": 873,
-        "top": 392,
-        "right": 2411,
-        "bottom": 1336
+        "left": 243,
+        "top": 334,
+        "right": 989,
+        "bottom": 1063
       },
-      "sourceFile": "10-forest3.png",
-      "label": "forest3"
+      "sourceFile": "10.png"
+    },
+    {
+      "id": 11,
+      "order": 11,
+      "cropFile": "crop/piece_11.webp",
+      "liftFile": "lift/piece_11.webp",
+      "iconFile": "icon/piece_11.webp",
+      "bbox": {
+        "left": 1964,
+        "top": 877,
+        "right": 2556,
+        "bottom": 1370
+      },
+      "sourceFile": "11.png"
+    },
+    {
+      "id": 12,
+      "order": 12,
+      "cropFile": "crop/piece_12.webp",
+      "liftFile": "lift/piece_12.webp",
+      "iconFile": "icon/piece_12.webp",
+      "bbox": {
+        "left": 1999,
+        "top": 0,
+        "right": 2621,
+        "bottom": 480
+      },
+      "sourceFile": "12.png"
+    },
+    {
+      "id": 13,
+      "order": 13,
+      "cropFile": "crop/piece_13.webp",
+      "liftFile": "lift/piece_13.webp",
+      "iconFile": "icon/piece_13.webp",
+      "bbox": {
+        "left": 0,
+        "top": 985,
+        "right": 695,
+        "bottom": 1393
+      },
+      "sourceFile": "13.png"
+    },
+    {
+      "id": 14,
+      "order": 14,
+      "cropFile": "crop/piece_14.webp",
+      "liftFile": "lift/piece_14.webp",
+      "iconFile": "icon/piece_14.webp",
+      "bbox": {
+        "left": 2438,
+        "top": 180,
+        "right": 2878,
+        "bottom": 752
+      },
+      "sourceFile": "14.png"
+    },
+    {
+      "id": 15,
+      "order": 15,
+      "cropFile": "crop/piece_15.webp",
+      "liftFile": "lift/piece_15.webp",
+      "iconFile": "icon/piece_15.webp",
+      "bbox": {
+        "left": 2194,
+        "top": 1652,
+        "right": 2878,
+        "bottom": 1920
+      },
+      "sourceFile": "15.png"
+    },
+    {
+      "id": 16,
+      "order": 16,
+      "cropFile": "crop/piece_16.webp",
+      "liftFile": "lift/piece_16.webp",
+      "iconFile": "icon/piece_16.webp",
+      "bbox": {
+        "left": 2312,
+        "top": 0,
+        "right": 2878,
+        "bottom": 274
+      },
+      "sourceFile": "16.png"
+    },
+    {
+      "id": 17,
+      "order": 17,
+      "cropFile": "crop/piece_17.webp",
+      "liftFile": "lift/piece_17.webp",
+      "iconFile": "icon/piece_17.webp",
+      "bbox": {
+        "left": 0,
+        "top": 0,
+        "right": 690,
+        "bottom": 427
+      },
+      "sourceFile": "17.png"
+    },
+    {
+      "id": 18,
+      "order": 18,
+      "cropFile": "crop/piece_18.webp",
+      "liftFile": "lift/piece_18.webp",
+      "iconFile": "icon/piece_18.webp",
+      "bbox": {
+        "left": 671,
+        "top": 872,
+        "right": 1083,
+        "bottom": 1488
+      },
+      "sourceFile": "18.png"
+    },
+    {
+      "id": 19,
+      "order": 19,
+      "cropFile": "crop/piece_19.webp",
+      "liftFile": "lift/piece_19.webp",
+      "iconFile": "icon/piece_19.webp",
+      "bbox": {
+        "left": 981,
+        "top": 1468,
+        "right": 1766,
+        "bottom": 1920
+      },
+      "sourceFile": "19.png"
+    },
+    {
+      "id": 20,
+      "order": 20,
+      "cropFile": "crop/piece_20.webp",
+      "liftFile": "lift/piece_20.webp",
+      "iconFile": "icon/piece_20.webp",
+      "bbox": {
+        "left": 1560,
+        "top": 293,
+        "right": 2048,
+        "bottom": 709
+      },
+      "sourceFile": "20.png"
+    },
+    {
+      "id": 21,
+      "order": 21,
+      "cropFile": "crop/piece_21.webp",
+      "liftFile": "lift/piece_21.webp",
+      "iconFile": "icon/piece_21.webp",
+      "bbox": {
+        "left": 914,
+        "top": 345,
+        "right": 1411,
+        "bottom": 910
+      },
+      "sourceFile": "21.png"
+    },
+    {
+      "id": 22,
+      "order": 22,
+      "cropFile": "crop/piece_22.webp",
+      "liftFile": "lift/piece_22.webp",
+      "iconFile": "icon/piece_22.webp",
+      "bbox": {
+        "left": 2392,
+        "top": 641,
+        "right": 2878,
+        "bottom": 1359
+      },
+      "sourceFile": "22.png"
+    },
+    {
+      "id": 23,
+      "order": 23,
+      "cropFile": "crop/piece_23.webp",
+      "liftFile": "lift/piece_23.webp",
+      "iconFile": "icon/piece_23.webp",
+      "bbox": {
+        "left": 428,
+        "top": 1333,
+        "right": 1166,
+        "bottom": 1920
+      },
+      "sourceFile": "23.png"
+    },
+    {
+      "id": 24,
+      "order": 24,
+      "cropFile": "crop/piece_24.webp",
+      "liftFile": "lift/piece_24.webp",
+      "iconFile": "icon/piece_24.webp",
+      "bbox": {
+        "left": 842,
+        "top": 0,
+        "right": 1495,
+        "bottom": 375
+      },
+      "sourceFile": "24.png"
+    },
+    {
+      "id": 25,
+      "order": 25,
+      "cropFile": "crop/piece_25.webp",
+      "liftFile": "lift/piece_25.webp",
+      "iconFile": "icon/piece_25.webp",
+      "bbox": {
+        "left": 1804,
+        "top": 1223,
+        "right": 2416,
+        "bottom": 1688
+      },
+      "sourceFile": "25.png"
+    },
+    {
+      "id": 26,
+      "order": 26,
+      "cropFile": "crop/piece_26.webp",
+      "liftFile": "lift/piece_26.webp",
+      "iconFile": "icon/piece_26.webp",
+      "bbox": {
+        "left": 2395,
+        "top": 1294,
+        "right": 2878,
+        "bottom": 1767
+      },
+      "sourceFile": "26.png"
+    },
+    {
+      "id": 27,
+      "order": 27,
+      "cropFile": "crop/piece_27.webp",
+      "liftFile": "lift/piece_27.webp",
+      "iconFile": "icon/piece_27.webp",
+      "bbox": {
+        "left": 1553,
+        "top": 1564,
+        "right": 2294,
+        "bottom": 1920
+      },
+      "sourceFile": "27.png"
     }
   ]
 }
