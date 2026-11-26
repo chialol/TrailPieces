@@ -85,21 +85,25 @@ class CatalogParserTest {
     @Test
     fun shippedCatalogMatchesThePilots() {
         val file = shippedCatalogFile()
-        val catalog = CatalogParser.parse(file.readText())
-        val index = CatalogIndex(catalog)
-        val obsidian = index.trail("obsidian")!!
-        assertEquals(listOf("mossyrock", "mountain"), obsidian.photoIds)
+        val index = CatalogIndex(CatalogParser.parse(file.readText()))
+        assertEquals(listOf("mountain", "obsidianpool"), index.trail("obsidian")!!.photoIds)
+        assertEquals(listOf("mossyrock"), index.trail("tamolitch")!!.photoIds)
         assertEquals("forest", index.photo("mossyrock")!!.sceneryId)
-        assertEquals("alpine", index.photo("mountain")!!.sceneryId)
-        assertTrue(index.sceneriesWithPhotos().none { it.id == "meadow" })
-        assertTrue(catalog.sceneries.any { it.id == "meadow" })
+        assertEquals("meadow", index.photo("mountain")!!.sceneryId)
+        assertTrue(index.sceneriesWithPhotos().any { it.id == "meadow" })
         assertTrue(index.photo("multnomah")!!.story.contains("620"))
-        assertTrue(index.trail("columbia")!!.story.isNotBlank())
+        assertEquals("Sahalie and Koosah Falls", index.trail("mckenzie")!!.title)
+        assertEquals("Multnomah\u2013Wahkeena Loop", index.trail("columbia")!!.title)
+        assertEquals(
+            listOf("multnomah", "tutorial", "multnomahforest"),
+            index.trail("columbia")!!.photoIds,
+        )
         val smith = index.trail("smithrock")!!
         assertEquals("Smith Rock", smith.title)
-        assertEquals(listOf("smithoverlook", "smithrock2"), smith.photoIds)
+        assertEquals(listOf("smithoverlook", "smithrock2", "smithrock3"), smith.photoIds)
+        assertEquals(listOf("silverfalls"), index.trail("silverfalls")!!.photoIds)
         val open = index.photosForMood("open").map { it.id }
-        assertTrue(open.containsAll(listOf("smithoverlook", "smithrock2")))
+        assertTrue(open.containsAll(listOf("mountain", "smithoverlook", "smithrock2", "smithrock3")))
     }
 }
 

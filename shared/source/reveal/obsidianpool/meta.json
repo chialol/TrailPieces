@@ -1,8 +1,7 @@
 {
-  "title": "Obsidian Pool",
+  "title": "Pool Beneath the Cliffs",
   "sceneryId": "alpine",
-  "moodIds": [
-    "quiet"
-  ],
-  "blurb": "A still pool under a scree slope."
+  "moodIds": ["quiet", "open"],
+  "blurb": "A shallow pool reflects evergreens at the foot of a broad slope of loose rock.",
+  "story": "The loose rock covering the hillside is called talus, formed as fragments break away from cliffs and collect below. The surrounding Obsidian Trail is named for the volcanic glass found along its route."
 }

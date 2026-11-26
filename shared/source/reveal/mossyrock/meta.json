@@ -1,6 +1,7 @@
 {
-  "title": "Mossy Rock",
+  "title": "McKenzie River Forest",
   "sceneryId": "forest",
   "moodIds": ["quiet"],
-  "blurb": "A shaded boulder under the firs."
+  "blurb": "Moss blankets a boulder and fallen logs above a shaded stream.",
+  "story": "Along the upper McKenzie River, water flows through ancient lava underground before reappearing at Tamolitch Blue Pool. The surrounding river corridor passes through old-growth forest."
 }

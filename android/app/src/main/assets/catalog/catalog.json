@@ -55,25 +55,26 @@
   "photos": [
     {
       "id": "mossyrock",
-      "title": "Mossy Rock",
+      "title": "McKenzie River Forest",
       "sceneryId": "forest",
       "moodIds": [
         "quiet"
       ],
       "revealId": "mossyrock",
-      "blurb": "A shaded boulder under the firs.",
-      "story": ""
+      "blurb": "Moss blankets a boulder and fallen logs above a shaded stream.",
+      "story": "Along the upper McKenzie River, water flows through ancient lava underground before reappearing at Tamolitch Blue Pool. The surrounding river corridor passes through old-growth forest."
     },
     {
       "id": "mountain",
-      "title": "Mountain",
-      "sceneryId": "alpine",
+      "title": "Meadow on the Obsidian Trail",
+      "sceneryId": "meadow",
       "moodIds": [
+        "quiet",
         "open"
       ],
       "revealId": "mountain",
-      "blurb": "A long ridge in full light.",
-      "story": ""
+      "blurb": "A rocky stream winds through golden grass beneath a snow-covered Cascade peak.",
+      "story": "The Obsidian Trail crosses the Three Sisters Wilderness, where glaciers and volcanic eruptions have shaped the landscape. North Sister last erupted about 55,000 years ago, while eruptions near South Sister occurred as recently as about 2,000 years ago."
     },
     {
       "id": "multnomah",
@@ -83,30 +84,31 @@
         "wild"
       ],
       "revealId": "multnomah",
-      "blurb": "Two drops and the bridge between them.",
-      "story": "Multnomah Falls drops 620 feet in two tiers, the tallest in Oregon. Benson Bridge crosses between them."
+      "blurb": "Umbrella-carrying visitors cross an arched bridge between two cascades.",
+      "story": "Benson Bridge was built in 1914, more than a decade before the waterfall\u2019s historic lodge opened. Multnomah Falls descends 620 feet in two tiers."
     },
     {
       "id": "multnomahforest",
-      "title": "Wahkeena loop",
+      "title": "Wahkeena in the Fog",
       "sceneryId": "forest",
       "moodIds": [
         "quiet"
       ],
       "revealId": "multnomahforest",
-      "blurb": "",
-      "story": "Foggy forest on the Wahkeena loop"
+      "blurb": "A narrow forest path disappears into fog between dark tree trunks.",
+      "story": "Fog can supply water to a forest even when it is not raining. Tiny droplets collect on branches and leaves, then fall to the ground in a process called fog drip."
     },
     {
       "id": "obsidianpool",
-      "title": "Obsidian Pool",
+      "title": "Pool Beneath the Cliffs",
       "sceneryId": "alpine",
       "moodIds": [
-        "quiet"
+        "quiet",
+        "open"
       ],
       "revealId": "obsidianpool",
-      "blurb": "A still pool under a scree slope.",
-      "story": ""
+      "blurb": "A shallow pool reflects evergreens at the foot of a broad slope of loose rock.",
+      "story": "The loose rock covering the hillside is called talus, formed as fragments break away from cliffs and collect below. The surrounding Obsidian Trail is named for the volcanic glass found along its route."
     },
     {
       "id": "sahalie",
@@ -116,103 +118,124 @@
         "wild"
       ],
       "revealId": "sahalie",
-      "blurb": "Mist and moss where the river drops.",
-      "story": "Sahalie Falls drops over a lava shelf on the upper McKenzie. Koosah Falls is a short walk downstream."
+      "blurb": "White water plunges from a rocky ledge into a basin framed by moss.",
+      "story": "About 3,000 years ago, lava flowed into the upper McKenzie River valley. The end of one of those lava flows forms the ledge of Sahalie Falls."
     },
     {
       "id": "silverfalls",
-      "title": "Trail of ten falls",
+      "title": "Descent into Silver Creek Canyon",
       "sceneryId": "forest",
       "moodIds": [
         "quiet"
       ],
       "revealId": "silverfalls",
-      "blurb": "",
-      "story": "Forest and cliff in Silver Falls State Park."
+      "blurb": "A mossy stone wall borders a descending path beside a fern-covered cliff.",
+      "story": "In the 1930s, the Civilian Conservation Corps began building trails, bridges and stone walls at Silver Falls State Park. The Canyon Trail takes hikers below the rim and behind several of the park\u2019s waterfalls."
     },
     {
       "id": "smithoverlook",
-      "title": "Smith Overlook",
+      "title": "Bend of the Crooked River",
       "sceneryId": "canyon",
       "moodIds": [
         "open"
       ],
       "revealId": "smithoverlook",
-      "blurb": "The Crooked River under the Smith Rock cliffs.",
-      "story": "Smith Rock stands above the Crooked River in Oregon's high desert."
+      "blurb": "A ribbon of green follows the Crooked River beneath towering golden cliffs.",
+      "story": "About 400,000 years ago, lava from Newberry Volcano diverted the Crooked River toward Smith Rock. The river gradually cut through the volcanic deposits, shaping the canyon seen today."
     },
     {
       "id": "smithrock2",
-      "title": "Smith Rock",
+      "title": "The Spires of Smith Rock",
       "sceneryId": "canyon",
       "moodIds": [
-        "open"
+        "open",
+        "wild"
       ],
       "revealId": "smithrock2",
-      "blurb": "A sheer cliff and a jagged spire over dry grass.",
-      "story": ""
+      "blurb": "Jagged rock towers rise above a dry hillside against drifting clouds.",
+      "story": "Many of Smith Rock\u2019s cliffs consist of tuff, rock made from volcanic ash and debris deposited by enormous eruptions nearly 30 million years ago. The park later became an important birthplace of modern American sport climbing."
     },
     {
       "id": "smithrock3",
-      "title": "Snow Peak",
+      "title": "Snow Beyond the Spires",
       "sceneryId": "alpine",
       "moodIds": [
         "open"
       ],
       "revealId": "smithrock3",
-      "blurb": "A snow-covered peak behind jagged rock.",
-      "story": ""
+      "blurb": "A snow-covered mountain rises behind the jagged brown spires of Smith Rock.",
+      "story": "Moist air from the Pacific loses much of its water as it rises over the Cascades. The resulting rain shadow helps explain why Smith Rock\u2019s high desert lies within sight of snow-covered mountains."
     },
     {
       "id": "tutorial",
-      "title": "After the Fire",
+      "title": "A Forest Returning",
       "sceneryId": "forest",
       "moodIds": [
         "quiet"
       ],
       "revealId": "tutorial",
-      "blurb": "A rocky creek under standing dead trees.",
-      "story": "The Eagle Creek Fire burned the forest along the Multnomah Falls trail in 2017. The creek still runs through those trunks."
+      "blurb": "A rocky creek runs between bare tree trunks and green, densely vegetated banks.",
+      "story": "The 2017 Eagle Creek Fire burned much of the forest along the Multnomah\u2013Wahkeena Loop. Standing dead trees, called snags, can provide nesting sites for woodpeckers as the forest recovers."
     }
   ],
   "trails": [
     {
       "id": "obsidian",
-      "title": "Obsidian",
-      "summary": "A short high-country walk. Two stops so far.",
+      "title": "Obsidian Loop",
+      "summary": "High-country meadows, volcanic glass and rocky slopes in the Three Sisters Wilderness.",
       "story": "",
       "photoIds": [
-        "mossyrock",
-        "mountain"
+        "mountain",
+        "obsidianpool"
+      ]
+    },
+    {
+      "id": "tamolitch",
+      "title": "Tamolitch Blue Pool",
+      "summary": "A forested stretch of the McKenzie River Trail leading to a pool fed by water flowing beneath ancient lava.",
+      "story": "",
+      "photoIds": [
+        "mossyrock"
       ]
     },
     {
       "id": "mckenzie",
-      "title": "McKenzie River",
-      "summary": "Down the river, starting at the falls.",
-      "story": "The McKenzie runs west from Clear Lake through lava and forest toward the Willamette Valley.",
+      "title": "Sahalie and Koosah Falls",
+      "summary": "Two waterfalls on the upper McKenzie River, where water plunges over ancient lava flows.",
+      "story": "",
       "photoIds": [
         "sahalie"
       ]
     },
     {
       "id": "columbia",
-      "title": "Columbia Gorge",
-      "summary": "Waterfalls along the gorge.",
-      "story": "The Columbia River cuts through the Cascades here. Creeks fall off the Oregon cliffs in a long line of waterfalls.",
+      "title": "Multnomah\u2013Wahkeena Loop",
+      "summary": "Waterfalls, mossy forest and recovering woodland along the steep ravines of the Columbia River Gorge.",
+      "story": "",
       "photoIds": [
         "multnomah",
-        "tutorial"
+        "tutorial",
+        "multnomahforest"
+      ]
+    },
+    {
+      "id": "silverfalls",
+      "title": "Trail of Ten Falls",
+      "summary": "A forest trail descending into Silver Creek Canyon and winding past waterfalls and moss-covered cliffs.",
+      "story": "",
+      "photoIds": [
+        "silverfalls"
       ]
     },
     {
       "id": "smithrock",
       "title": "Smith Rock",
-      "summary": "Cliffs above the Crooked River.",
-      "story": "Smith Rock stands above the Crooked River in Oregon's high desert.",
+      "summary": "Golden volcanic spires, the winding Crooked River and distant Cascade peaks in Oregon\u2019s high desert.",
+      "story": "",
       "photoIds": [
         "smithoverlook",
-        "smithrock2"
+        "smithrock2",
+        "smithrock3"
       ]
     }
   ]

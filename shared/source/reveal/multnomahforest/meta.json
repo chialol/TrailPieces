@@ -1,9 +1,7 @@
 {
-  "title": "Wahkeena loop",
+  "title": "Wahkeena in the Fog",
   "sceneryId": "forest",
-  "moodIds": [
-    "quiet"
-  ],
-  "blurb": "",
-  "story": "Foggy forest on the Wahkeena loop"
+  "moodIds": ["quiet"],
+  "blurb": "A narrow forest path disappears into fog between dark tree trunks.",
+  "story": "Fog can supply water to a forest even when it is not raining. Tiny droplets collect on branches and leaves, then fall to the ground in a process called fog drip."
 }

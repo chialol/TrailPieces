@@ -1,8 +1,7 @@
 {
-  "title": "Snow Peak",
+  "title": "Snow Beyond the Spires",
   "sceneryId": "alpine",
-  "moodIds": [
-    "open"
-  ],
-  "blurb": "A snow-covered peak behind jagged rock."
+  "moodIds": ["open"],
+  "blurb": "A snow-covered mountain rises behind the jagged brown spires of Smith Rock.",
+  "story": "Moist air from the Pacific loses much of its water as it rises over the Cascades. The resulting rain shadow helps explain why Smith Rock’s high desert lies within sight of snow-covered mountains."
 }

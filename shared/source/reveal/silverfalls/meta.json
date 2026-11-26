@@ -1,9 +1,7 @@
 {
-  "title": "Trail of ten falls",
+  "title": "Descent into Silver Creek Canyon",
   "sceneryId": "forest",
-  "moodIds": [
-    "quiet"
-  ],
-  "blurb": "",
-  "story": "Forest and cliff in Silver Falls State Park."
+  "moodIds": ["quiet"],
+  "blurb": "A mossy stone wall borders a descending path beside a fern-covered cliff.",
+  "story": "In the 1930s, the Civilian Conservation Corps began building trails, bridges and stone walls at Silver Falls State Park. The Canyon Trail takes hikers below the rim and behind several of the park’s waterfalls."
 }

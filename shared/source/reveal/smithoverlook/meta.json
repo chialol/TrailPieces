@@ -1,9 +1,7 @@
 {
-  "title": "Smith Overlook",
+  "title": "Bend of the Crooked River",
   "sceneryId": "canyon",
-  "moodIds": [
-    "open"
-  ],
-  "blurb": "The Crooked River under the Smith Rock cliffs.",
-  "story": "Smith Rock stands above the Crooked River in Oregon's high desert."
+  "moodIds": ["open"],
+  "blurb": "A ribbon of green follows the Crooked River beneath towering golden cliffs.",
+  "story": "About 400,000 years ago, lava from Newberry Volcano diverted the Crooked River toward Smith Rock. The river gradually cut through the volcanic deposits, shaping the canyon seen today."
 }

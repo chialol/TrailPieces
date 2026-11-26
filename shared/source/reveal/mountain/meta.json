@@ -1,6 +1,7 @@
 {
-  "title": "Mountain",
-  "sceneryId": "alpine",
-  "moodIds": ["open"],
-  "blurb": "A long ridge in full light."
+  "title": "Meadow on the Obsidian Trail",
+  "sceneryId": "meadow",
+  "moodIds": ["quiet", "open"],
+  "blurb": "A rocky stream winds through golden grass beneath a snow-covered Cascade peak.",
+  "story": "The Obsidian Trail crosses the Three Sisters Wilderness, where glaciers and volcanic eruptions have shaped the landscape. North Sister last erupted about 55,000 years ago, while eruptions near South Sister occurred as recently as about 2,000 years ago."
 }

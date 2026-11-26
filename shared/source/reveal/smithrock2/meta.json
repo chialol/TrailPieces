@@ -1,8 +1,7 @@
 {
-  "title": "Smith Rock",
+  "title": "The Spires of Smith Rock",
   "sceneryId": "canyon",
-  "moodIds": [
-    "open"
-  ],
-  "blurb": "A sheer cliff and a jagged spire over dry grass."
+  "moodIds": ["open", "wild"],
+  "blurb": "Jagged rock towers rise above a dry hillside against drifting clouds.",
+  "story": "Many of Smith Rock’s cliffs consist of tuff, rock made from volcanic ash and debris deposited by enormous eruptions nearly 30 million years ago. The park later became an important birthplace of modern American sport climbing."
 }
