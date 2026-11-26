@@ -25,6 +25,8 @@ data class RevealScene(
     /** Transparent margin, in scene pixels, around each lift image for its outline and shadow. */
     val liftPad: Int,
     val pieces: List<RevealPiece>,
+    /** Set when the scene was downloaded. Bundled scenes leave this null and read assets. */
+    val directory: java.io.File? = null,
 ) {
     val aspectRatio: Float get() = width.toFloat() / height.toFloat()
     val isLandscape: Boolean get() = width >= height

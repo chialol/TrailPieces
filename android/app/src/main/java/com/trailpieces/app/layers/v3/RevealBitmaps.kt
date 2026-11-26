@@ -62,12 +62,12 @@ class RevealBitmaps(
             file: String,
             withMask: Boolean = false,
         ): Decoded {
-            val path = "reveal/${scene.id}/$file"
+            val path = scene.directory?.let { "${it.path}/$file" } ?: "reveal/${scene.id}/$file"
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.ARGB_8888
                 inScaled = false
             }
-            val software = context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }
+            val software = openScene(context, scene, file).use { BitmapFactory.decodeStream(it, null, options) }
                 ?: error("Could not decode $path")
             val mask = if (withMask) maskOf(software) else null
             val gpu = software.copy(Bitmap.Config.HARDWARE, false)
@@ -78,6 +78,18 @@ class RevealBitmaps(
                 software.asImageBitmap()
             }
             return Decoded(image, mask)
+        }
+
+        private fun openScene(context: Context, scene: RevealScene, file: String): java.io.InputStream {
+            val directory = scene.directory
+            if (directory != null) {
+                val resolved = java.io.File(directory, file)
+                if (!resolved.canonicalFile.path.startsWith(directory.canonicalFile.path)) {
+                    error("Scene file escapes its folder")
+                }
+                return resolved.inputStream()
+            }
+            return context.assets.open("reveal/${scene.id}/$file")
         }
 
         private fun maskOf(bitmap: Bitmap): PieceMask {

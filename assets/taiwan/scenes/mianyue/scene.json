@@ -1,0 +1,271 @@
+{
+  "id": "mianyue",
+  "title": "Mianyue",
+  "mode": "reveal_v3",
+  "width": 2759,
+  "height": 1920,
+  "plateFile": "plate.webp",
+  "aliveFile": "alive.webp",
+  "coverFile": "cover.webp",
+  "liftPad": 41,
+  "source": {
+    "colorFile": "photo.jpg",
+    "plateFile": "photo-bw.jpg",
+    "sourceWidth": 7853,
+    "sourceHeight": 5464
+  },
+  "pieces": [
+    {
+      "id": 1,
+      "order": 1,
+      "cropFile": "crop/piece_01.webp",
+      "liftFile": "lift/piece_01.webp",
+      "iconFile": "icon/piece_01.webp",
+      "bbox": {
+        "left": 544,
+        "top": 794,
+        "right": 1303,
+        "bottom": 1341
+      },
+      "sourceFile": "01.png"
+    },
+    {
+      "id": 2,
+      "order": 2,
+      "cropFile": "crop/piece_02.webp",
+      "liftFile": "lift/piece_02.webp",
+      "iconFile": "icon/piece_02.webp",
+      "bbox": {
+        "left": 0,
+        "top": 674,
+        "right": 371,
+        "bottom": 1287
+      },
+      "sourceFile": "02.png"
+    },
+    {
+      "id": 3,
+      "order": 3,
+      "cropFile": "crop/piece_03.webp",
+      "liftFile": "lift/piece_03.webp",
+      "iconFile": "icon/piece_03.webp",
+      "bbox": {
+        "left": 1173,
+        "top": 77,
+        "right": 1905,
+        "bottom": 1045
+      },
+      "sourceFile": "03.png"
+    },
+    {
+      "id": 4,
+      "order": 4,
+      "cropFile": "crop/piece_04.webp",
+      "liftFile": "lift/piece_04.webp",
+      "iconFile": "icon/piece_04.webp",
+      "bbox": {
+        "left": 0,
+        "top": 1157,
+        "right": 688,
+        "bottom": 1920
+      },
+      "sourceFile": "04.png"
+    },
+    {
+      "id": 5,
+      "order": 5,
+      "cropFile": "crop/piece_05.webp",
+      "liftFile": "lift/piece_05.webp",
+      "iconFile": "icon/piece_05.webp",
+      "bbox": {
+        "left": 593,
+        "top": 0,
+        "right": 1252,
+        "bottom": 893
+      },
+      "sourceFile": "05.png"
+    },
+    {
+      "id": 6,
+      "order": 6,
+      "cropFile": "crop/piece_06.webp",
+      "liftFile": "lift/piece_06.webp",
+      "iconFile": "icon/piece_06.webp",
+      "bbox": {
+        "left": 1083,
+        "top": 1239,
+        "right": 1595,
+        "bottom": 1920
+      },
+      "sourceFile": "06.png"
+    },
+    {
+      "id": 7,
+      "order": 7,
+      "cropFile": "crop/piece_07.webp",
+      "liftFile": "lift/piece_07.webp",
+      "iconFile": "icon/piece_07.webp",
+      "bbox": {
+        "left": 0,
+        "top": 0,
+        "right": 415,
+        "bottom": 777
+      },
+      "sourceFile": "07.png"
+    },
+    {
+      "id": 8,
+      "order": 8,
+      "cropFile": "crop/piece_08.webp",
+      "liftFile": "lift/piece_08.webp",
+      "iconFile": "icon/piece_08.webp",
+      "bbox": {
+        "left": 1884,
+        "top": 620,
+        "right": 2759,
+        "bottom": 1463
+      },
+      "sourceFile": "08.png"
+    },
+    {
+      "id": 9,
+      "order": 9,
+      "cropFile": "crop/piece_09.webp",
+      "liftFile": "lift/piece_09.webp",
+      "iconFile": "icon/piece_09.webp",
+      "bbox": {
+        "left": 1857,
+        "top": 0,
+        "right": 2759,
+        "bottom": 371
+      },
+      "sourceFile": "09.png"
+    },
+    {
+      "id": 10,
+      "order": 10,
+      "cropFile": "crop/piece_10.webp",
+      "liftFile": "lift/piece_10.webp",
+      "iconFile": "icon/piece_10.webp",
+      "bbox": {
+        "left": 1268,
+        "top": 1017,
+        "right": 1898,
+        "bottom": 1219
+      },
+      "sourceFile": "10.png"
+    },
+    {
+      "id": 11,
+      "order": 11,
+      "cropFile": "crop/piece_11.webp",
+      "liftFile": "lift/piece_11.webp",
+      "iconFile": "icon/piece_11.webp",
+      "bbox": {
+        "left": 2118,
+        "top": 1080,
+        "right": 2759,
+        "bottom": 1920
+      },
+      "sourceFile": "11.png"
+    },
+    {
+      "id": 12,
+      "order": 12,
+      "cropFile": "crop/piece_12.webp",
+      "liftFile": "lift/piece_12.webp",
+      "iconFile": "icon/piece_12.webp",
+      "bbox": {
+        "left": 493,
+        "top": 1170,
+        "right": 1389,
+        "bottom": 1920
+      },
+      "sourceFile": "12.png"
+    },
+    {
+      "id": 13,
+      "order": 13,
+      "cropFile": "crop/piece_13.webp",
+      "liftFile": "lift/piece_13.webp",
+      "iconFile": "icon/piece_13.webp",
+      "bbox": {
+        "left": 1229,
+        "top": 1215,
+        "right": 1963,
+        "bottom": 1920
+      },
+      "sourceFile": "13.png"
+    },
+    {
+      "id": 14,
+      "order": 14,
+      "cropFile": "crop/piece_14.webp",
+      "liftFile": "lift/piece_14.webp",
+      "iconFile": "icon/piece_14.webp",
+      "bbox": {
+        "left": 1891,
+        "top": 264,
+        "right": 2759,
+        "bottom": 678
+      },
+      "sourceFile": "14.png"
+    },
+    {
+      "id": 15,
+      "order": 15,
+      "cropFile": "crop/piece_15.webp",
+      "liftFile": "lift/piece_15.webp",
+      "iconFile": "icon/piece_15.webp",
+      "bbox": {
+        "left": 1149,
+        "top": 0,
+        "right": 1867,
+        "bottom": 544
+      },
+      "sourceFile": "15.png"
+    },
+    {
+      "id": 16,
+      "order": 16,
+      "cropFile": "crop/piece_16.webp",
+      "liftFile": "lift/piece_16.webp",
+      "iconFile": "icon/piece_16.webp",
+      "bbox": {
+        "left": 68,
+        "top": 472,
+        "right": 1013,
+        "bottom": 1203
+      },
+      "sourceFile": "16.png"
+    },
+    {
+      "id": 17,
+      "order": 17,
+      "cropFile": "crop/piece_17.webp",
+      "liftFile": "lift/piece_17.webp",
+      "iconFile": "icon/piece_17.webp",
+      "bbox": {
+        "left": 137,
+        "top": 0,
+        "right": 599,
+        "bottom": 640
+      },
+      "sourceFile": "17.png"
+    },
+    {
+      "id": 18,
+      "order": 18,
+      "cropFile": "crop/piece_18.webp",
+      "liftFile": "lift/piece_18.webp",
+      "iconFile": "icon/piece_18.webp",
+      "bbox": {
+        "left": 1614,
+        "top": 1450,
+        "right": 2125,
+        "bottom": 1920
+      },
+      "sourceFile": "18.png"
+    }
+  ]
+}

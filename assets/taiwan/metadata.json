@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "packageId": "taiwan",
+  "version": 1,
+  "moods": [
+    {
+      "id": "misty",
+      "title": "Misty",
+      "summary": "Soft light and forms fading into mist."
+    }
+  ],
+  "sceneries": [
+    {
+      "id": "railway",
+      "title": "Railway",
+      "summary": "Rail tracks, bridges and tunnels through the landscape.",
+      "story": "Railways trace narrow corridors through the land, often using bridges and tunnels to maintain a gentle grade."
+    }
+  ],
+  "photos": [
+    {
+      "id": "mianyue",
+      "title": "Mianyue’s Cliffside Gallery",
+      "sceneryId": "railway",
+      "moodIds": [
+        "misty"
+      ],
+      "revealId": "mianyue",
+      "blurb": "Rail tracks pass beneath a weathered stone arch, with a row of concrete openings following the mist-covered mountainside.",
+      "story": "This open-sided shelter was built to protect trains from falling rock, but landslides eventually broke through it. The 1999 earthquake and Typhoon Morakot in 2009 severely damaged the Mianyue Line.",
+      "sourceFile": "photos/mianyue.jpg"
+    }
+  ],
+  "trails": [
+    {
+      "id": "mianyue-line",
+      "title": "Mianyue Line",
+      "summary": "A former logging railway through the cloud-covered mountains of Alishan, Taiwan, with cliffside tunnels and forest bridges.",
+      "story": "Built in 1915 to carry timber, the 9.2-kilometer railway became a passenger sightseeing line in 1983.",
+      "photoIds": [
+        "mianyue"
+      ]
+    }
+  ]
+}

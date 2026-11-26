@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "packageId": "cedar",
+  "release": "1",
+  "package": {
+    "title": "Cedar Grove",
+    "description": "A package of forest photographs.",
+    "access": "public",
+    "unlock": { "type": "puzzlesCompleted", "count": 3 },
+    "order": 10,
+    "coverPhotoId": "cedar-grove",
+    "minAppVersion": "0.1.0"
+  },
+  "editorial": {
+    "version": 1,
+    "moods": [
+      { "id": "quiet", "title": "Quiet", "summary": "Still air and soft ground." }
+    ],
+    "sceneries": [
+      {
+        "id": "forest",
+        "title": "Forest",
+        "summary": "Trees, moss, and shade.",
+        "story": "Shade, moss, and a close view of the trunks."
+      }
+    ],
+    "photos": [
+      {
+        "id": "cedar-grove",
+        "title": "Cedar Grove",
+        "sceneryId": "forest",
+        "moodIds": ["quiet"],
+        "revealId": "cedar-grove",
+        "blurb": "Fir trunks and moss fill a shaded frame.",
+        "story": ""
+      }
+    ],
+    "trails": [
+      {
+        "id": "cedar-walk",
+        "title": "Cedar Walk",
+        "summary": "A short forest walk.",
+        "story": "",
+        "photoIds": ["cedar-grove"]
+      }
+    ]
+  },
+  "assets": [
+    {
+      "photoId": "cedar-grove",
+      "path": "assets/cedar-grove.0123456789abcdef.webp",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "width": 1080,
+      "height": 1440,
+      "bytes": 100000
+    }
+  ],
+  "cover": {
+    "path": "packages/cedar/releases/1/previews/cover.webp",
+    "sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "bytes": 20000
+  },
+  "metadataPath": "packages/cedar/releases/1/metadata.json",
+  "downloadBytes": 120000
+}

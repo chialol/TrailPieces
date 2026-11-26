@@ -1,0 +1,9 @@
+{
+  "aws_profile": "your-aws-profile",
+  "aws_region": "us-west-2",
+  "bucket": "your-content-bucket",
+  "distribution_id": "E1234567890ABC",
+  "cdn_base_url": "https://d111111abcdef8.cloudfront.net",
+  "content_prefix": "content/v1/",
+  "invalidate_catalog": false
+}

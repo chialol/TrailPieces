@@ -5,11 +5,24 @@ import org.json.JSONObject
 
 object RevealLoader {
     fun loadAll(context: Context): List<RevealScene> {
-        val ids = context.assets.list("reveal").orEmpty().sorted()
-        return ids.mapNotNull { id -> load(context, id) }
+        val assetIds = context.assets.list("reveal").orEmpty().toSet()
+        val remoteRoot = java.io.File(context.filesDir, "remote/scenes")
+        val remoteIds = remoteRoot.list()?.filter { id ->
+            id !in assetIds && java.io.File(remoteRoot, "$id/scene.json").isFile
+        }.orEmpty()
+        return (assetIds + remoteIds).sorted().mapNotNull { id -> load(context, id) }
     }
 
     fun load(context: Context, sceneId: String): RevealScene? {
+        loadAsset(context, sceneId)?.let { return it }
+        val file = java.io.File(context.filesDir, "remote/scenes/$sceneId/scene.json")
+        if (!file.isFile) return null
+        return runCatching {
+            parse(file.readText()).copy(id = sceneId, directory = file.parentFile)
+        }.getOrNull()
+    }
+
+    private fun loadAsset(context: Context, sceneId: String): RevealScene? {
         return runCatching {
             val path = "reveal/$sceneId/scene.json"
             context.assets.open(path).bufferedReader().use { reader ->

@@ -21,6 +21,8 @@ trailPieces/
 
 See [android/README.md](android/README.md) for detailed setup and troubleshooting.
 
+New packages can be published without an app release. The bundled catalog stays playable offline. See [tools/publish/README.md](tools/publish/README.md).
+
 A fresh install opens the menu with **Play**, which runs the tutorial. After that, home unlocks **Walk a trail** and **Replay the tutorial**.
 
 ## Adding a photo for Walk a trail

@@ -29,10 +29,15 @@ object LocalJourney {
     private fun create(context: Context): JourneyGraph {
         val dir = File(context.filesDir, "journey")
         val players = FilePlayerRepository(File(dir, "player.json"))
+        val progress = FileProgressRepository(File(dir, "progress.json"), players)
+        val bundled = AssetCatalogRepository(context)
+        val library = remoteLibrary(context)
+        val remote = library?.let { RemoteCatalogRepository(bundled, progress, it) }
         return JourneyGraph(
-            catalog = AssetCatalogRepository(context),
-            progress = FileProgressRepository(File(dir, "progress.json"), players),
+            catalog = remote ?: bundled,
+            progress = progress,
             players = players,
+            remote = remote,
         )
     }
 }

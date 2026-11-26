@@ -1,0 +1,25 @@
+{
+  "id": "taiwan",
+  "title": "Taiwan",
+  "description": "Photographs for Taiwan.",
+  "access": "public",
+  "unlock": {
+    "type": "immediate"
+  },
+  "coverPhotoId": "mianyue",
+  "order": 0,
+  "minAppVersion": null,
+  "photos": [
+    {
+      "id": "mianyue",
+      "file": "photos/mianyue.jpg"
+    }
+  ],
+  "approval": {
+    "metadataSha256": "381237f58e1f00bbfd4676633bf56d8097979861cee3098fcf0e1a2003654b4d",
+    "sources": {
+      "photos/mianyue.jpg": "0d210eadb7c14b66101a16edc6ea9c57c53fe4c70039d54a3d29fc12c1b845cb"
+    },
+    "approvedAt": "2026-11-26T21:32:22+00:00"
+  }
+}

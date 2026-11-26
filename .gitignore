@@ -20,6 +20,9 @@ android/.cxx/
 build/
 
 tools/chop_puzzle/.venv/
+tools/publish/.venv/
+tools/publish/.pytest_cache/
+tools/publish/publish.config.json
 __pycache__/
 *.pyc
 
@@ -31,6 +34,12 @@ shared/source/**/*.webp
 shared/source/**/*.tif
 shared/source/**/*.tiff
 shared/source/**/*.heic
+
+# Package workspaces copied from reveal folders. JSON stays; the pictures do not.
+assets/**/*.jpg
+assets/**/*.jpeg
+assets/**/*.png
+assets/**/*.webp
 
 # Working copies of the shipped color WebPs for an offline metadata rewrite.
 tools/transform_metadata/photos/

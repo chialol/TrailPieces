@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "revision": "2026-11-26T00:00:00Z",
+  "packages": [
+    {
+      "id": "cedar",
+      "title": "Cedar Grove",
+      "description": "A package of forest photographs.",
+      "release": "1",
+      "cover": "packages/cedar/releases/1/previews/cover.webp",
+      "metadata": "packages/cedar/releases/1/metadata.json",
+      "photoCount": 1,
+      "downloadBytes": 120000,
+      "access": "public",
+      "unlock": { "type": "immediate" },
+      "order": 10,
+      "minAppVersion": "0.1.0"
+    }
+  ]
+}

@@ -48,6 +48,8 @@ import com.trailpieces.journey.ContinueOffer
 import com.trailpieces.journey.JourneyGraph
 import com.trailpieces.journey.JourneyNav
 import com.trailpieces.journey.JourneyPlace
+import com.trailpieces.journey.PackagePhase
+import com.trailpieces.journey.PackageStatus
 import com.trailpieces.journey.Photo
 import com.trailpieces.journey.PlayerProgress
 import com.trailpieces.journey.continueAfter
@@ -55,6 +57,7 @@ import com.trailpieces.journey.withCompletion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import java.io.File
 
 private val ReadingInk = Color(0xFFE9E5DA)
 
@@ -70,6 +73,12 @@ fun JourneyScreen(
     var failed by remember { mutableStateOf(false) }
 
     LaunchedEffect(graph) {
+        launch {
+            graph.catalog.updates().collect { updated ->
+                catalog = updated
+                failed = false
+            }
+        }
         runCatching {
             graph.catalog.load() to graph.progress.load()
         }.onSuccess { (loadedCatalog, loadedProgress) ->
@@ -130,6 +139,7 @@ private class WalkSession(initial: PlayerProgress) {
         // Starts immediately, so the photo is stored before Back can leave this screen.
         saveScope.launch(start = CoroutineStart.UNDISPATCHED) {
             graph.progress.recordCompletion(photoId)
+            graph.remote?.reevaluate()
         }
     }
 }
@@ -145,6 +155,12 @@ private fun JourneyReady(
 ) {
     val index = remember(catalog) { CatalogIndex(catalog) }
     val session = remember { WalkSession(initialProgress) }
+    var packages by remember { mutableStateOf<List<PackageStatus>>(emptyList()) }
+    LaunchedEffect(graph.remote) {
+        graph.remote?.generation?.collect {
+            packages = graph.remote?.statuses().orEmpty()
+        }
+    }
 
     BackHandler {
         if (session.nav.current is JourneyPlace.Playing) session.offer = null
@@ -158,6 +174,10 @@ private fun JourneyReady(
 
     when (val place = session.place) {
         JourneyPlace.Lens -> LensPage(
+            packages = packages,
+            onRetry = { packageId ->
+                saveScope.launch { graph.remote?.retry(packageId) }
+            },
             onBack = onExit,
             onMood = {
                 session.nav.open(JourneyPlace.MoodList)
@@ -233,6 +253,7 @@ private fun JourneyReady(
                 index = index,
                 progress = session.progress,
                 trailId = null,
+                coverOf = { graph.remote?.coverFile(it) },
                 onBack = { pop(session) },
                 onPhoto = { photo -> openPhoto(session, catalog, photo.id, trailId = null) },
                 modifier = modifier,
@@ -246,6 +267,7 @@ private fun JourneyReady(
                 index = index,
                 progress = session.progress,
                 trailId = null,
+                coverOf = { graph.remote?.coverFile(it) },
                 onBack = { pop(session) },
                 onPhoto = { photo -> openPhoto(session, catalog, photo.id, trailId = null) },
                 modifier = modifier,
@@ -263,6 +285,7 @@ private fun JourneyReady(
                     index = index,
                     progress = session.progress,
                     trailId = trail.id,
+                    coverOf = { graph.remote?.coverFile(it) },
                     onBack = { pop(session) },
                     onPhoto = { photo -> openPhoto(session, catalog, photo.id, trail.id) },
                     modifier = modifier,
@@ -347,6 +370,8 @@ private fun continueFrom(session: WalkSession, offer: ContinueOffer) {
 
 @Composable
 private fun LensPage(
+    packages: List<PackageStatus>,
+    onRetry: (String) -> Unit,
     onBack: () -> Unit,
     onMood: () -> Unit,
     onScenery: () -> Unit,
@@ -363,7 +388,34 @@ private fun LensPage(
         ChoiceCard("Mood", "How you want the walk to feel.", onMood)
         ChoiceCard("Scenery", "Meadow, forest, and the other places.", onScenery)
         ChoiceCard("Trail", "A path of photos, collected in order.", onTrail)
+        if (packages.isNotEmpty()) {
+            Text(
+                text = "Packages",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            packages.forEach { item ->
+                val failed = item.phase == PackagePhase.Failed
+                ChoiceCard(
+                    title = item.title,
+                    detail = packageDetail(item),
+                    onClick = { if (failed) onRetry(item.id) },
+                )
+            }
+        }
     }
+}
+
+private fun packageDetail(item: PackageStatus): String {
+    val state = when (item.phase) {
+        PackagePhase.Discovered -> "Discovered"
+        PackagePhase.Locked -> "Locked"
+        PackagePhase.Available -> "Available"
+        PackagePhase.Downloading -> "Downloading"
+        PackagePhase.Downloaded -> "Downloaded"
+        PackagePhase.Failed -> "Failed. Tap to try again"
+    }
+    return "$state. ${item.detail}"
 }
 
 @Composable
@@ -394,6 +446,7 @@ private fun PhotoListPage(
     index: CatalogIndex,
     progress: PlayerProgress,
     trailId: String?,
+    coverOf: (String) -> File?,
     onBack: () -> Unit,
     onPhoto: (Photo) -> Unit,
     modifier: Modifier = Modifier,
@@ -412,6 +465,7 @@ private fun PhotoListPage(
                 index = index,
                 progress = progress,
                 trailId = trailId,
+                imageFile = coverOf(photo.id),
                 onClick = { onPhoto(photo) },
             )
         }
@@ -480,6 +534,7 @@ private fun PhotoCard(
     index: CatalogIndex,
     progress: PlayerProgress,
     trailId: String?,
+    imageFile: File?,
     onClick: () -> Unit,
 ) {
     val scenery = index.scenery(photo.sceneryId)?.title
@@ -498,7 +553,11 @@ private fun PhotoCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Cover(revealId = photo.revealId, title = photo.title)
+            Cover(
+                revealId = photo.revealId,
+                title = photo.title,
+                imageFile = imageFile,
+            )
             Column(Modifier.padding(start = 14.dp)) {
                 Text(text = photo.title, style = MaterialTheme.typography.titleMedium)
                 val line = listOfNotNull(
@@ -528,11 +587,12 @@ private fun PhotoCard(
 }
 
 @Composable
-private fun Cover(revealId: String, title: String) {
+private fun Cover(revealId: String, title: String, imageFile: File?) {
     val context = LocalContext.current
+    val source: Any = imageFile ?: "file:///android_asset/reveal/$revealId/cover.webp"
     AsyncImage(
         model = ImageRequest.Builder(context)
-            .data("file:///android_asset/reveal/$revealId/cover.webp")
+            .data(source)
             .crossfade(true)
             .build(),
         contentDescription = title,

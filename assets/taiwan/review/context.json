@@ -1,0 +1,206 @@
+{
+  "package": {
+    "id": "taiwan",
+    "title": "Taiwan",
+    "description": "Photographs for Taiwan."
+  },
+  "purpose": "Trail Pieces reveals this text after the player finishes rebuilding the photograph.",
+  "approvedMoods": [
+    {
+      "id": "quiet",
+      "title": "Quiet",
+      "summary": "Still air and soft ground."
+    },
+    {
+      "id": "open",
+      "title": "Open",
+      "summary": "Wide light and a long view."
+    },
+    {
+      "id": "wild",
+      "title": "Wild",
+      "summary": "Moving water and weather."
+    }
+  ],
+  "approvedSceneries": [
+    {
+      "id": "meadow",
+      "title": "Meadow",
+      "summary": "Open grass and wildflowers.",
+      "story": "Open grass, often where the trees break."
+    },
+    {
+      "id": "forest",
+      "title": "Forest",
+      "summary": "Trees, moss, and shade.",
+      "story": "Shade, moss, and a close view of the trunks."
+    },
+    {
+      "id": "alpine",
+      "title": "Alpine",
+      "summary": "High rock and a far ridge.",
+      "story": "High rock and a long view."
+    },
+    {
+      "id": "waterfall",
+      "title": "Waterfall",
+      "summary": "Falling water, mist, and wet stone.",
+      "story": "A stream falling over a cliff, sometimes in more than one step."
+    },
+    {
+      "id": "canyon",
+      "title": "Canyon",
+      "summary": "Rock walls and a river below.",
+      "story": "A cut in the rock, with the river at the bottom."
+    }
+  ],
+  "sharedTrails": [
+    {
+      "id": "obsidian",
+      "title": "Obsidian Loop",
+      "summary": "High-country meadows, volcanic glass and rocky slopes in the Three Sisters Wilderness.",
+      "story": "",
+      "memberships": [
+        {
+          "packageId": "bundled",
+          "photoIds": [
+            "mountain",
+            "obsidianpool"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tamolitch",
+      "title": "Tamolitch Blue Pool",
+      "summary": "A forested stretch of the McKenzie River Trail leading to a pool fed by water flowing beneath ancient lava.",
+      "story": "",
+      "memberships": [
+        {
+          "packageId": "bundled",
+          "photoIds": [
+            "mossyrock"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mckenzie",
+      "title": "Sahalie and Koosah Falls",
+      "summary": "Two waterfalls on the upper McKenzie River, where water plunges over ancient lava flows.",
+      "story": "",
+      "memberships": [
+        {
+          "packageId": "bundled",
+          "photoIds": [
+            "sahalie"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "columbia",
+      "title": "Multnomah–Wahkeena Loop",
+      "summary": "Waterfalls, mossy forest and recovering woodland along the steep ravines of the Columbia River Gorge.",
+      "story": "",
+      "memberships": [
+        {
+          "packageId": "bundled",
+          "photoIds": [
+            "multnomah",
+            "tutorial",
+            "multnomahforest"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "silverfalls",
+      "title": "Trail of Ten Falls",
+      "summary": "A forest trail descending into Silver Creek Canyon and winding past waterfalls and moss-covered cliffs.",
+      "story": "",
+      "memberships": [
+        {
+          "packageId": "bundled",
+          "photoIds": [
+            "silverfalls"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "smithrock",
+      "title": "Smith Rock",
+      "summary": "Golden volcanic spires, the winding Crooked River and distant Cascade peaks in Oregon’s high desert.",
+      "story": "",
+      "memberships": [
+        {
+          "packageId": "bundled",
+          "photoIds": [
+            "smithoverlook",
+            "smithrock2",
+            "smithrock3"
+          ]
+        }
+      ]
+    }
+  ],
+  "conflicts": [],
+  "photos": [
+    {
+      "id": "mianyue",
+      "sourceFile": "photos/mianyue.jpg",
+      "reviewStatus": "review",
+      "reviewImage": "images/mianyue.jpg",
+      "width": 7853,
+      "height": 5464,
+      "captureTime": "2026:10:30 17:22:05",
+      "location": {
+        "photographerConfirmed": [],
+        "photographerTentative": [],
+        "machineGenerated": null
+      },
+      "editorial": {
+        "id": "mianyue",
+        "title": "",
+        "sceneryId": "",
+        "moodIds": [],
+        "revealId": "mianyue",
+        "blurb": "",
+        "story": "",
+        "sourceFile": "photos/mianyue.jpg"
+      }
+    }
+  ],
+  "reviewPhotoIds": [
+    "mianyue"
+  ],
+  "approvedPhotoIds": [],
+  "returnDocument": {
+    "schemaVersion": 1,
+    "packageId": "taiwan",
+    "version": 1,
+    "moods": [],
+    "sceneries": [],
+    "photos": [
+      {
+        "id": "mianyue",
+        "title": "",
+        "sceneryId": "",
+        "moodIds": [],
+        "revealId": "mianyue",
+        "blurb": "",
+        "story": "",
+        "sourceFile": "photos/mianyue.jpg"
+      }
+    ],
+    "trails": []
+  },
+  "output": {
+    "file": "metadata.json",
+    "notesFile": "review-notes.json",
+    "schemaVersion": 1,
+    "version": 1,
+    "packageId": "taiwan"
+  }
+}

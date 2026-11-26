@@ -1,8 +1,12 @@
 package com.trailpieces.journey
 
 /**
- * The catalog document. A later `GET /v1/catalog` returns this same shape.
- * [Photo.revealId] is the only link to reveal image files; the catalog does not store paths.
+ * The catalog Walk a trail reads. Bundled assets stay valid offline.
+ * Remote packages merge into this same shape. [Photo.revealId] is the scene folder.
+ */
+/**
+ * Shared categories. The journey screens render [title] and [summary] for every id.
+ * There is no per-id icon or color, so a category published after this build still displays.
  */
 data class Mood(
     val id: String,
@@ -10,6 +14,7 @@ data class Mood(
     val summary: String,
 )
 
+/** Same text treatment as [Mood]. [story] is optional and may be empty. */
 data class Scenery(
     val id: String,
     val title: String,
